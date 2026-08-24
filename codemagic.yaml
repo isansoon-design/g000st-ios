@@ -1,31 +1,22 @@
 workflows:
   ios-workflow:
     name: iOS Workflow
-    max_build_duration: 60
     instance_type: mac_mini_m2
+    max_build_duration: 60
     integrations:
       developer_portal: apple
     environment:
-      vars:
-        XCODE_PROJECT: "g000st.xcodeproj"
-        XCODE_SCHEME: "g000st"
-        BUNDLE_ID: "com.isansoon.g000st"
       xcode: latest
       cocoapods: default
+      vars:
+        XCODE_PROJECT: g000st.xcodeproj
+        XCODE_SCHEME: g000st
     scripts:
-      - name: Install pods if needed
-        script: |
-          if [ -f "Podfile" ]; then
-            pod install
-          fi
-      - name: Set up code signing
+      - name: Set up signing
         script: |
           xcode-project use-profiles
       - name: Build IPA
         script: |
-          xcode-project build-ipa \
-            --project "$XCODE_PROJECT" \
-            --scheme "$XCODE_SCHEME"
+          xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
-      - /tmp/xcodebuild_logs/*.log
