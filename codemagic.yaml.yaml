@@ -1,0 +1,24 @@
+workflows:
+  ios-workflow:
+    name: iOS IPA
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: latest
+      cocoapods: default
+    cache:
+      cache_paths:
+        - $HOME/Library/Caches/CocoaPods
+        - ./Pods
+    scripts:
+      - name: Install Pods
+        script: |
+          pod install
+      - name: Build unsigned IPA
+        script: |
+          xcodebuild -workspace g000st.xcworkspace -scheme g000st -config Release -sdk iphoneos -archivePath $CM_BUILD_DIR/g000st.xcarchive CODE_SIGNING_ALLOWED=NO archive
+          mkdir -p $CM_BUILD_DIR/ipa/Payload
+          cp -R $CM_BUILD_DIR/g000st.xcarchive/Products/Applications/*.app $CM_BUILD_DIR/ipa/Payload/
+          cd $CM_BUILD_DIR/ipa && zip -r g000st-unsigned.ipa Payload
+    artifacts:
+      - $CM_BUILD_DIR/ipa/*.ipa
