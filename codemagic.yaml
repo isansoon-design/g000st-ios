@@ -3,28 +3,31 @@ workflows:
     name: iOS Workflow
     max_build_duration: 60
     instance_type: mac_mini_m2
-    integrations:
-      app_store_connect: codemagic
     environment:
+      vars:
+        XCODE_PROJECT: "g000st.xcodeproj"
+        XCODE_SCHEME: "g000st"
+        BUNDLE_ID: "com.isansoon.g000st"
       xcode: latest
       cocoapods: default
-    cache:
-      cache_paths:
-        - $HOME/Library/Caches/CocoaPods
-        - ./Pods
     scripts:
-      - name: Install Pods
+      - name: Install pods
         script: |
-          pod install
-      - name: Build IPA for TestFlight
+          if [ -f "Podfile" ]; then
+            pod install
+          fi
+      - name: Set up signing
         script: |
-          xcodebuild -workspace g000st.xcworkspace -scheme g000st -config Release -sdk iphoneos -archivePath $CM_BUILD_DIR/g000st.xcarchive archive
-          mkdir -p $CM_BUILD_DIR/ipa/Payload
-          cp -R $CM_BUILD_DIR/g000st.xcarchive/Products/Applications/*.app $CM_BUILD_DIR/ipa/Payload
-          cd $CM_BUILD_DIR/ipa && zip -r g000st.ipa Payload
+          xcode-project use-profiles
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
     artifacts:
-      - $CM_BUILD_DIR/ipa/*.ipa
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
     publishing:
-      app_store_connect:
-        auth: integration
-        submit_to_testflight: true
+      email:
+        recipients:
+          - isansoon.design@gmail.com
