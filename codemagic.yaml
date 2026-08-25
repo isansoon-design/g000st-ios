@@ -3,8 +3,6 @@ workflows:
     name: iOS Workflow
     instance_type: mac_mini_m2
     max_build_duration: 60
-    integrations:
-      developer_portal: apple
     environment:
       xcode: latest
       cocoapods: default
@@ -12,9 +10,16 @@ workflows:
         XCODE_PROJECT: g000st.xcodeproj
         XCODE_SCHEME: g000st
     scripts:
-      - name: Set up signing
-        script: xcode-project use-profiles
-      - name: Build IPA
-        script: xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
+      - name: Install pods
+        script: |
+          pod install --repo-update || pod install
+      - name: Build IPA unsigned
+        script: |
+          xcodebuild -workspace g000st.xcworkspace -scheme g000st -configuration Release archive -archivePath /tmp/g000st.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -destination "generic/platform=iOS"
+          APP=$(find /tmp/g000st.xcarchive/Products/Applications -name "*.app" | head -1)
+          mkdir -p /tmp/Payload
+          cp -R "$APP" /tmp/Payload/
+          cd /tmp && zip -r g000st.ipa Payload
+          mkdir -p build/ios/ipa && mv g000st.ipa build/ios/ipa/
     artifacts:
       - build/ios/ipa/*.ipa
