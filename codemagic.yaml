@@ -1,41 +1,36 @@
 workflows:
   ios-workflow:
-    name: iOS Native Full IPA - No Flutter
+    name: iOS AdHoc Fix 3.39MB
     instance_type: mac_mini_m2
     max_build_duration: 60
     environment:
       xcode: latest
       cocoapods: default
-      vars:
-        XCODE_PROJECT: g000st.xcodeproj
-        XCODE_SCHEME: g000st
     scripts:
       - name: Pod install
         script: |
-          set -ex
-          ls -la
-          pod install --repo-update || pod install || true
-          if [ -d "ios" ]; then cd ios && pod install --repo-update || true && cd ..; fi
-      - name: Build IPA full native
+          pod install --repo-update || true
+      - name: Build IPA AdHoc
         script: |
           set -ex
           rm -rf /tmp/g000st.xcarchive /tmp/Payload build/ios/ipa
           mkdir -p build/ios/ipa
-          if [ -d "g000st.xcworkspace" ]; then
-            xcodebuild archive -workspace g000st.xcworkspace -scheme g000st -archivePath /tmp/g000st.xcarchive -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO SKIP_INSTALL=NO -derivedDataPath /tmp/DerivedData CODE_SIGN_IDENTITY="" CODE_SIGN_STYLE=Manual
-          elif [ -d "ios/Runner.xcworkspace" ]; then
-            xcodebuild archive -workspace ios/Runner.xcworkspace -scheme Runner -archivePath /tmp/g000st.xcarchive -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO SKIP_INSTALL=NO -derivedDataPath /tmp/DerivedData CODE_SIGN_IDENTITY="" CODE_SIGN_STYLE=Manual
-          else
-            xcodebuild archive -project g000st.xcodeproj -scheme g000st -archivePath /tmp/g000st.xcarchive -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO SKIP_INSTALL=NO -derivedDataPath /tmp/DerivedData CODE_SIGN_IDENTITY="" CODE_SIGN_STYLE=Manual
-          fi
+          xcodebuild archive \
+            -workspace g000st.xcworkspace \
+            -scheme g000st \
+            -configuration Release \
+            -archivePath /tmp/g000st.xcarchive \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGN_IDENTITY="-" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGNING_REQUIRED=NO \
+            SKIP_INSTALL=NO
           APP=$(find /tmp/g000st.xcarchive/Products/Applications -name "*.app" | head -1)
-          ls -lh "$APP"
-          du -sh "$APP"
           mkdir -p /tmp/Payload
           cp -R "$APP" /tmp/Payload/
-          cd /tmp && zip -r -9 g000st-full.ipa Payload
-          mkdir -p $CM_BUILD_DIR/build/ios/ipa
-          cp g000st-full.ipa $CM_BUILD_DIR/build/ios/ipa/
+          cd /tmp && zip -r g000st-fixed.ipa Payload
+          cp g000st-fixed.ipa $CM_BUILD_DIR/build/ios/ipa/
           ls -lh $CM_BUILD_DIR/build/ios/ipa/
     artifacts:
       - build/ios/ipa/*.ipa
