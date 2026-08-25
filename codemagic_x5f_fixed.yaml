@@ -1,0 +1,118 @@
+workflows:
+  ios-workflow:
+    name: iOS WORKING - No Push No Domains
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: latest
+      flutter: stable
+      cocoapods: default
+      vars:
+        XCODE_PROJECT: g000st.xcodeproj
+        XCODE_SCHEME: g000st
+    scripts:
+      - name: Setup Flutter & Pods
+        script: |
+          set -ex
+          if [ -f "pubspec.yaml" ]; then
+            flutter clean
+            rm -rf ios/Pods ios/Podfile.lock build
+            flutter pub get
+            cd ios
+            pod install --repo-update
+            cd ..
+          fi
+
+      - name: Make App Openable - Remove All Problematic Entitlements
+        script: |
+          set -ex
+          echo ">>> Creating clean entitlements for iOS 26.6 free account"
+          # Find and overwrite all entitlements with minimal version
+          find . -name "*.entitlements" | while read F; do
+            echo "Overwriting $F with minimal entitlements"
+            cat > "$F" << 'ENT'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+          </dict>
+          </plist>
+          ENT
+            cat "$F"
+          done
+          
+          # If no entitlements file exists, create one for Runner
+          if [ ! -f "ios/Runner/Runner.entitlements" ] && [ -d "ios/Runner" ]; then
+            echo "Creating ios/Runner/Runner.entitlements"
+            cat > "ios/Runner/Runner.entitlements" << 'ENT'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+          </dict>
+          </plist>
+          ENT
+          fi
+
+          # Patch Info.plist to ensure it has URL scheme for TWA
+          echo ">>> Checking Info.plist"
+          find . -name "Info.plist" | head -5 | while read PLIST; do
+            echo "Checking $PLIST"
+            plutil -p "$PLIST" | head -100 || true
+          done
+
+      - name: Build IPA that OPENS on iOS 26.6
+        script: |
+          set -ex
+          rm -rf /tmp/Payload /tmp/*.ipa build/ios/ipa
+          mkdir -p build/ios/ipa
+
+          # Build Flutter properly - this includes all assets
+          if [ -f "pubspec.yaml" ]; then
+            flutter build ios --release --no-codesign 2>&1 | tee /tmp/flutter_build.log || true
+            # Flutter creates Runner.app in build/ios/iphoneos/
+            APP_PATH=$(find build/ios -name "Runner.app" -type d 2>/dev/null | head -n 1)
+            if [ -z "$APP_PATH" ]; then
+              APP_PATH=$(find build -name "*.app" -type d | grep -v Tests | head -n 1)
+            fi
+          else
+            # Native build
+            if [ -d "ios/Runner.xcworkspace" ]; then
+              xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -destination "generic/platform=iOS" -derivedDataPath /tmp/DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CODE_SIGN_STYLE=Manual AD_HOC_CODE_SIGNING_ALLOWED=YES build 2>&1 | tee /tmp/xcodebuild.log || true
+              APP_PATH=$(find /tmp/DerivedData -name "*.app" -type d | grep -v Tests | head -n 1)
+            else
+              xcodebuild -project g000st.xcodeproj -scheme g000st -configuration Release -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO build 2>&1 | tee /tmp/xcodebuild.log || true
+              APP_PATH=$(find . -name "*.app" -type d | grep -v Tests | head -n 1)
+            fi
+          fi
+
+          echo "FINAL APP_PATH: $APP_PATH"
+          if [ -z "$APP_PATH" ]; then
+            echo "Failed to find .app, searching everywhere"
+            find . -name "*.app" -type d 2>/dev/null | head -20
+            tail -n 200 /tmp/flutter_build.log || true
+            tail -n 200 /tmp/xcodebuild.log || true
+            exit 1
+          fi
+
+          ls -lh "$APP_PATH"
+          du -sh "$APP_PATH"
+          # Check if Flutter assets exist
+          ls -lh "$APP_PATH/Frameworks/" 2>&1 || true
+          ls -lh "$APP_PATH/App.framework/" 2>&1 || true
+
+          # Create IPA
+          rm -rf /tmp/Payload
+          mkdir -p /tmp/Payload
+          cp -R "$APP_PATH" /tmp/Payload/
+          cd /tmp
+          zip -r -9 g000st-WORKING-iOS26.ipa Payload
+          mkdir -p $CM_BUILD_DIR/build/ios/ipa
+          mv /tmp/g000st-WORKING-iOS26.ipa $CM_BUILD_DIR/build/ios/ipa/
+          ls -lh $CM_BUILD_DIR/build/ios/ipa/
+          echo ">>> IPA READY - This one should OPEN on iOS 26.6!"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild.log
+      - /tmp/flutter_build.log
