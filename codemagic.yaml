@@ -1,25 +1,28 @@
 workflows:
   ios-workflow:
-    name: iOS Workflow
+    name: iOS Workflow Flutter Full
     instance_type: mac_mini_m2
     max_build_duration: 60
     environment:
       xcode: latest
+      flutter: stable
       cocoapods: default
-      vars:
-        XCODE_PROJECT: g000st.xcodeproj
-        XCODE_SCHEME: g000st
     scripts:
-      - name: Install pods
+      - name: Build Flutter IPA full
         script: |
-          pod install --repo-update || pod install
-      - name: Build IPA unsigned
-        script: |
-          xcodebuild -workspace g000st.xcworkspace -scheme g000st -configuration Release archive -archivePath /tmp/g000st.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -destination "generic/platform=iOS"
-          APP=$(find /tmp/g000st.xcarchive/Products/Applications -name "*.app" | head -1)
+          set -ex
+          flutter clean
+          flutter pub get
+          cd ios && pod install --repo-update && cd ..
+          flutter build ios --release --no-codesign --verbose
+          APP=$(find build -name "*.app" -type d | head -1)
+          echo "APP: $APP"
+          du -sh "$APP"
           mkdir -p /tmp/Payload
           cp -R "$APP" /tmp/Payload/
-          cd /tmp && zip -r g000st.ipa Payload
-          mkdir -p build/ios/ipa && mv g000st.ipa build/ios/ipa/
+          cd /tmp && zip -r g000st-full.ipa Payload
+          mkdir -p $CM_BUILD_DIR/build/ios/ipa
+          cp g000st-full.ipa $CM_BUILD_DIR/build/ios/ipa/
+          ls -lh $CM_BUILD_DIR/build/ios/ipa/
     artifacts:
       - build/ios/ipa/*.ipa
