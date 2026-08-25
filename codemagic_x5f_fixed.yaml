@@ -1,0 +1,59 @@
+workflows:
+  ios-workflow:
+    name: iOS Workspace Fix - Pods Error Fixed
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: latest
+      flutter: stable
+      cocoapods: default
+    scripts:
+      - name: Setup Pods Correctly
+        script: |
+          set -ex
+          if [ -f "pubspec.yaml" ]; then
+            flutter clean
+            rm -rf ios/Pods ios/Podfile.lock build
+            flutter pub get
+            cd ios
+            pod deintegrate || true
+            pod install --repo-update
+            cd ..
+            ls -lh ios/
+            ls -lh ios/Runner.xcworkspace || true
+          fi
+
+      - name: Build Using Workspace (Fixes Pods error)
+        script: |
+          set -x
+          rm -rf /tmp/Payload build/ios/ipa
+          mkdir -p build/ios/ipa
+          
+          # IMPORTANT: Use xcworkspace NOT xcodeproj - this fixes the Pods-g000st xcfilelist error
+          echo "Building with workspace..."
+          flutter build ios --release --no-codesign --verbose 2>&1 | tee /tmp/flutter.log || true
+          
+          APP=$(find build -name "*.app" -type d 2>/dev/null | head -n 1)
+          echo "APP after flutter: $APP"
+          
+          if [ -z "$APP" ]; then
+            echo "Flutter build didn't produce app, trying xcodebuild with workspace"
+            xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -destination "generic/platform=iOS" -derivedDataPath /tmp/DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CODE_SIGN_STYLE=Manual build 2>&1 | tee /tmp/xcode.log || true
+            APP=$(find /tmp/DerivedData -name "*.app" -type d | head -n 1)
+          fi
+          
+          echo "FINAL APP: $APP"
+          ls -lh "$APP" || (find . -name "*.app" -type d | head -20; exit 1)
+          
+          mkdir -p /tmp/Payload
+          rm -rf /tmp/Payload/*
+          cp -R "$APP" /tmp/Payload/
+          cd /tmp
+          zip -r -9 g000st-Fixed-Pods.ipa Payload
+          mkdir -p $CM_BUILD_DIR/build/ios/ipa
+          mv /tmp/g000st-Fixed-Pods.ipa $CM_BUILD_DIR/build/ios/ipa/
+          ls -lh $CM_BUILD_DIR/build/ios/ipa/
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/*.log
