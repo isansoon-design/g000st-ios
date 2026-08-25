@@ -1,0 +1,34 @@
+workflows:
+  ios-workflow:
+    name: g000st PWA - CLEAN BUILD
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Build Clean PWA Wrapper
+        script: |
+          set -ex
+          ls -la
+          ls -la g000st/
+          
+          # Build the clean project - NO Pods, NO Flutter, just Swift + WKWebView
+          xcodebuild build -project g000st.xcodeproj -scheme g000st -configuration Release -destination "generic/platform=iOS" -derivedDataPath /tmp/DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CODE_SIGN_STYLE=Manual AD_HOC_CODE_SIGNING_ALLOWED=YES 2>&1 | tee /tmp/xcode.log
+          
+          APP=$(find /tmp/DerivedData -name "*.app" -type d | head -n 1)
+          echo "APP: $APP"
+          ls -lh "$APP"
+          du -sh "$APP"
+          
+          mkdir -p /tmp/Payload
+          cp -R "$APP" /tmp/Payload/
+          cd /tmp
+          zip -r -9 g000st-PWA.ipa Payload
+          mkdir -p $CM_BUILD_DIR/build/ios/ipa
+          mv /tmp/g000st-PWA.ipa $CM_BUILD_DIR/build/ios/ipa/
+          ls -lh $CM_BUILD_DIR/build/ios/ipa/
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcode.log
