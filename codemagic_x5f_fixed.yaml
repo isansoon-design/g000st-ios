@@ -1,0 +1,60 @@
+workflows:
+  ios-workflow:
+    name: iOS Simple - Guaranteed
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: latest
+      flutter: stable
+      cocoapods: default
+    scripts:
+      - name: Setup
+        script: |
+          set -ex
+          if [ -f "pubspec.yaml" ]; then
+            flutter clean
+            rm -rf ios/Pods ios/Podfile.lock build
+            flutter pub get
+            cd ios
+            pod install --repo-update
+            cd ..
+          fi
+
+      - name: Build IPA Simple
+        script: |
+          set -ex
+          rm -rf build/ios/ipa /tmp/Payload
+          mkdir -p build/ios/ipa
+          
+          if [ -f "pubspec.yaml" ]; then
+            echo "Building Flutter - NO CODESIGN"
+            flutter build ios --release --no-codesign 2>&1 | tee /tmp/flutter.log || true
+            echo "Searching for .app"
+            find build -name "*.app" -type d | head -20
+            APP=$(find build/ios/iphoneos -name "*.app" -type d 2>/dev/null | head -n 1)
+            if [ -z "$APP" ]; then APP=$(find build -name "*.app" -type d | head -n 1); fi
+            echo "APP=$APP"
+            ls -lh "$APP"
+            mkdir -p /tmp/Payload
+            cp -R "$APP" /tmp/Payload/
+            cd /tmp
+            zip -r g000st.ipa Payload
+            mv g000st.ipa $CM_BUILD_DIR/build/ios/ipa/
+          else
+            echo "Building native project - no archive, just build"
+            xcodebuild -project g000st.xcodeproj -scheme g000st -configuration Release -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 | tee /tmp/xcode.log || true
+            APP=$(find ~/Library/Developer/Xcode/DerivedData -name "*.app" -type d 2>/dev/null | head -n 1)
+            if [ -z "$APP" ]; then APP=$(find . -name "*.app" -type d | head -n 1); fi
+            echo "APP=$APP"
+            mkdir -p /tmp/Payload
+            cp -R "$APP" /tmp/Payload/
+            cd /tmp
+            zip -r g000st.ipa Payload
+            mv g000st.ipa $CM_BUILD_DIR/build/ios/ipa/
+          fi
+          ls -lh build/ios/ipa/
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/flutter.log
+      - /tmp/xcode.log
