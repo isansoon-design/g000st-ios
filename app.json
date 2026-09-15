@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "g000st",
+    "slug": "g000st",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/brand/icon-1024.png",
+    "scheme": "g000st",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "com.g000st.app",
+      "icon": "./assets/brand/icon-1024.png",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.g000st.app",
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/brand/icon-1024.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#E8E8E8",
+          "image": "./assets/brand/logo.png",
+          "imageWidth": 240
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

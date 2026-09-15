@@ -1,68 +1,69 @@
-# g000st - Private Offline Mesh Chat
+# g000st Mobile
 
-> **All messages burn. Local only. No logs.**
+Native g000st mobile application built with Expo SDK 56 and strict TypeScript.
 
-g000st is a private social chat app designed for true privacy. No servers store your chats. No tracking. Everything burns.
+## Requirements
 
-## 🔥 Privacy First
+- Node.js 20.19 or newer
+- Xcode 26.4 or newer for local iOS builds
+- Android SDK API 36 for local Android builds
+- A development build (Expo Go is not sufficient for all native modules)
 
-- **ALL Messages Burn** - Every message has a burn timer (5s). After reading, it's gone forever.
-- **Local Only** - Messages stay on device. `localStorage` only, no cloud database.
-- **No Logs** - We don't log IP, name, email, phone. Nothing.
-- **Offline Mesh** - Works via Bluetooth / Multipeer when internet is off (iOS Native Bridge ready).
-- **Screenshots Possible** - We warn user, we don't spy.
-- **Not an Emergency Service** - This is private chat, not 911.
+## Setup
 
-## 📱 App Store Ready
+```bash
+cp .env.example .env.local
+npm ci
+npx expo start --dev-client
+```
 
-This build is **Telnyx-free** for TestFlight.
+The default API base URL is `https://g000st.com/api/v1`. Override it locally with
+`EXPO_PUBLIC_API_URL` in `.env.local`.
 
-- Removed: `api.telnyx.com` SMS/Call APIs (will be added back after Live release via Twilio/Telnyx)
-- Uses: Local mesh + Firebase Messaging (push only)
-- No backend collection
+## Checks
 
-### App Privacy Label (for App Store Connect)
+```bash
+npm run typecheck
+npm run lint
+npm run doctor
+```
 
-- **Data Collected: None**
-- **Location:** Used only for NEARBY Mesh discovery, not stored
-- **Contacts:** Optional, local only
-- **No tracking**
+## Structure
 
-## 🛠 Tech Stack
+```text
+src/app/          Expo Router routes only
+src/api/          Axios instance and typed resource functions
+src/domain/       Shared domain types
+src/features/     Feature-owned UI, hooks, validation and use-cases
+src/services/     Device and persistence adapters
+src/providers/    Application providers
+legacy/           Previous WebView implementation and source reference
+docs/             Analysis and migration plan
+```
 
-- Single `index.html` PWA (7700+ lines)
-- `Service Worker` - offline ready
-- `MeshNative` bridge: `webkit.messageHandlers.meshNative` + Capacitor
-- `Blur + Privacy Shield` for sensitive chats
-- Manifest: `manifest.webmanifest` + icons 192/512
+## Authentication contract
 
-## 🚀 TestFlight (2 Weeks)
+- `Public ID`: 50 characters, shareable and searchable.
+- `Recovery ID`: a separate 50-character secret used to restore account access.
+- Session tokens are stored in Expo SecureStore.
+- The app does not create a successful local/demo session when the API is unavailable.
 
-1. Upload `index.html` + `manifest.webmanifest` + icons to `https://g000st.com`
-2. Xcode > Settings.swift: `rootUrl = "https://g000st.com/index.html"`
-3. Product > Archive > Upload to App Store Connect
-4. TestFlight > External Testing > Submit for Beta Review
+The backend endpoints expected by the first mobile slice are documented by the typed resource
+functions in `src/api/auth.ts`. They will remain unavailable until the server-side authentication
+phase is deployed. The draft contract in `docs/API_CONTRACT_V1.md` extends the existing backend;
+it does not replace or rebuild it.
 
-Valid 90 days, you can stop after 2 weeks.
+## SDK 56 note
 
-## 📂 Open Source
+Expo Doctor currently reports the known Hermes V1 memory regression inherited from React
+Native 0.85 when Reanimated/Worklets are present. The project intentionally remains on SDK 56
+to match the agreed requirement. Before a production build, choose either the Expo-recommended
+SDK 57 patch line or the slower SDK 56 legacy-Hermes source-build workaround after device
+profiling; this warning must not be ignored for release.
 
-This project is open resource.
+## Legacy project
 
-- `LICENSE: MIT`
-- No API keys inside
-- All burn logic visible in `index.html`
-
-> We removed Telnyx temporarily to pass Apple review. After Live, we will re-integrate Twilio / Telnyx for private calls.
-
-## ⚖️ Legal
-
-See in-app: Privacy Policy + Terms. Core message:
-- Private chat only
-- No doxxing / harassment
-- Mesh delivery depends on device & permissions
-- Not for emergencies
-
----
-
-Built by g000st team. For the people who care about privacy.
+The original iOS WebView wrapper from the repository is preserved under `legacy/ios-webview`.
+When present locally, the analyzed `appfg000st.html` mobile source is kept under `legacy/source`
+as a visual and behavioral reference. That directory is intentionally ignored because the
+client-provided file contains environment configuration that was not part of this repository.
