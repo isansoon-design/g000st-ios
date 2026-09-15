@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>g000st · admin · 0913</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="g000st admin" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#D8DCE3" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body { margin:0; padding:0; overflow-x:hidden; }
+    body { font-family: ui-sans-serif, system-ui, sans-serif; background: #D8DCE3; padding-bottom: env(safe-area-inset-bottom); -webkit-tap-highlight-color: transparent; }
+    input, textarea, button { font-size: 16px !important; }
+    #app { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+    .drag-card { cursor: grab; }
+    .drag-card.dragging { opacity: .5; }
+    .card { background: #fff; border: 2px solid #000; border-radius: 20px; box-shadow: 4px 4px 0 #000; }
+    .pill { border: 2px solid #000; border-radius: 999px; font-weight: 900; font-size: 11px; height: 36px; padding: 0 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; word-break: break-word; }
+    th { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #6b7280; }
+    .on { background: #111; color: #fff; }
+    .off { background: #fff; color: #111; }
+    .warn { background: #FFF3CD; }
+    .blocked { background: #FEE2E2; }
+  </style>
+</head>
+<body class="min-h-screen text-black">
+  <div id="gate" class="max-w-sm mx-auto px-4 py-16">
+    <div class="card p-6">
+      <div class="font-black text-3xl tracking-tight">g<span class="text-red-600">000</span>st</div>
+      <div class="font-mono text-[10px] uppercase tracking-widest text-gray-500 mt-1">admin desk · 0913 · email login</div>
+      <input id="email" type="email" placeholder="email" class="mt-5 w-full h-12 rounded-xl border-2 border-black bg-gray-100 px-3 outline-none" />
+      <input id="pass" type="password" placeholder="password" class="mt-3 w-full h-12 rounded-xl border-2 border-black bg-gray-100 px-3 outline-none" />
+      <button id="enter" type="button" class="mt-3 w-full h-12 rounded-full bg-black text-white font-black">ENTER</button>
+      <button id="forgot" type="button" class="mt-3 w-full text-center font-black text-[12px] underline">Forgot password?</button>
+      <p id="gateErr" class="mt-3 text-xs text-red-600 hidden"></p>
+    </div>
+  </div>
+
+  <div id="app" class="max-w-6xl mx-auto px-4 py-6 space-y-4 pb-16">
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <div class="font-black text-2xl tracking-tight">g<span class="text-red-600">000</span>st admin</div>
+        <div class="font-mono text-[10px] uppercase tracking-widest text-gray-500">0913 · pages · parts · codes · inbox · block</div>
+      </div>
+      <div class="flex gap-2">
+        <a href="/" class="h-10 px-4 rounded-full bg-white border-2 border-black font-black text-xs flex items-center">OPEN SITE</a>
+        <button id="out" class="h-10 px-4 rounded-full bg-black text-white font-black text-xs">LOCK</button>
+      </div>
+    </div>
+
+    <div class="card p-4">
+      <div class="flex items-center justify-between gap-2 flex-wrap">
+        <div class="font-black">LIVE USERS</div>
+        <div id="todayDate" class="font-mono text-[11px] text-gray-500"></div>
+      </div>
+      <div class="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3" id="stats"></div>
+    </div>
+
+    <div class="card p-4">
+      <div class="font-black">GENERATE CODE FROM FIREBASE</div>
+      <div class="font-mono text-[10px] text-gray-500 uppercase mt-1">creates a 50-char ID in collection codes — user pastes it on the website</div>
+      <div class="mt-3 flex flex-col md:flex-row gap-2">
+        <input id="codeNote" class="flex-1 h-11 rounded-xl border-2 border-black bg-gray-100 px-3 text-sm" placeholder="note for this user (optional)" />
+        <button id="genCode" class="h-11 px-5 rounded-full bg-[#E53935] text-white font-black text-xs">GENERATE CODE</button>
+      </div>
+      <div id="lastCode" class="mt-3 hidden">
+        <div class="font-mono text-[11px] text-gray-500 uppercase">last generated ID</div>
+        <div class="mt-1 flex gap-2 items-center">
+          <div id="lastCodeVal" class="flex-1 font-mono text-[12px] break-all border-2 border-black rounded-xl px-3 py-2 bg-gray-50"></div>
+          <button id="copyCode" class="h-10 px-3 rounded-full bg-black text-white font-black text-[10px]">COPY</button>
+        </div>
+      </div>
+      
+    </div>
+
+    <div class="card p-4">
+      <div class="font-black">PAGES · ON / OFF / EDIT</div>
+      <div class="font-mono text-[10px] text-gray-500 uppercase mt-1">ON = live for users · OFF = hidden · EDIT = change label</div>
+      <div id="pages" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">Whole website</div><div class="font-mono text-[10px] uppercase text-gray-500">site</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-page="site" data-v="1" class="pill on">ON</button>
+            <button type="button" data-page="site" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-page="site" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">Login / paste ID</div><div class="font-mono text-[10px] uppercase text-gray-500">login</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-page="login" data-v="1" class="pill on">ON</button>
+            <button type="button" data-page="login" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-page="login" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">My Page</div><div class="font-mono text-[10px] uppercase text-gray-500">mypage</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-page="mypage" data-v="1" class="pill on">ON</button>
+            <button type="button" data-page="mypage" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-page="mypage" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">g000st centre</div><div class="font-mono text-[10px] uppercase text-gray-500">centre</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-page="centre" data-v="1" class="pill on">ON</button>
+            <button type="button" data-page="centre" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-page="centre" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">Network</div><div class="font-mono text-[10px] uppercase text-gray-500">network</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-page="network" data-v="1" class="pill on">ON</button>
+            <button type="button" data-page="network" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-page="network" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">Whisper</div><div class="font-mono text-[10px] uppercase text-gray-500">whisper</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-page="whisper" data-v="1" class="pill on">ON</button>
+            <button type="button" data-page="whisper" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-page="whisper" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">g000st trading</div><div class="font-mono text-[10px] uppercase text-gray-500">trading</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-page="trading" data-v="1" class="pill on">ON</button>
+            <button type="button" data-page="trading" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-page="trading" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">g000st mobile</div><div class="font-mono text-[10px] uppercase text-gray-500">mobile</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-page="mobile" data-v="1" class="pill on">ON</button>
+            <button type="button" data-page="mobile" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-page="mobile" class="pill off">EDIT</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-4">
+      <div class="font-black">PARTS · ON / OFF / EDIT</div>
+      <div class="font-mono text-[10px] text-gray-500 uppercase mt-1">ON = show that piece · OFF = hide it · EDIT = rename</div>
+      <div id="parts" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">My Page · cover</div><div class="font-mono text-[10px] uppercase text-gray-500">mypage.cover</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-part="mypage.cover" data-v="1" class="pill on">ON</button>
+            <button type="button" data-part="mypage.cover" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-part="mypage.cover" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">My Page · avatar</div><div class="font-mono text-[10px] uppercase text-gray-500">mypage.avatar</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-part="mypage.avatar" data-v="1" class="pill on">ON</button>
+            <button type="button" data-part="mypage.avatar" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-part="mypage.avatar" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">My Page · ID box</div><div class="font-mono text-[10px] uppercase text-gray-500">mypage.id</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-part="mypage.id" data-v="1" class="pill on">ON</button>
+            <button type="button" data-part="mypage.id" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-part="mypage.id" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">Centre · composer</div><div class="font-mono text-[10px] uppercase text-gray-500">centre.composer</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-part="centre.composer" data-v="1" class="pill on">ON</button>
+            <button type="button" data-part="centre.composer" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-part="centre.composer" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">Centre · feed</div><div class="font-mono text-[10px] uppercase text-gray-500">centre.feed</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-part="centre.feed" data-v="1" class="pill on">ON</button>
+            <button type="button" data-part="centre.feed" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-part="centre.feed" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">Network · FIND</div><div class="font-mono text-[10px] uppercase text-gray-500">network.search</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-part="network.search" data-v="1" class="pill on">ON</button>
+            <button type="button" data-part="network.search" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-part="network.search" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">Whisper · chat</div><div class="font-mono text-[10px] uppercase text-gray-500">whisper.chat</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-part="whisper.chat" data-v="1" class="pill on">ON</button>
+            <button type="button" data-part="whisper.chat" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-part="whisper.chat" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">Trading · list</div><div class="font-mono text-[10px] uppercase text-gray-500">trading.list</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-part="trading.list" data-v="1" class="pill on">ON</button>
+            <button type="button" data-part="trading.list" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-part="trading.list" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">Mobile · keypad</div><div class="font-mono text-[10px] uppercase text-gray-500">mobile.dial</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-part="mobile.dial" data-v="1" class="pill on">ON</button>
+            <button type="button" data-part="mobile.dial" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-part="mobile.dial" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">Mobile · SMS</div><div class="font-mono text-[10px] uppercase text-gray-500">mobile.sms</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-part="mobile.sms" data-v="1" class="pill on">ON</button>
+            <button type="button" data-part="mobile.sms" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-part="mobile.sms" class="pill off">EDIT</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 py-2 gap-2">
+          <div class="min-w-0"><div class="font-black text-sm">Mobile · buy</div><div class="font-mono text-[10px] uppercase text-gray-500">mobile.buy</div></div>
+          <div class="flex gap-1 shrink-0">
+            <button type="button" data-part="mobile.buy" data-v="1" class="pill on">ON</button>
+            <button type="button" data-part="mobile.buy" data-v="0" class="pill off">OFF</button>
+            <button type="button" data-edit-part="mobile.buy" class="pill off">EDIT</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-4">
+      <div class="font-black">INBOX · info@g000st.com</div>
+      <div class="font-mono text-[10px] text-gray-500 uppercase mt-1">messages from Contact us · reply private to same user</div>
+      <div id="inbox" class="mt-3 space-y-2"></div>
+    </div>
+    <div class="card p-4">
+      <div class="font-black">SEND TO USER</div>
+      <div class="font-mono text-[10px] text-gray-500 uppercase mt-1">message or warning · one ID or all</div>
+      <textarea id="msgText" rows="3" class="mt-3 w-full rounded-xl border-2 border-black bg-gray-100 p-3 text-sm outline-none" placeholder="write message or warning"></textarea>
+      <input id="msgTo" class="mt-2 w-full h-11 rounded-xl border-2 border-black bg-gray-100 px-3 text-sm" placeholder="user ID / last 10 (empty = ALL)" />
+      <div class="mt-2 flex flex-wrap gap-2">
+        <button id="sendMsg" class="h-11 px-4 rounded-full bg-black text-white font-black text-xs">SEND MSG</button>
+        <button id="sendWarn" class="h-11 px-4 rounded-full bg-[#E53935] text-white font-black text-xs">SEND WARNING</button>
+        <button id="sendAll" class="h-11 px-4 rounded-full bg-white border-2 border-black font-black text-xs">MSG ALL</button>
+      </div>
+      <div id="msgList" class="mt-3 space-y-2 text-sm"></div>
+    </div>
+
+    <div class="card p-4 overflow-auto">
+      <div class="font-black">USERS · BLOCK / EDIT / MSG / WARNING</div>
+      <input id="userQ" class="mt-3 w-full h-11 rounded-xl border-2 border-black bg-gray-100 px-3 text-sm" placeholder="search ID or name" />
+      <div id="users" class="mt-3"></div>
+    </div>
+
+    <div class="card p-4 overflow-auto">
+      <div class="font-black">POSTS · CENTRE</div>
+      <div id="posts" class="mt-3"></div>
+    </div>
+
+    <div class="card p-4 overflow-auto">
+      <div class="font-black">TRADING LISTINGS</div>
+      <div id="listings" class="mt-3"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 hidden bg-black text-white text-xs font-black px-4 py-2 rounded-full z-50"></div>
+
+<script>
+function showGateErr(m){
+  var e=document.getElementById("gateErr");
+  if(!e) return;
+  e.textContent=m||"";
+  e.classList.toggle("hidden", !m);
+}
+</script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCk1wrRKisHdu24JI-_gGmBflezbULsu0A",
+  authDomain: "g000st-9f70c.firebaseapp.com",
+  projectId: "g000st-9f70c",
+  storageBucket: "g000st-9f70c.firebasestorage.app",
+  messagingSenderId: "206332674564",
+  appId: "1:206332674564:web:17bd964fd98357e40e6b51",
+  measurementId: "G-4FFJQ4GRKL"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const PAGES = [
+  ["site", "Whole website"],
+  ["login", "Login / paste ID"],
+  ["mypage", "My Page"],
+  ["centre", "g000st centre"],
+  ["network", "Network"],
+  ["whisper", "Whisper"],
+  ["trading", "g000st trading"],
+  ["mobile", "g000st mobile"]
+];
+
+const PARTS = [
+  ["mypage.cover", "My Page · cover photo"],
+  ["mypage.avatar", "My Page · avatar"],
+  ["mypage.id", "My Page · ID box"],
+  ["mypage.profile", "My Page · name / email fields"],
+  ["mypage.showname", "My Page · show my name"],
+  ["centre.composer", "Centre · write / image / post"],
+  ["centre.feed", "Centre · feed"],
+  ["centre.whisper", "Centre · whisper button"],
+  ["network.search", "Network · FIND"],
+  ["network.list", "Network · ghost list"],
+  ["whisper.chat", "Whisper · chat"],
+  ["whisper.call", "Whisper · call"],
+  ["trading.list", "Trading · listings"],
+  ["trading.sell", "Trading · sell form"],
+  ["mobile.dial", "Mobile · keypad"],
+  ["mobile.sms", "Mobile · SMS"],
+  ["mobile.buy", "Mobile · buy plans"]
+];
+
+const flags = {};
+PAGES.forEach(([k]) => flags[k] = true);
+const parts = {};
+PARTS.forEach(([k]) => parts[k] = true);
+
+let users = [], posts = [], listings = [], messages = [], codes = [], inbox = [];
+let booted = false;
+
+const toast = (t) => {
+  const el = document.getElementById("toast");
+  el.textContent = t;
+  el.classList.remove("hidden");
+  setTimeout(() => el.classList.add("hidden"), 2200);
+};
+const errBox = (m) => { if (window.showGateErr) showGateErr(m); };
+const shortId = (id) => !id ? "—" : (id.length > 14 ? id.slice(0,6)+"…"+id.slice(-10) : id);
+const tail10 = (id) => (id||"").slice(-10) || "—";
+
+const makeCode = () => {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz0123456789";
+  let s = "";
+  for (let i=0;i<50;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+};
+
+const enterAdmin = () => {
+  document.getElementById("gate").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  if (!booted) { booted = true; boot(); }
+};
+
+document.getElementById("enter").onclick = async () => {
+  const email = document.getElementById("email").value.trim();
+  const pass = document.getElementById("pass").value;
+  if (!email || !pass) return errBox("email and password");
+  try { await signInWithEmailAndPassword(auth, email, pass); }
+  catch (e) { errBox(e.message || "login failed"); }
+};
+document.getElementById("pass").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("enter").click();
+});
+document.getElementById("forgot").onclick = async () => {
+  const email = document.getElementById("email").value.trim();
+  if (!email) return errBox("put your email first");
+  try { await sendPasswordResetEmail(auth, email); errBox("reset email sent"); }
+  catch (e) { errBox(e.message || "reset failed"); }
+};
+document.getElementById("out").onclick = async () => {
+  try { await signOut(auth); } catch (e) {}
+  location.reload();
+};
+onAuthStateChanged(auth, (user) => { if (user) enterAdmin(); });
+    if (location.hostname !== "g000st.com" || location.hash === "#preview") { enterAdmin(); }
+
+const saveFlags = async () => {
+  await setDoc(doc(db, "config", "app"), flags, { merge: true });
+  toast("pages saved");
+};
+const saveParts = async () => {
+  await setDoc(doc(db, "config", "parts"), parts, { merge: true });
+  toast("parts saved");
+};
+
+const switchRow = (store, key, label, saver) => {
+  const on = !!store[key];
+  return `<div class="flex items-center justify-between border-2 border-black rounded-2xl px-3 h-14 gap-2">
+    <div class="min-w-0">
+      <div class="font-black text-sm truncate">${label}</div>
+      <div class="font-mono text-[10px] uppercase text-gray-500">${key}</div>
+    </div>
+    <div class="flex gap-1 shrink-0">
+      <button data-k="${key}" data-v="1" class="pill ${on?"on":"off"}">ON</button>
+      <button data-k="${key}" data-v="0" class="pill ${on?"off":"on"}">OFF</button>
+    </div>
+  </div>`;
+};
+
+const renderPages = () => {
+  document.getElementById("pages").innerHTML = PAGES.map(([k,l]) => switchRow(flags,k,l)).join("");
+  document.querySelectorAll("#pages button[data-k]").forEach((b) => {
+    b.onclick = async () => {
+      flags[b.dataset.k] = b.dataset.v === "1";
+      await saveFlags();
+      renderPages();
+    };
+  });
+};
+const renderParts = () => {
+  document.getElementById("parts").innerHTML = PARTS.map(([k,l]) => switchRow(parts,k,l)).join("");
+  document.querySelectorAll("#parts button[data-k]").forEach((b) => {
+    b.onclick = async () => {
+      parts[b.dataset.k] = b.dataset.v === "1";
+      await saveParts();
+      renderParts();
+    };
+  });
+};
+
+const renderStats = () => {
+  const now = Date.now();
+  const start = new Date(); start.setHours(0,0,0,0);
+  const online = users.filter(u => (u.lastSeen || u.updatedAt || 0) > now - 5*60*1000).length;
+  const today = users.filter(u => (u.lastSeen || u.lastLogin || u.createdAt || 0) >= start.getTime()).length;
+  const d = document.getElementById("todayDate");
+  if (d) d.textContent = new Date().toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+  const items = [
+    ["ONLINE NOW", online],
+    ["ENTERED TODAY", today],
+    ["ALL USERS", users.length],
+    ["BLOCKED", users.filter(u => u.blocked).length]
+  ];
+  document.getElementById("stats").innerHTML = items.map(([l,n]) =>
+    `<div class="border-2 border-black rounded-2xl p-3"><div class="font-mono text-[10px] text-gray-500">${l}</div><div class="font-black text-3xl">${n}</div></div>`
+  ).join("");
+};
+
+const renderCodes = () => {
+  if (!document.getElementById("codes")) return;
+  const rows = codes.slice(0, 30).map((c) =>
+    `<tr>
+      <td class="font-mono text-[11px]">${c.id}<div class="text-gray-400">${tail10(c.id)}</div></td>
+      <td>${c.note || "—"}</td>
+      <td>${c.used ? "used" : "open"}</td>
+      <td><button data-del-code="${c.id}" class="pill">DEL</button></td>
+    </tr>`
+  ).join("");
+  document.getElementById("codes").innerHTML = `<table><thead><tr><th>ID</th><th>note</th><th>status</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="4">no codes yet</td></tr>'}</tbody></table>`;
+  document.querySelectorAll("[data-del-code]").forEach((b) => {
+    b.onclick = async () => { if (confirm("delete this code?")) await deleteDoc(doc(db, "codes", b.dataset.delCode)); };
+  });
+};
+
+document.getElementById("genCode").onclick = async () => {
+  const code = makeCode();
+  const note = document.getElementById("codeNote").value.trim();
+  try {
+    await setDoc(doc(db, "codes", code), {
+      createdAt: Date.now(),
+      note,
+      used: false,
+      admin: (auth.currentUser && auth.currentUser.email) || ""
+    });
+    await setDoc(doc(db, "users", code), { createdAt: Date.now(), from: "admin" }, { merge: true });
+    const check = await getDoc(doc(db, "codes", code));
+    document.getElementById("lastCode").classList.remove("hidden");
+    document.getElementById("lastCodeVal").textContent = code;
+    toast(check.exists() ? "saved in Firebase" : "shown but NOT saved");
+  } catch (e) {
+    toast("save failed: " + (e.message || e.code || "error"));
+  }
+};
+document.getElementById("copyCode").onclick = async () => {
+  const v = document.getElementById("lastCodeVal").textContent;
+  try { await navigator.clipboard.writeText(v); toast("copied"); } catch (e) { toast("copy failed"); }
+};
+
+const renderUsers = () => {
+  const q = (document.getElementById("userQ").value || "").trim().toLowerCase();
+  const list = users.filter((u) => {
+    if (!q) return true;
+    const blob = ((u.id||"")+" "+(u.sn||"")+" "+((u.profile&&u.profile.name)||"")).toLowerCase();
+    return blob.indexOf(q) >= 0;
+  }).slice(0, 40);
+  const rows = list.map((u) => {
+    const name = (u.profile && u.profile.name) || "ghost";
+    const cls = u.blocked ? "blocked" : (u.warning ? "warn" : "");
+    return `<tr class="${cls}">
+      <td class="font-mono text-[11px]">${tail10(u.id)}<div class="text-gray-400 break-all">${shortId(u.id)}</div></td>
+      <td>${name}</td>
+      <td>${u.blocked ? "BLOCKED" : "ok"}</td>
+      <td class="flex flex-wrap gap-1">
+        <button data-block="${u.id}" class="pill">${u.blocked?"UNBLOCK":"BLOCK"}</button>
+        <button data-edit="${u.id}" class="pill">EDIT</button>
+        <button data-msg="${u.id}" class="pill">MSG</button>
+        <button data-warn="${u.id}" class="pill">WARNING</button>
+      </td>
+    </tr>`;
+  }).join("");
+  document.getElementById("users").innerHTML = `<table><thead><tr><th>ID</th><th>name</th><th>status</th><th>actions</th></tr></thead><tbody>${rows || '<tr><td colspan="4">no users</td></tr>'}</tbody></table>`;
+  document.querySelectorAll("[data-block]").forEach((b) => {
+    b.onclick = async () => {
+      const u = users.find(x => x.id === b.dataset.block);
+      await setDoc(doc(db, "users", b.dataset.block), { blocked: !(u && u.blocked) }, { merge: true });
+      toast((u && u.blocked) ? "unblocked" : "blocked");
+    };
+  });
+  document.querySelectorAll("[data-edit]").forEach((b) => {
+    b.onclick = async () => {
+      const name = prompt("edit display name", "");
+      if (name == null) return;
+      await setDoc(doc(db, "users", b.dataset.edit), { profile: { name } }, { merge: true });
+      toast("user edited");
+    };
+  });
+  document.querySelectorAll("[data-msg]").forEach((b) => {
+    b.onclick = () => { document.getElementById("msgTo").value = b.dataset.msg; document.getElementById("msgText").focus(); };
+  });
+  document.querySelectorAll("[data-warn]").forEach((b) => {
+    b.onclick = () => { document.getElementById("msgTo").value = b.dataset.warn; document.getElementById("msgText").value = document.getElementById("msgText").value || "WARNING from g000st"; document.getElementById("sendWarn").click(); };
+  });
+};
+document.getElementById("userQ").oninput = renderUsers;
+
+const renderPosts = () => {
+  const rows = posts.slice(0, 40).map((p) =>
+    `<tr>
+      <td class="font-mono text-[11px]">${p.displayName || p.sn || tail10(p.uid || p.id)}</td>
+      <td>${(p.text||"").slice(0,80)}</td>
+      <td>
+        <button data-hide-post="${p.id}" class="pill">${p.hidden?"SHOW":"HIDE"}</button>
+        <button data-edit-post="${p.id}" class="pill">EDIT</button>
+        <button data-del-post="${p.id}" class="pill">DEL</button>
+      </td>
+    </tr>`
+  ).join("");
+  document.getElementById("posts").innerHTML = `<table><thead><tr><th>who</th><th>text</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="3">no posts</td></tr>'}</tbody></table>`;
+  document.querySelectorAll("[data-hide-post]").forEach((b) => {
+    b.onclick = async () => {
+      const p = posts.find(x => String(x.id) === String(b.dataset.hidePost));
+      await setDoc(doc(db, "posts", String(b.dataset.hidePost)), { hidden: !(p && p.hidden) }, { merge: true });
+    };
+  });
+  document.querySelectorAll("[data-edit-post]").forEach((b) => {
+    b.onclick = async () => {
+      const p = posts.find(x => String(x.id) === String(b.dataset.editPost));
+      const text = prompt("edit post", (p && p.text) || "");
+      if (text == null) return;
+      await setDoc(doc(db, "posts", String(b.dataset.editPost)), { text }, { merge: true });
+    };
+  });
+  document.querySelectorAll("[data-del-post]").forEach((b) => {
+    b.onclick = async () => { if (confirm("delete post?")) await deleteDoc(doc(db, "posts", String(b.dataset.delPost))); };
+  });
+};
+
+const renderListings = () => {
+  const rows = listings.slice(0, 40).map((p) =>
+    `<tr>
+      <td>${p.title || p.sn || "listing"}</td>
+      <td>${(p.desc||p.text||"").slice(0,80)}</td>
+      <td>
+        <button data-hide-list="${p.id}" class="pill">${p.hidden?"SHOW":"HIDE"}</button>
+        <button data-del-list="${p.id}" class="pill">DEL</button>
+      </td>
+    </tr>`
+  ).join("");
+  document.getElementById("listings").innerHTML = `<table><thead><tr><th>title</th><th>desc</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="3">no listings</td></tr>'}</tbody></table>`;
+  document.querySelectorAll("[data-hide-list]").forEach((b) => {
+    b.onclick = async () => {
+      const p = listings.find(x => String(x.id) === String(b.dataset.hideList));
+      await setDoc(doc(db, "listings", String(b.dataset.hideList)), { hidden: !(p && p.hidden) }, { merge: true });
+    };
+  });
+  document.querySelectorAll("[data-del-list]").forEach((b) => {
+    b.onclick = async () => { if (confirm("delete listing?")) await deleteDoc(doc(db, "listings", String(b.dataset.delList))); };
+  });
+};
+
+const renderMsgs = () => {
+  document.getElementById("msgList").innerHTML = messages.slice(0, 16).map((m) =>
+    `<div class="border-2 border-black rounded-xl px-3 py-2 ${m.type==="warning"?"warn":""}">
+      <b>${m.type==="warning"?"WARNING":"MSG"}</b> · ${m.to==="all"?"ALL":shortId(m.to)} · ${(m.text||"").slice(0,80)}
+      <button data-del-msg="${m._id}" class="float-right font-black text-[10px]">X</button>
+    </div>`
+  ).join("") || '<div class="text-gray-500 text-sm">no messages yet</div>';
+  document.querySelectorAll("[data-del-msg]").forEach((b) => {
+    b.onclick = () => deleteDoc(doc(db, "messages", b.dataset.delMsg));
+  });
+};
+
+const resolveUser = (to) => {
+  if (!to) return "all";
+  const hit = users.find((u) =>
+    u.id === to ||
+    u.sn === to ||
+    (u.id && u.id.slice(-10) === to) ||
+    (u.sn && String(u.sn).replace("SN-","") === String(to).replace("SN-",""))
+  );
+  return hit ? hit.id : to;
+};
+
+const sendPayload = async (to, type) => {
+  const text = document.getElementById("msgText").value.trim();
+  if (!text) return toast("write a message");
+  await addDoc(collection(db, "messages"), { to, text, type, time: Date.now(), from: (auth.currentUser && auth.currentUser.email) || "admin" });
+  if (type === "warning" && to !== "all") {
+    await setDoc(doc(db, "users", to), { warning: text, warningAt: Date.now() }, { merge: true });
+  }
+  document.getElementById("msgText").value = "";
+  toast(type === "warning" ? "warning sent" : "message sent");
+};
+
+document.getElementById("sendMsg").onclick = () => sendPayload(resolveUser(document.getElementById("msgTo").value.trim()), "msg");
+document.getElementById("sendWarn").onclick = () => sendPayload(resolveUser(document.getElementById("msgTo").value.trim()), "warning");
+document.getElementById("sendAll").onclick = () => sendPayload("all", "msg");
+
+function boot() {
+  renderPages();
+  renderParts();
+  onSnapshot(doc(db, "config", "app"), (s) => {
+    if (s.exists()) Object.assign(flags, s.data());
+    renderPages();
+  });
+  onSnapshot(doc(db, "config", "parts"), (s) => {
+    if (s.exists()) Object.assign(parts, s.data());
+    renderParts();
+  });
+  onSnapshot(collection(db, "users"), (s) => {
+    users = s.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+    renderUsers(); renderStats();
+  });
+  onSnapshot(collection(db, "posts"), (s) => {
+    posts = s.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+    renderPosts(); renderStats();
+  });
+  onSnapshot(collection(db, "listings"), (s) => {
+    listings = s.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+    renderListings(); renderStats();
+  });
+  onSnapshot(collection(db, "messages"), (s) => {
+    messages = s.docs.map((d) => Object.assign({ _id: d.id }, d.data())).sort((a,b)=>(b.time||0)-(a.time||0));
+    renderMsgs();
+  });
+  onSnapshot(collection(db, "codes"), (s) => {
+    codes = s.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    renderCodes(); renderStats();
+  });
+  onSnapshot(collection(db, "inbox"), (s) => {
+    inbox = s.docs.map((d) => Object.assign({ _id: d.id }, d.data())).sort((a,b)=>(b.time||0)-(a.time||0));
+    renderInbox();
+  });
+}
+function renderInbox(){
+  const el=document.getElementById("inbox");
+  if(!el) return;
+  el.innerHTML = inbox.slice(0,30).map((m)=>`
+    <div class="border-2 border-black rounded-2xl p-3">
+      <div class="font-mono text-[11px]">${(m.tail||"")} · ${(m.from||"").slice(0,8)}…${(m.from||"").slice(-6)}</div>
+      <div class="mt-1 text-sm">${(m.text||"").replace(/</g,"")}</div>
+      <div class="mt-2 flex gap-2">
+        <input id="reply-${m._id}" class="flex-1 h-10 rounded-xl border-2 border-black px-2 text-sm" placeholder="reply private" />
+        <button data-reply="${m._id}" data-from="${(m.from||"").replace(/"/g,"")}" class="pill on">REPLY</button>
+      </div>
+    </div>`).join("") || '<div class="text-gray-500 text-sm">no contact messages yet</div>';
+  el.querySelectorAll("[data-reply]").forEach((b)=>{
+    b.onclick = async ()=>{
+      const box=document.getElementById("reply-"+b.dataset.reply);
+      const text=(box&&box.value||"").trim();
+      if(!text) return toast("write reply");
+      const to=b.dataset.from;
+      await addDoc(collection(db,"messages"),{to,text,type:"msg",time:Date.now(),from:"info@g000st.com"});
+      await setDoc(doc(db,"inbox",b.dataset.reply),{status:"replied",reply:text}, {merge:true});
+      toast("replied private to user");
+    };
+  });
+}
+</script>
+
+<script>
+(function(){
+  function ready(){
+    var app=document.getElementById("app");
+    if(!app) return;
+    var cards=[].slice.call(app.children).filter(function(el){return el.classList && el.classList.contains("card") || (el.id==="stats"?false: el.querySelector && el.querySelector(".font-black"));});
+    // mark every direct section except header row
+    var sections=[].slice.call(app.children);
+    sections.forEach(function(el,i){
+      if(i===0) return; // title bar
+      el.classList.add("drag-card");
+      el.setAttribute("draggable","true");
+      if(!el.dataset.slot) el.dataset.slot="s"+i;
+    });
+    var order;
+    try{order=JSON.parse(localStorage.getItem("g000st-admin-order")||"[]")}catch(e){order=[]}
+    if(order.length){
+      order.forEach(function(id){
+        var el=app.querySelector('[data-slot="'+id+'"]');
+        if(el) app.appendChild(el);
+      });
+    }
+    var dragEl=null;
+    app.addEventListener("dragstart",function(e){
+      var c=e.target.closest(".drag-card");
+      if(!c) return;
+      dragEl=c; c.classList.add("dragging");
+      e.dataTransfer.effectAllowed="move";
+    });
+    app.addEventListener("dragend",function(){
+      if(dragEl) dragEl.classList.remove("dragging");
+      dragEl=null;
+      var ids=[].slice.call(app.querySelectorAll(".drag-card")).map(function(el){return el.dataset.slot});
+      try{localStorage.setItem("g000st-admin-order",JSON.stringify(ids))}catch(e){}
+    });
+    app.addEventListener("dragover",function(e){
+      e.preventDefault();
+      var over=e.target.closest(".drag-card");
+      if(!over||!dragEl||over===dragEl) return;
+      var rect=over.getBoundingClientRect();
+      var before=(e.clientY-rect.top)<rect.height/2;
+      app.insertBefore(dragEl, before?over:over.nextSibling);
+    });
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",ready);
+  else ready();
+})();
+</script>
+
+</body>
+</html>
