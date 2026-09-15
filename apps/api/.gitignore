@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+*.pem
+*.key
+*serviceAccount*.json
+firebase-key.json
+*.tsbuildinfo
+.DS_Store
