@@ -1,12 +1,22 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
+# Dependencies
 node_modules/
+**/node_modules/
 
-# Expo
+# Generated application output
 .expo/
+**/.expo/
+.next/
+**/.next/
 dist/
+**/dist/
+out/
+**/out/
 web-build/
+**/web-build/
+coverage/
+**/coverage/
 expo-env.d.ts
 
 # Native
@@ -36,18 +46,16 @@ yarn-error.*
 !.env.example
 .env*.local
 
-# Native service configuration (provided through EAS/local secrets)
-/GoogleService-Info.plist
-/google-services.json
+# Native and server credentials (provided through EAS/server secrets)
+**/GoogleService-Info.plist
+**/google-services.json
 firebase-key.json
-*service-account*.json
-
-# Client-provided source reference (kept locally; contains environment config)
-/legacy/source/
+**/*service-account*.json
+**/*serviceAccount*.json
 
 # typescript
 *.tsbuildinfo
 
-# generated native folders
-/ios
-/android
+# Generated Expo native folders
+/apps/mobile/ios/
+/apps/mobile/android/
