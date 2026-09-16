@@ -1,0 +1,177 @@
+name: Deploy staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Component to deploy
+        required: true
+        default: both
+        type: choice
+        options:
+          - web
+          - api
+          - both
+
+permissions:
+  contents: read
+
+concurrency:
+  group: g000st-staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.component }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment:
+      name: staging
+      url: https://staging.g000st.com
+
+    env:
+      DEPLOY_COMPONENT: ${{ inputs.component }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_SSH_USER }}
+      DEPLOY_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_SSH_PORT || '22' }}
+      RELEASE_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+
+    steps:
+      - name: Require the main branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Deployments must run from main." >&2
+            exit 1
+          fi
+
+      - name: Check out the selected revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20.20.0
+          package-manager-cache: false
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate API
+        if: inputs.component == 'api' || inputs.component == 'both'
+        run: |
+          npm run typecheck:api
+          npm run test:api
+          npm run build:api
+
+      - name: Validate web
+        if: inputs.component == 'web' || inputs.component == 'both'
+        env:
+          NEXT_PUBLIC_API_URL: https://staging.g000st.com
+          NEXT_PUBLIC_API_BASE_PATH: /api/v1
+          NEXT_PUBLIC_ENABLE_ADMIN: "true"
+          NEXT_PUBLIC_ENABLE_CHAT: "true"
+          NEXT_PUBLIC_ENABLE_SOCIAL: "true"
+        run: |
+          npm run typecheck:web
+          npm run build:web
+
+      - name: Package selected components
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p deploy-artifacts
+
+          if [[ "$DEPLOY_COMPONENT" == "web" || "$DEPLOY_COMPONENT" == "both" ]]; then
+            tar \
+              --exclude='apps/web/node_modules' \
+              --exclude='apps/web/.next' \
+              --exclude='apps/web/.env*' \
+              --exclude='apps/web/*.tsbuildinfo' \
+              -czf "deploy-artifacts/g000st-web-${RELEASE_ID}.tar.gz" \
+              package.json package-lock.json apps/web
+          fi
+
+          if [[ "$DEPLOY_COMPONENT" == "api" || "$DEPLOY_COMPONENT" == "both" ]]; then
+            tar \
+              --exclude='apps/api/node_modules' \
+              --exclude='apps/api/dist' \
+              --exclude='apps/api/.env*' \
+              --exclude='apps/api/coverage' \
+              -czf "deploy-artifacts/g000st-api-${RELEASE_ID}.tar.gz" \
+              package.json package-lock.json apps/api
+          fi
+
+          for artifact in deploy-artifacts/*.tar.gz; do
+            if tar -tzf "$artifact" | grep -E '(^|/)\.env($|\.)'; then
+              echo "An environment file entered a deployment artifact." >&2
+              exit 1
+            fi
+          done
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${DEPLOY_HOST:?Missing DEPLOY_SSH_HOST}"
+          : "${DEPLOY_USER:?Missing DEPLOY_SSH_USER}"
+          : "${DEPLOY_PRIVATE_KEY:?Missing DEPLOY_SSH_PRIVATE_KEY}"
+          : "${DEPLOY_KNOWN_HOSTS:?Missing DEPLOY_SSH_KNOWN_HOSTS}"
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_PRIVATE_KEY" > "$HOME/.ssh/g000st_deploy"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/g000st_deploy" "$HOME/.ssh/known_hosts"
+
+      - name: Upload API artifact
+        if: inputs.component == 'api' || inputs.component == 'both'
+        shell: bash
+        run: |
+          set -euo pipefail
+          scp -P "$DEPLOY_PORT" -i "$HOME/.ssh/g000st_deploy" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "deploy-artifacts/g000st-api-${RELEASE_ID}.tar.gz" \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:/home/g000st-deploy/artifacts/"
+
+      - name: Deploy API
+        if: inputs.component == 'api' || inputs.component == 'both'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -p "$DEPLOY_PORT" -i "$HOME/.ssh/g000st_deploy" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            sudo -n /usr/local/sbin/g000st-deploy-staging \
+              api "$RELEASE_ID" "/home/g000st-deploy/artifacts/g000st-api-${RELEASE_ID}.tar.gz"
+
+      - name: Upload web artifact
+        if: inputs.component == 'web' || inputs.component == 'both'
+        shell: bash
+        run: |
+          set -euo pipefail
+          scp -P "$DEPLOY_PORT" -i "$HOME/.ssh/g000st_deploy" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "deploy-artifacts/g000st-web-${RELEASE_ID}.tar.gz" \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:/home/g000st-deploy/artifacts/"
+
+      - name: Deploy web
+        if: inputs.component == 'web' || inputs.component == 'both'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -p "$DEPLOY_PORT" -i "$HOME/.ssh/g000st_deploy" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            sudo -n /usr/local/sbin/g000st-deploy-staging \
+              web "$RELEASE_ID" "/home/g000st-deploy/artifacts/g000st-web-${RELEASE_ID}.tar.gz"
+
+      - name: Remove runner credentials
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$HOME/.ssh/g000st_deploy"
