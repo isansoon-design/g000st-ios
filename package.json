@@ -1,0 +1,28 @@
+{
+  "name": "g000st-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.19.4"
+  },
+  "overrides": {
+    "postcss": "8.5.28"
+  },
+  "scripts": {
+    "build:api": "npm --prefix apps/api run build",
+    "build:web": "npm --prefix apps/web run build",
+    "dev:api": "npm --prefix apps/api run dev",
+    "dev:mobile": "npm --prefix apps/mobile run start",
+    "dev:web": "npm --prefix apps/web run dev",
+    "lint:mobile": "npm --prefix apps/mobile run lint",
+    "test:api": "npm --prefix apps/api test",
+    "typecheck": "npm run typecheck:mobile && npm run typecheck:api && npm run typecheck:web",
+    "typecheck:api": "npm --prefix apps/api run typecheck",
+    "typecheck:mobile": "npm --prefix apps/mobile run typecheck",
+    "typecheck:web": "npm --prefix apps/web run typecheck"
+  }
+}

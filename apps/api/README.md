@@ -8,11 +8,13 @@ claim, feed, and Stripe behavior is not removed during the migration.
 
 ## Local checks
 
+Install once and run checks from the repository root:
+
 ```bash
 npm ci
-npm run typecheck
-npm test
-npm run build
+npm run typecheck:api
+npm run test:api
+npm run build:api
 ```
 
 ## Staging

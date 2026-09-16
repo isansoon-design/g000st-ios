@@ -1,5 +1,5 @@
 {
-  "name": "g000st-api",
+  "name": "@g000st/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",

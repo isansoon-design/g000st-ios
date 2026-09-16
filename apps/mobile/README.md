@@ -11,10 +11,12 @@ Native g000st mobile application built with Expo SDK 56 and strict TypeScript.
 
 ## Setup
 
+Run these commands from the repository root:
+
 ```bash
-cp .env.example .env.local
 npm ci
-npx expo start --dev-client
+cp apps/mobile/.env.example apps/mobile/.env.local
+npm run dev:mobile -- --dev-client
 ```
 
 The default API base URL is `https://g000st.com/api/v1`. Override it locally with
@@ -23,9 +25,9 @@ The default API base URL is `https://g000st.com/api/v1`. Override it locally wit
 ## Checks
 
 ```bash
-npm run typecheck
-npm run lint
-npm run doctor
+npm run typecheck:mobile
+npm run lint:mobile
+npm --prefix apps/mobile run doctor
 ```
 
 ## Structure
@@ -37,7 +39,6 @@ src/domain/       Shared domain types
 src/features/     Feature-owned UI, hooks, validation and use-cases
 src/services/     Device and persistence adapters
 src/providers/    Application providers
-legacy/           Previous WebView implementation and source reference
 docs/             Analysis and migration plan
 ```
 
@@ -63,7 +64,5 @@ profiling; this warning must not be ignored for release.
 
 ## Legacy project
 
-The original iOS WebView wrapper from the repository is preserved under `legacy/ios-webview`.
-When present locally, the analyzed `appfg000st.html` mobile source is kept under `legacy/source`
-as a visual and behavioral reference. That directory is intentionally ignored because the
-client-provided file contains environment configuration that was not part of this repository.
+The original iOS WebView wrapper and analyzed `appfg000st.html` source are preserved on the
+`archive/pre-monorepo-2026-09-16` branch, outside the clean production tree on `main`.

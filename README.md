@@ -12,3 +12,16 @@ The client-provided HTML files and the previous native iOS wrapper are preserved
 
 Never commit local environment files, Firebase service accounts, Recovery IDs, or session
 tokens. Each app includes its own `.env.example` with non-secret configuration names.
+
+## Common commands
+
+```bash
+npm run dev:mobile
+npm run dev:web
+npm run dev:api
+npm run typecheck
+npm run test:api
+```
+
+Install all workspace dependencies from the repository root with `npm ci`. The root lockfile
+keeps mobile, web, API, and future shared packages reproducible together.
