@@ -1,5 +1,4 @@
 import { View } from 'react-native';
-
 import { ToastBanner } from '@/components/feedback/toast-banner';
 import { IdentityScreenContent } from '@/features/identity/components/identity-screen-content';
 import { useIdentityScreen } from '@/features/identity/hooks/use-identity-screen';

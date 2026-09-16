@@ -10,6 +10,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthProvider } from '@/features/auth/context/auth-provider';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { QueryProvider } from '@/providers/query-provider';
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -27,11 +28,14 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
+
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>
         <QueryProvider>
           <AuthProvider>
-            <RootNavigator />
+            <SafeAreaProvider>
+              <RootNavigator />
+            </SafeAreaProvider>
           </AuthProvider>
         </QueryProvider>
       </KeyboardProvider>
