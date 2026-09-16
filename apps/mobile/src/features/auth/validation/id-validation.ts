@@ -7,7 +7,8 @@ export type IdGateErrors = Partial<Record<IdGateField, string>>;
 
 const exactIdSchema = z
   .string()
-  .length(G000ST_ID_LENGTH, `ID must be exactly ${G000ST_ID_LENGTH} characters.`);
+  .length(G000ST_ID_LENGTH, `ID must be exactly ${G000ST_ID_LENGTH} characters.`)
+  .regex(/^[A-Za-z0-9]+$/, 'ID can contain letters and numbers only.');
 
 export function normalizeId(value: string): string {
   return value.replace(/\s+/g, '').replace(/[\u200B-\u200D\uFEFF]/g, '');

@@ -1,85 +1,37 @@
-import axiosInstance from "./axios";
+import type { AxiosResponse } from "axios";
 
-export interface LoginPayload {
-  email?: string;
-  phone?: string;
-  password: string;
+import axiosInstance from "@/app/api/axios";
+import { sessionStorage } from "@/app/api/session-storage";
+import type {
+  AuthenticationResult,
+  AuthenticatedUser,
+  RegisterAccountResult,
+} from "@/features/auth/types";
+
+export type RegisterAccountRequest = Readonly<{
+  requestedPublicId?: string;
+}>;
+
+export type RestoreAccountRequest = Readonly<{
+  recoveryId: string;
+}>;
+
+export async function registerAccount(
+  request: RegisterAccountRequest,
+): Promise<AxiosResponse<RegisterAccountResult>> {
+  return await axiosInstance.post("/auth/register", request);
 }
 
-export interface RegisterPayload {
-  email?: string;
-  phone?: string;
-  password: string;
-  name?: string;
+export async function restoreAccount(
+  request: RestoreAccountRequest,
+): Promise<AxiosResponse<AuthenticationResult>> {
+  return await axiosInstance.post("/auth/sessions", request);
 }
 
-export interface AuthResponse {
-  ok: boolean;
-  token?: string;
-  user?: {
-    id: string;
-    email?: string;
-    phone?: string;
-    name?: string;
-    isAdmin?: boolean;
-  };
-  message?: string;
+export async function getCurrentUser(): Promise<AxiosResponse<{ user: AuthenticatedUser }>> {
+  return await axiosInstance.get("/auth/me");
 }
 
-// Login
-export async function login(payload: LoginPayload): Promise<AuthResponse> {
-  try {
-    const { data } = await axiosInstance.post<AuthResponse>("/auth/login", payload);
-    if (data.token) {
-      localStorage.setItem("auth_token", data.token);
-      if (data.user?.id) {
-        localStorage.setItem("user_id", data.user.id);
-      }
-    }
-    return data;
-  } catch (error: any) {
-    return {
-      ok: false,
-      message: error.response?.data?.message || "Login failed",
-    };
-  }
-}
-
-// Register
-export async function register(payload: RegisterPayload): Promise<AuthResponse> {
-  try {
-    const { data } = await axiosInstance.post<AuthResponse>("/auth/register", payload);
-    if (data.token) {
-      localStorage.setItem("auth_token", data.token);
-      if (data.user?.id) {
-        localStorage.setItem("user_id", data.user.id);
-      }
-    }
-    return data;
-  } catch (error: any) {
-    return {
-      ok: false,
-      message: error.response?.data?.message || "Registration failed",
-    };
-  }
-}
-
-// Logout
 export function logout(): void {
-  try {
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("user_id");
-  } catch (e) {
-    // Handle error
-  }
-}
-
-// Get current user
-export async function getCurrentUser() {
-  try {
-    const { data } = await axiosInstance.get("/auth/me");
-    return data;
-  } catch (error) {
-    return null;
-  }
+  sessionStorage.clear();
 }

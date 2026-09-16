@@ -1,23 +1,24 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Routes that require authentication
-const protectedRoutes = ["/chat", "/social", "/contacts", "/profile", "/admin"];
+// This cookie is only a routing hint. API authorization still relies on the access token.
+const SESSION_HINT_COOKIE = "g000st_session_hint";
+
+const protectedRoutes = ["/chat", "/social", "/social-chat", "/contacts", "/profile", "/mobile"];
+const adminRoutes = ["/dashboard", "/users", "/settings"];
 
 // Routes for unauthenticated users only
 const authRoutes = ["/login", "/register"];
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const token = request.cookies.get("auth_token");
+  const sessionHint = request.cookies.get(SESSION_HINT_COOKIE);
   const userRole = request.cookies.get("user_role");
-
-  // Get auth token from cookie or localStorage (client-side fallback)
-  const hasAuth = !!token;
+  const hasAuth = sessionHint?.value === "1";
 
   // Protected routes - require authentication
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route)
+  const isProtectedRoute = [...protectedRoutes, ...adminRoutes].some((route) =>
+    pathname.startsWith(route),
   );
 
   if (isProtectedRoute && !hasAuth) {
@@ -25,7 +26,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Admin routes - require admin role
-  if (pathname.startsWith("/admin") && userRole?.value !== "admin") {
+  if (adminRoutes.some((route) => pathname.startsWith(route)) && userRole?.value !== "admin") {
     return NextResponse.redirect(new URL("/chat", request.url));
   }
 

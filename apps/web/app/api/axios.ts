@@ -1,63 +1,89 @@
-import axios from "axios";
+import axios, { isAxiosError, type InternalAxiosRequestConfig } from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const API_BASE_PATH = process.env.NEXT_PUBLIC_API_BASE_PATH || "/api/v1";
+import { toApiError } from "@/app/api/api-error";
+import { sessionStorage } from "@/app/api/session-storage";
+import type { RefreshSessionResult } from "@/features/auth/types";
 
-export const axiosInstance = axios.create({
-  baseURL: `${API_URL}${API_BASE_PATH}`,
-  timeout: 30000,
-  headers: {
-    "Content-Type": "application/json",
-  },
+type RetriableRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+};
+
+const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100").replace(
+  /\/+$/,
+  "",
+);
+const apiBasePath = `/${(process.env.NEXT_PUBLIC_API_BASE_PATH || "/api/v1").replace(
+  /^\/+|\/+$/g,
+  "",
+)}`;
+const apiBaseUrl = `${apiOrigin}${apiBasePath}`;
+
+const axiosInstance = axios.create({
+  baseURL: apiBaseUrl,
+  timeout: 15_000,
+  headers: { Accept: "application/json" },
 });
 
-// Request interceptor
-axiosInstance.interceptors.request.use(
-  (config) => {
-    // Get token from localStorage
-    try {
-      const token = localStorage.getItem("auth_token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (e) {
-      // localStorage not available in server
-    }
+let refreshInFlight: Promise<string> | null = null;
 
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+async function refreshAccessToken(): Promise<string> {
+  const stored = sessionStorage.get();
+  if (!stored?.tokens.refreshToken) throw new Error("No refresh token");
+
+  const response = await axios.post<RefreshSessionResult>(
+    `${apiBaseUrl}/auth/token/refresh`,
+    { refreshToken: stored.tokens.refreshToken },
+    { timeout: 15_000, headers: { Accept: "application/json" } },
+  );
+
+  sessionStorage.save({ tokens: response.data.session, user: stored.user });
+  return response.data.session.accessToken;
+}
+
+function refreshOnce(): Promise<string> {
+  if (!refreshInFlight) {
+    refreshInFlight = refreshAccessToken().finally(() => {
+      refreshInFlight = null;
+    });
   }
-);
 
-// Response interceptor
+  return refreshInFlight;
+}
+
+axiosInstance.interceptors.request.use((config) => {
+  const token = sessionStorage.get()?.tokens.accessToken;
+  const isFormData = typeof FormData !== "undefined" && config.data instanceof FormData;
+
+  config.headers.set("Accept-Language", "en");
+  if (config.data != null && !isFormData) config.headers.set("Content-Type", "application/json");
+  if (token) config.headers.set("Authorization", `Bearer ${token}`);
+
+  return config;
+});
+
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401) {
+  async (error: unknown) => {
+    if (!isAxiosError(error)) return Promise.reject(toApiError(error));
+
+    const original = error.config as RetriableRequestConfig | undefined;
+    const isRefreshRequest = original?.url?.includes("/auth/token/refresh");
+
+    if (error.response?.status === 401 && original && !original._retry && !isRefreshRequest) {
+      original._retry = true;
+
       try {
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("user_id");
-        // Redirect to login in client-side
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
-        }
-      } catch (e) {
-        // Handle error
+        const accessToken = await refreshOnce();
+        original.headers.set("Authorization", `Bearer ${accessToken}`);
+        return await axiosInstance(original);
+      } catch {
+        sessionStorage.clear();
+        if (typeof window !== "undefined") window.location.assign("/login");
       }
     }
 
-    // Handle 403 Forbidden
-    if (error.response?.status === 403) {
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
-    }
-
-    return Promise.reject(error);
-  }
+    return Promise.reject(toApiError(error));
+  },
 );
 
 export default axiosInstance;

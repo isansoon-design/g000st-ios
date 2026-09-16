@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 
+import { sessionStorage } from "@/app/api/session-storage";
+
 const RINGTONES = [
   { value: "g000st", label: "g000st Default" },
   { value: "soft", label: "Soft Chime" },
@@ -21,7 +23,7 @@ export default function ProfilePage() {
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const id = localStorage.getItem("user_id") || "—";
+    const id = sessionStorage.get()?.user.publicId || "—";
     setUserId(id);
     try {
       const saved = JSON.parse(localStorage.getItem("g000st_profile") || "{}");

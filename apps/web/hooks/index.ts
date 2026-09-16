@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { sessionStorage } from "@/app/api/session-storage";
+import type { PersistedSession } from "@/features/auth/types";
+
 /**
  * Custom hook to manage localStorage with SSR safety
  */
@@ -54,26 +57,22 @@ export function useLocalStorage<T = any>(key: string, initialValue?: T) {
  */
 export function useAuth() {
   const router = useRouter();
-  const [token, setToken] = useLocalStorage<string | undefined>("auth_token");
-  const [userId, setUserId] = useLocalStorage<string | undefined>("user_id");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [session, setSession] = useState<PersistedSession | null>(null);
 
   useEffect(() => {
-    setIsAuthenticated(!!token);
-  }, [token]);
+    setSession(sessionStorage.get());
+  }, []);
 
   const logout = useCallback(() => {
-    setToken(undefined);
-    setUserId(undefined);
+    sessionStorage.clear();
+    setSession(null);
     router.push("/login");
-  }, [setToken, setUserId, router]);
+  }, [router]);
 
   return {
-    token,
-    userId,
-    isAuthenticated,
-    setToken,
-    setUserId,
+    token: session?.tokens.accessToken,
+    userId: session?.user.publicId,
+    isAuthenticated: !!session,
     logout,
   };
 }
