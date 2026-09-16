@@ -10,6 +10,16 @@ const adminRoutes = ["/dashboard", "/users", "/settings"];
 // Routes for unauthenticated users only
 const authRoutes = ["/login", "/register"];
 
+function redirectTo(request: NextRequest, pathname: string) {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const host = forwardedHost || request.headers.get("host");
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  const protocol = forwardedProto || request.nextUrl.protocol.replace(":", "") || "https";
+
+  if (host) return NextResponse.redirect(new URL(pathname, `${protocol}://${host}`));
+  return NextResponse.redirect(new URL(pathname, request.url));
+}
+
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const sessionHint = request.cookies.get(SESSION_HINT_COOKIE);
@@ -22,19 +32,19 @@ export function middleware(request: NextRequest) {
   );
 
   if (isProtectedRoute && !hasAuth) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return redirectTo(request, "/login");
   }
 
   // Admin routes - require admin role
   if (adminRoutes.some((route) => pathname.startsWith(route)) && userRole?.value !== "admin") {
-    return NextResponse.redirect(new URL("/chat", request.url));
+    return redirectTo(request, "/chat");
   }
 
   // Auth routes - redirect to dashboard if already logged in
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
   if (isAuthRoute && hasAuth) {
-    return NextResponse.redirect(new URL("/chat", request.url));
+    return redirectTo(request, "/chat");
   }
 
   return NextResponse.next();
