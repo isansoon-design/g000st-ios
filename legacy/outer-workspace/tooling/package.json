@@ -1,0 +1,11 @@
+{
+  "type": "module",
+  "devDependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
+    "@playwright/test": "^1.63.0",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta http-equiv="Cache-Control" content="no-store"><title>Logout</title></head>
+<body style="background:#000;color:#fff;font-family:system-ui;padding:20px">
+Logging out...
+<script>
+try{localStorage.removeItem('g000st_code')}catch(e){}
+try{localStorage.clear()}catch(e){}
+try{sessionStorage.clear()}catch(e){}
+try{
+  document.cookie.split(";").forEach(c=>{
+    var n=c.split("=")[0].trim();
+    document.cookie=n+"=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+    document.cookie=n+"=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain="+location.hostname;
+  });
+}catch(e){}
+setTimeout(function(){
+  window.location.replace("/?loggedout="+Date.now());
+},100);
+</script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+{"name":"g000st","dependencies":{"cors":"^2.8.6","dotenv":"^17.4.2","express":"^4.22.2","groq-sdk":"^1.6.0","multer":"^2.2.0","sqlite3":"^5.1.6"}}

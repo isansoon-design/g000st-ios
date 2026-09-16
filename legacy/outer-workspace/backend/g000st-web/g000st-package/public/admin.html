@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G000ST - Admin Panel - Silver Blue</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#e6e9ef 0%,#d1d8e3 25%,#c2d3e8 50%,#d6dce8 100%);min-height:100vh;color:#1e293b}
+.mono{font-family:'JetBrains Mono',monospace}
+.silver-card{background:linear-gradient(145deg,#ffffff 0%,#f8fafc 30%,#f1f5f9 100%);border:1px solid rgba(148,163,184,0.3);box-shadow:0 4px 20px rgba(148,163,184,0.15), inset 0 1px 0 rgba(255,255,255,0.8)}
+.silver-metallic{background:linear-gradient(145deg,#e2e8f0 0%,#cbd5e1 20%,#94a3b8 50%,#e2e8f0 80%,#f1f5f9 100%)}
+.blue-metallic{background:linear-gradient(145deg,#3b82f6 0%,#2563eb 30%,#1d4ed8 70%,#60a5fa 100%)}
+</style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+<div class="max-w-6xl mx-auto">
+  <div class="flex justify-between items-center mb-8">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl silver-metallic shadow-lg flex items-center justify-center font-black text-slate-700">G</div>
+      <h1 class="text-3xl font-extrabold tracking-tight">G<span class="text-blue-600">000</span>ST <span class="text-slate-500 text-xl font-bold">ADMIN</span> <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full border border-blue-200 ml-2">SILVER BLUE</span></h1>
+    </div>
+    <div class="flex gap-2">
+      <span id="status" class="text-xs px-3 py-1.5 rounded-full bg-white/80 backdrop-blur border border-slate-300 shadow-sm text-slate-600">Offline</span>
+      <span id="fbStatus" class="text-xs px-3 py-1.5 rounded-full bg-white/80 backdrop-blur border border-slate-300 shadow-sm text-slate-600">Firebase: Not connected</span>
+    </div>
+  </div>
+
+  <div id="loginBox" class="silver-card rounded-[20px] p-6 mb-6">
+    <h2 class="font-bold mb-3 text-slate-700 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Admin Key</h2>
+    <div class="flex gap-2">
+      <input id="adminKey" type="password" placeholder="G000ST_ADMIN_2026" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-slate-700">
+      <button onclick="login()" class="blue-metallic text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition">Login</button>
+    </div>
+  </div>
+
+  <div class="silver-card rounded-[20px] p-5 mb-6 border-l-4 border-l-blue-500">
+    <h2 class="font-bold mb-2 text-slate-700 flex items-center gap-2">🔷 Firebase Config - Direct Create ID</h2>
+    <p class="text-xs text-slate-500 mb-2">Paste your Firebase config from Firebase Console > Project Settings > Your apps > Config. This lets you create codes without the server.</p>
+    <textarea id="fbConfig" placeholder='{"apiKey":"...","authDomain":"...","projectId":"..."}' class="w-full h-24 bg-slate-50/80 border border-slate-300 rounded-xl px-4 py-3 text-xs mono outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-slate-600"></textarea>
+    <div class="flex gap-2 mt-3">
+      <button onclick="saveFbConfig()" class="silver-metallic border border-slate-300 px-5 py-2 rounded-xl text-sm font-bold text-slate-700 shadow">Save 💾</button>
+      <button onclick="initFirebase()" class="blue-metallic text-white px-5 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20">Connect Firebase 🔷</button>
+    </div>
+  </div>
+
+  <div id="mainBox" class="hidden">
+    <div class="grid md:grid-cols-3 gap-4 mb-6">
+      <div class="silver-card rounded-[20px] p-5 relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-100 to-slate-200 rounded-full blur-2xl opacity-60"></div>
+        <p class="text-slate-400 text-sm font-bold">Total Codes</p>
+        <p id="totalCodes" class="text-4xl font-extrabold mt-2 text-transparent bg-clip-text bg-gradient-to-br from-slate-700 to-blue-600">0</p>
+        <p class="text-xs text-slate-400 mt-1">in Firebase</p>
+      </div>
+      <div class="silver-card rounded-[20px] p-5 md:col-span-2">
+        <p class="font-bold mb-3 text-slate-700 flex items-center gap-2"><span class="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-xs">✦</span> Create ID - Direct from Google Firebase</p>
+        <div class="flex flex-wrap gap-2">
+          <input id="hwidDirect" placeholder="HWID (optional)" class="flex-1 min-w-[200px] bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+          <button onclick="generateDirectFirebase()" class="bg-gradient-to-br from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white border border-slate-400 px-6 py-3 rounded-xl font-bold shadow-lg relative overflow-hidden"><span class="relative z-10 flex items-center gap-2">Create ID 🔷 <span class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span></span><div class="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-transparent"></div></button>
+        </div>
+        <div id="newCodeBox" class="hidden mt-4 bg-gradient-to-br from-blue-50 to-slate-50 border border-blue-200 rounded-xl p-4 relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-slate-400 via-blue-500 to-slate-400"></div>
+          <p class="text-blue-600 text-xs mb-2 font-bold flex items-center gap-1">✨ Generated - Silver Blue:</p>
+          <p id="newCode" class="mono text-sm break-all select-all bg-white border border-slate-300 p-3 rounded-xl text-slate-800 shadow-inner"></p>
+          <div class="flex gap-2 mt-3">
+            <button onclick="copyCode()" class="text-xs silver-metallic border border-slate-300 px-4 py-2 rounded-xl font-bold text-slate-700">Copy Code 📋</button>
+            <button onclick="testCodeInWeb()" class="text-xs blue-metallic text-white px-4 py-2 rounded-xl font-bold shadow">Test in WEB 🚀</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="silver-card rounded-[20px] p-5">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-bold text-slate-700 flex items-center gap-2"><span class="w-1 h-5 bg-gradient-to-b from-blue-500 to-slate-400 rounded-full"></span> Codes in Firebase - codes collection</h2>
+        <button onclick="loadCodesDirect()" class="bg-slate-100 hover:bg-slate-200 border border-slate-300 px-4 py-2 rounded-xl text-sm text-slate-600">Refresh 🔄</button>
+      </div>
+      <div class="overflow-auto rounded-xl border border-slate-200">
+        <table class="w-full text-sm">
+          <thead class="bg-gradient-to-r from-slate-100 to-blue-50 border-b border-slate-200">
+            <tr><th class="text-left py-3 px-3 font-bold text-slate-600">Code (50 chars)</th><th class="text-left font-bold text-slate-600">HWID</th><th class="text-left font-bold text-slate-600">Date</th><th class="text-left font-bold text-slate-600">Delete</th></tr>
+          </thead>
+          <tbody id="codesTable" class="bg-white"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc, deleteDoc, getDocs, collection, serverTimestamp, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+let firebaseApp=null, db=null;
+const defaultConfig=`{
+  "apiKey": "AIzaSyCk1wrRKisHdu24JI-_gGmBflezbULsu0A",
+  "authDomain": "g000st-9f70c.firebaseapp.com",
+  "projectId": "g000st-9f70c",
+  "storageBucket": "g000st-9f70c.firebasestorage.app",
+  "messagingSenderId": "206332674564",
+  "appId": "1:206332674564:web:17bd964fd98357e40e6b51",
+  "measurementId": "G-4FFJQ4GRKL"
+}`;
+if(!localStorage.getItem('g000st_fb_config')){localStorage.setItem('g000st_fb_config', defaultConfig);}
+const savedConfig=localStorage.getItem('g000st_fb_config');
+if(savedConfig) document.getElementById('fbConfig').value=savedConfig; else document.getElementById('fbConfig').value=defaultConfig;
+window.saveFbConfig=()=>{ const v=document.getElementById('fbConfig').value.trim(); if(!v) return alert('Paste config first'); try{JSON.parse(v); localStorage.setItem('g000st_fb_config',v); alert('Saved ✓ Silver Blue!');}catch(e){alert('Invalid JSON: '+e.message);} }
+window.initFirebase=()=>{
+  try{
+    const raw=document.getElementById('fbConfig').value.trim()||localStorage.getItem('g000st_fb_config');
+    if(!raw) return alert('Paste Firebase config first');
+    const config=JSON.parse(raw);
+    firebaseApp=initializeApp(config);
+    db=getFirestore(firebaseApp);
+    window.dbDirect=db;
+    document.getElementById('fbStatus').textContent='Firebase: Connected ✓';
+    document.getElementById('fbStatus').className='text-xs px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700';
+    document.getElementById('mainBox').classList.remove('hidden');
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('status').textContent='Silver Blue Mode ✨';
+    loadCodesDirect();
+  }catch(e){ alert('Failed: '+e.message); }
+}
+function generateRandomCode(len=50){
+  const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let r=''; for(let i=0;i<len;i++) r+=chars.charAt(Math.floor(Math.random()*chars.length));
+  return r;
+}
+window.generateDirectFirebase=async()=>{
+  if(!db){
+    const raw=localStorage.getItem('g000st_fb_config')||document.getElementById('fbConfig').value.trim();
+    if(raw){ try{ const cfg=JSON.parse(raw); firebaseApp=initializeApp(cfg); db=getFirestore(firebaseApp); }catch(e){} }
+  }
+  if(!db) return alert('Connect Firebase first');
+  const hwid=document.getElementById('hwidDirect').value.trim()||null;
+  const code=generateRandomCode(50);
+  try{
+    await setDoc(doc(db,'codes',code),{hwid:hwid,createdAt:serverTimestamp(),valid:true,createdBy:'admin-silver-blue'});
+    document.getElementById('newCodeBox').classList.remove('hidden');
+    document.getElementById('newCode').textContent=code;
+    loadCodesDirect();
+  }catch(e){ alert('Failed: '+e.message); }
+}
+window.loadCodesDirect=async()=>{
+  if(!db) return;
+  try{
+    const q=query(collection(db,'codes'),orderBy('createdAt','desc'),limit(200));
+    const snap=await getDocs(q);
+    render(snap);
+  }catch(e){
+    const snap=await getDocs(collection(db,'codes'));
+    render(snap);
+  }
+}
+function render(snapshot){
+  const codes=snapshot.docs.map(d=>({id:d.id,...d.data()}));
+  document.getElementById('totalCodes').textContent=codes.length;
+  const tbody=document.getElementById('codesTable');
+  tbody.innerHTML=codes.map(c=>{
+    const date=c.createdAt?.seconds?new Date(c.createdAt.seconds*1000).toLocaleString():'-';
+    return `<tr class="border-b border-slate-100 hover:bg-blue-50/50"><td class="py-3 px-3 mono text-xs break-all max-w-[250px] text-slate-700">${c.id}</td><td class="text-slate-400 text-xs px-2">${c.hwid||'-'}</td><td class="text-slate-400 text-xs px-2">${date}</td><td class="px-2"><button onclick="deleteCodeDirect('${c.id}')" class="text-blue-600 hover:text-white hover:bg-red-500 bg-blue-50 border border-blue-100 px-2 py-1 rounded-lg text-xs transition">Delete</button></td></tr>`;
+  }).join('')||'<tr><td colspan=4 class="py-6 text-center text-slate-400">No codes yet</td></tr>';
+}
+window.deleteCodeDirect=async(code)=>{
+  if(!db) return;
+  if(!confirm('Delete this code?\n'+code)) return;
+  await deleteDoc(doc(db,'codes',code));
+  loadCodesDirect();
+}
+window.copyCode=()=>{ navigator.clipboard.writeText(document.getElementById('newCode').textContent); alert('Copied ✨ Silver Blue!'); }
+window.testCodeInWeb=()=>{ const code=document.getElementById('newCode').textContent; window.open('http://91.98.206.84:3000/?id='+encodeURIComponent(code),'_blank'); }
+window.login=()=>{ document.getElementById('mainBox').classList.remove('hidden'); document.getElementById('loginBox').classList.add('hidden'); if(db) loadCodesDirect(); }
+if(savedConfig){ try{ const cfg=JSON.parse(savedConfig); firebaseApp=initializeApp(cfg); db=getFirestore(firebaseApp); document.getElementById('fbStatus').textContent='Firebase: Ready ✨'; }catch(e){} }
+</script>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
+</html>
