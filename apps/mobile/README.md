@@ -19,8 +19,9 @@ cp apps/mobile/.env.example apps/mobile/.env.local
 npm run dev:mobile -- --dev-client
 ```
 
-The default API base URL is `https://g000st.com/api/v1`. Override it locally with
-`EXPO_PUBLIC_API_URL` in `.env.local`.
+The local example uses the hosted staging API at
+`https://staging.g000st.com/api/v1`. Override it with `EXPO_PUBLIC_API_URL` in
+`.env.local` when another environment is required.
 
 ## Checks
 

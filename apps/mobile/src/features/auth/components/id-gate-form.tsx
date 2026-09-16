@@ -4,28 +4,25 @@ import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-nativ
 import { G000stWordmark } from '@/components/brand/g000st-wordmark';
 import { FieldError } from '@/components/forms/field-error';
 import { KeyboardAwareScroll } from '@/components/layout/keyboard-aware-scroll';
+import type { BusyAction } from '@/features/auth/hooks/use-id-gate';
 import type { IdGateErrors } from '@/features/auth/validation/id-validation';
 
 type IdGateFormProps = Readonly<{
-  busyAction: 'create' | 'restore' | 'confirm' | null;
+  busyAction: BusyAction;
   errors: IdGateErrors;
   onChangeRecoveryId: (value: string) => void;
-  onChangeRequestedPublicId: (value: string) => void;
-  onCreate: () => void;
-  onRestore: () => void;
+  onLogin: () => void;
+  onRegister: () => void;
   recoveryId: string;
-  requestedPublicId: string;
 }>;
 
 function IdGateFormComponent({
   busyAction,
   errors,
   onChangeRecoveryId,
-  onChangeRequestedPublicId,
-  onCreate,
-  onRestore,
+  onLogin,
+  onRegister,
   recoveryId,
-  requestedPublicId,
 }: IdGateFormProps) {
   const isBusy = busyAction !== null;
 
@@ -44,80 +41,49 @@ function IdGateFormComponent({
           Policy.
         </Text>
 
-        <View className="mb-[22px]">
-          <TextInput
-            accessibilityLabel="Requested Public ID"
-            autoCapitalize="none"
-            autoCorrect={false}
-            className={`h-[50px] w-full rounded-field bg-white px-[14px] font-extrabold text-g000st-black ${
-              errors.requestedPublicId
-                ? 'border-2 border-g000st-red'
-                : 'border-[1.5px] border-g000st-black'
-            }`}
-            editable={!isBusy}
-            maxLength={50}
-            onChangeText={onChangeRequestedPublicId}
-            onSubmitEditing={onCreate}
-            placeholder="Create your Public ID"
-            placeholderTextColor="#777777"
-            returnKeyType="go"
-            testID="create-public-id-input"
-            value={requestedPublicId}
-          />
-          <FieldError message={errors.requestedPublicId} />
+        <TextInput
+          accessibilityLabel="Account ID"
+          autoCapitalize="none"
+          autoCorrect={false}
+          className={`h-[50px] w-full rounded-field bg-white px-[14px] font-extrabold text-g000st-red ${
+            errors.recoveryId ? 'border-2 border-red-600' : 'border-2 border-g000st-red'
+          }`}
+          editable={!isBusy}
+          maxLength={50}
+          onChangeText={onChangeRecoveryId}
+          onSubmitEditing={onLogin}
+          placeholder="Enter your ID"
+          placeholderTextColor="#C62828"
+          returnKeyType="go"
+          secureTextEntry
+          testID="account-id-input"
+          value={recoveryId}
+        />
+        <FieldError message={errors.recoveryId} />
 
-          <Pressable
-            accessibilityRole="button"
-            className="mt-2 h-[50px] w-full items-center justify-center rounded-field bg-g000st-black active:opacity-80 disabled:opacity-60"
-            disabled={isBusy}
-            onPress={onCreate}
-            testID="create-account-button"
-          >
-            {busyAction === 'create' ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text className="font-black text-white">Enter</Text>
-            )}
-          </Pressable>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          className="mt-2 h-[50px] w-full items-center justify-center rounded-field bg-g000st-red active:opacity-80 disabled:opacity-60"
+          disabled={isBusy}
+          onPress={onLogin}
+          testID="login-button"
+        >
+          {busyAction === 'restore' ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text className="font-black text-white">Login</Text>
+          )}
+        </Pressable>
 
-        <View>
-          <TextInput
-            accessibilityLabel="Recovery ID"
-            autoCapitalize="none"
-            autoCorrect={false}
-            className={`h-[50px] w-full rounded-field bg-white px-[14px] font-extrabold text-g000st-red ${
-              errors.recoveryId
-                ? 'border-2 border-red-600'
-                : 'border-2 border-g000st-red'
-            }`}
-            editable={!isBusy}
-            maxLength={50}
-            onChangeText={onChangeRecoveryId}
-            onSubmitEditing={onRestore}
-            placeholder="Paste your Recovery ID"
-            placeholderTextColor="#C62828"
-            returnKeyType="go"
-            secureTextEntry
-            testID="recovery-id-input"
-            value={recoveryId}
-          />
-          <FieldError message={errors.recoveryId} />
-
-          <Pressable
-            accessibilityRole="button"
-            className="mt-2 h-[50px] w-full items-center justify-center rounded-field bg-g000st-red active:opacity-80 disabled:opacity-60"
-            disabled={isBusy}
-            onPress={onRestore}
-            testID="restore-account-button"
-          >
-            {busyAction === 'restore' ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text className="font-black text-white">Enter</Text>
-            )}
-          </Pressable>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          className="mt-3 h-[50px] w-full items-center justify-center rounded-field border-2 border-g000st-black active:opacity-70 disabled:opacity-60"
+          disabled={isBusy}
+          onPress={onRegister}
+          testID="register-button"
+        >
+          <Text className="font-black text-g000st-black">Register</Text>
+        </Pressable>
       </View>
     </KeyboardAwareScroll>
   );

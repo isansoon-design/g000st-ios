@@ -1,7 +1,7 @@
 const G000ST_ID_LENGTH = 50;
 const G000ST_ID_PATTERN = /^[A-Za-z0-9]+$/;
 
-export type IdGateField = "requestedPublicId" | "recoveryId";
+export type IdGateField = "recoveryId";
 export type IdGateErrors = Partial<Record<IdGateField, string>>;
 
 export function normalizeId(value: string): string {
@@ -18,14 +18,6 @@ function validateExactId(value: string): string | null {
   }
 
   return null;
-}
-
-export function validateRequestedPublicId(value: string): IdGateErrors {
-  const normalized = normalizeId(value);
-  if (!normalized) return {};
-
-  const message = validateExactId(normalized);
-  return message ? { requestedPublicId: message } : {};
 }
 
 export function validateRecoveryId(value: string): IdGateErrors {

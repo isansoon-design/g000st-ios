@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { G000ST_ID_LENGTH } from '@/domain/identity/constants';
 
-export type IdGateField = 'requestedPublicId' | 'recoveryId';
+export type IdGateField = 'recoveryId';
 export type IdGateErrors = Partial<Record<IdGateField, string>>;
 
 const exactIdSchema = z
@@ -12,14 +12,6 @@ const exactIdSchema = z
 
 export function normalizeId(value: string): string {
   return value.replace(/\s+/g, '').replace(/[\u200B-\u200D\uFEFF]/g, '');
-}
-
-export function validateRequestedPublicId(value: string): IdGateErrors {
-  const normalized = normalizeId(value);
-  if (!normalized) return {};
-
-  const result = exactIdSchema.safeParse(normalized);
-  return result.success ? {} : { requestedPublicId: result.error.issues[0]?.message };
 }
 
 export function validateRecoveryId(value: string): IdGateErrors {

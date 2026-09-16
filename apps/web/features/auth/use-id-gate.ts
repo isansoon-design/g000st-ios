@@ -11,16 +11,15 @@ import {
   parseAuthenticationResult,
   parseRegisterAccountResult,
 } from "@/features/auth/parse-auth-result";
-import type { AuthenticationResult, RegisterAccountResult } from "@/features/auth/types";
 import {
   firstValidationMessage,
   normalizeId,
   type IdGateErrors,
   validateRecoveryId,
-  validateRequestedPublicId,
 } from "@/features/auth/validation";
 
-export type BusyAction = "create" | "restore" | "confirm" | null;
+export type BusyAction = "create" | "restore" | null;
+export type RegistrationModalStage = "closed" | "confirm" | "credentials";
 
 async function copyText(value: string): Promise<void> {
   if (!navigator.clipboard) throw new Error("Clipboard is unavailable.");
@@ -29,53 +28,40 @@ async function copyText(value: string): Promise<void> {
 
 export function useIdGate() {
   const router = useRouter();
-  const [requestedPublicId, setRequestedPublicId] = useState("");
   const [recoveryId, setRecoveryId] = useState("");
   const [errors, setErrors] = useState<IdGateErrors>({});
   const [busyAction, setBusyAction] = useState<BusyAction>(null);
-  const [createdAccount, setCreatedAccount] = useState<RegisterAccountResult | null>(null);
-
-  const changeRequestedPublicId = useCallback((value: string) => {
-    setRequestedPublicId(value);
-    setErrors((current) => ({ ...current, requestedPublicId: undefined }));
-  }, []);
+  const [registrationModalStage, setRegistrationModalStage] =
+    useState<RegistrationModalStage>("closed");
+  const [createdRecoveryId, setCreatedRecoveryId] = useState<string | null>(null);
 
   const changeRecoveryId = useCallback((value: string) => {
     setRecoveryId(value);
     setErrors((current) => ({ ...current, recoveryId: undefined }));
   }, []);
 
-  const completeAuthentication = useCallback(
-    (result: AuthenticationResult) => {
-      sessionStorage.save({ tokens: result.session, user: result.user });
-      router.replace("/chat");
-    },
-    [router],
-  );
+  const requestRegistration = useCallback(() => {
+    setRegistrationModalStage("confirm");
+  }, []);
 
-  const submitCreate = useCallback(async () => {
-    const validationErrors = validateRequestedPublicId(requestedPublicId);
-    setErrors(validationErrors);
+  const cancelRegistration = useCallback(() => {
+    if (busyAction === "create") return;
+    setRegistrationModalStage("closed");
+  }, [busyAction]);
 
-    const firstError = firstValidationMessage(validationErrors, ["requestedPublicId"]);
-    if (firstError) {
-      toast.error(firstError);
-      return;
-    }
-
+  const confirmRegistration = useCallback(async () => {
     setBusyAction("create");
     try {
-      const normalized = normalizeId(requestedPublicId);
-      const response = await registerAccount({
-        ...(normalized ? { requestedPublicId: normalized } : {}),
-      });
-      setCreatedAccount(parseRegisterAccountResult(response.data));
+      const response = await registerAccount({});
+      const result = parseRegisterAccountResult(response.data);
+      setCreatedRecoveryId(result.recoveryId);
+      setRegistrationModalStage("credentials");
     } catch (error) {
       toast.error(toApiError(error).message);
     } finally {
       setBusyAction(null);
     }
-  }, [requestedPublicId]);
+  }, []);
 
   const submitRestore = useCallback(async () => {
     const validationErrors = validateRecoveryId(recoveryId);
@@ -90,55 +76,40 @@ export function useIdGate() {
     setBusyAction("restore");
     try {
       const response = await restoreAccount({ recoveryId: normalizeId(recoveryId) });
-      completeAuthentication(parseAuthenticationResult(response.data));
+      const result = parseAuthenticationResult(response.data);
+      sessionStorage.save({ tokens: result.session, user: result.user });
+      router.replace("/chat");
     } catch (error) {
       toast.error(toApiError(error).message);
     } finally {
       setBusyAction(null);
     }
-  }, [completeAuthentication, recoveryId]);
+  }, [recoveryId, router]);
 
-  const confirmRecoverySaved = useCallback(() => {
-    if (!createdAccount) return;
-
-    setBusyAction("confirm");
-    completeAuthentication({ session: createdAccount.session, user: createdAccount.user });
-  }, [completeAuthentication, createdAccount]);
-
-  const copyPublicId = useCallback(async () => {
-    if (!createdAccount) return;
+  const copyCreatedRecoveryId = useCallback(async () => {
+    if (!createdRecoveryId) return;
 
     try {
-      await copyText(createdAccount.user.publicId);
-      toast.success("Public ID copied.");
+      await copyText(createdRecoveryId);
+      setCreatedRecoveryId(null);
+      setRegistrationModalStage("closed");
+      toast.success("ID copied. Paste it into the login field.");
     } catch (error) {
       toast.error(toApiError(error).message);
     }
-  }, [createdAccount]);
-
-  const copyRecoveryId = useCallback(async () => {
-    if (!createdAccount) return;
-
-    try {
-      await copyText(createdAccount.recoveryId);
-      toast.success("Recovery ID copied. Keep it private.");
-    } catch (error) {
-      toast.error(toApiError(error).message);
-    }
-  }, [createdAccount]);
+  }, [createdRecoveryId]);
 
   return {
     busyAction,
+    cancelRegistration,
     changeRecoveryId,
-    changeRequestedPublicId,
-    confirmRecoverySaved,
-    copyPublicId,
-    copyRecoveryId,
-    createdAccount,
+    confirmRegistration,
+    copyCreatedRecoveryId,
+    createdRecoveryId,
     errors,
     recoveryId,
-    requestedPublicId,
-    submitCreate,
+    registrationModalStage,
+    requestRegistration,
     submitRestore,
   };
 }

@@ -15,6 +15,7 @@ npm run dev:web
 
 The development server opens at `http://localhost:3000` by default. Keep real Firebase and API
 credentials only in `.env.local`; environment files are intentionally excluded from Git.
+The checked-in example points local frontend requests to the hosted staging API.
 
 ## Checks
 

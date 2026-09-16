@@ -1,71 +1,13 @@
 "use client";
 
+import { Copy } from "lucide-react";
+
 import { useIdGate } from "@/features/auth/use-id-gate";
 
 export default function LoginPage() {
   const idGate = useIdGate();
   const isBusy = idGate.busyAction !== null;
-
-  if (idGate.createdAccount) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#E8E8E8] px-[22px] py-8">
-        <section className="w-full max-w-[400px] rounded-[22px] border border-white/70 bg-[#F2F2F2] p-5 shadow-[0_16px_40px_rgba(0,0,0,.2)]">
-          <div className="mb-2 text-center text-2xl font-black">
-            g<span className="text-[#C62828]">000</span>st
-          </div>
-          <h1 className="text-center text-lg font-black text-[#111]">Save your Recovery ID</h1>
-          <p className="mb-5 mt-2 text-center text-xs font-semibold leading-[18px] text-[#555]">
-            Your Public ID is safe to share. Your Recovery ID is private and is shown only now.
-          </p>
-
-          <p className="mb-1 text-[10px] font-black uppercase tracking-[1px] text-black/50">
-            Public ID · shareable
-          </p>
-          <div className="mb-3 rounded-[14px] border border-black/15 bg-white p-3">
-            <p className="break-all font-mono text-xs font-black leading-[18px] text-[#C62828]">
-              {idGate.createdAccount.user.publicId}
-            </p>
-            <button
-              className="mt-3 h-9 w-full rounded-full border border-black/15 bg-[#E8E8E8] text-xs font-black text-[#111] active:opacity-70"
-              onClick={idGate.copyPublicId}
-              type="button"
-            >
-              Copy Public ID
-            </button>
-          </div>
-
-          <p className="mb-1 text-[10px] font-black uppercase tracking-[1px] text-[#C62828]">
-            Recovery ID · private
-          </p>
-          <div className="rounded-[14px] border-2 border-[#C62828] bg-white p-3">
-            <p className="break-all font-mono text-xs font-black leading-[18px] text-[#C62828]">
-              {idGate.createdAccount.recoveryId}
-            </p>
-            <button
-              className="mt-3 h-10 w-full rounded-full bg-[#C62828] text-xs font-black text-white active:opacity-80"
-              onClick={idGate.copyRecoveryId}
-              type="button"
-            >
-              Copy Recovery ID
-            </button>
-          </div>
-
-          <p className="my-4 text-center text-xs font-bold leading-[17px] text-[#C62828]">
-            If you lose this Recovery ID, support cannot reveal it to you.
-          </p>
-
-          <button
-            className="h-[50px] w-full rounded-[14px] bg-[#111] font-black text-white active:opacity-80 disabled:opacity-60"
-            disabled={idGate.busyAction === "confirm"}
-            onClick={idGate.confirmRecoverySaved}
-            type="button"
-          >
-            {idGate.busyAction === "confirm" ? "..." : "I saved it · Continue"}
-          </button>
-        </section>
-      </main>
-    );
-  }
+  const isModalOpen = idGate.registrationModalStage !== "closed";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#E8E8E8] px-[22px] py-6">
@@ -76,48 +18,6 @@ export default function LoginPage() {
         <p className="mb-[22px] text-center text-xs font-bold leading-[17px] text-[#444]">
           By using the app you are agreeing to our Terms &amp; Conditions and Privacy Policy.
         </p>
-
-        <form
-          className="mb-[22px]"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void idGate.submitCreate();
-          }}
-        >
-          <input
-            aria-invalid={!!idGate.errors.requestedPublicId}
-            autoCapitalize="none"
-            autoComplete="off"
-            autoCorrect="off"
-            className={`h-[50px] w-full rounded-[14px] bg-white px-[14px] font-extrabold text-[#111] outline-none ${
-              idGate.errors.requestedPublicId
-                ? "border-2 border-red-600"
-                : "border-[1.5px] border-[#111]"
-            }`}
-            disabled={isBusy}
-            maxLength={50}
-            onChange={(event) => idGate.changeRequestedPublicId(event.target.value)}
-            placeholder="Create your Public ID"
-            spellCheck={false}
-            type="text"
-            value={idGate.requestedPublicId}
-          />
-          {idGate.errors.requestedPublicId && (
-            <p className="mt-1 flex items-center gap-1 text-xs font-bold text-red-600" role="alert">
-              <svg aria-hidden="true" className="h-3.5 w-3.5 shrink-0" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm.75 3.75v4a.75.75 0 0 1-1.5 0v-4a.75.75 0 0 1 1.5 0ZM8 11a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
-              </svg>
-              {idGate.errors.requestedPublicId}
-            </p>
-          )}
-          <button
-            className="mt-2 h-[50px] w-full rounded-[14px] bg-[#111] font-black text-white active:opacity-80 disabled:opacity-60"
-            disabled={isBusy}
-            type="submit"
-          >
-            {idGate.busyAction === "create" ? "..." : "Enter"}
-          </button>
-        </form>
 
         <form
           onSubmit={(event) => {
@@ -136,7 +36,7 @@ export default function LoginPage() {
             disabled={isBusy}
             maxLength={50}
             onChange={(event) => idGate.changeRecoveryId(event.target.value)}
-            placeholder="Paste your Recovery ID"
+            placeholder="Enter your ID"
             spellCheck={false}
             type="password"
             value={idGate.recoveryId}
@@ -154,10 +54,92 @@ export default function LoginPage() {
             disabled={isBusy}
             type="submit"
           >
-            {idGate.busyAction === "restore" ? "..." : "Enter"}
+            {idGate.busyAction === "restore" ? "..." : "Login"}
           </button>
         </form>
+
+        <button
+          className="mt-3 h-[50px] w-full rounded-[14px] border-2 border-[#111] bg-transparent font-black text-[#111] active:opacity-70 disabled:opacity-60"
+          disabled={isBusy}
+          onClick={idGate.requestRegistration}
+          type="button"
+        >
+          Register
+        </button>
       </section>
+
+      {isModalOpen && (
+        <div
+          aria-labelledby="registration-modal-title"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+        >
+          <section className="w-full max-w-[400px] rounded-[22px] border border-white/70 bg-[#F2F2F2] p-5 shadow-[0_16px_40px_rgba(0,0,0,.3)]">
+            <div className="mb-2 text-center text-2xl font-black">
+              g<span className="text-[#C62828]">000</span>st
+            </div>
+
+            {idGate.registrationModalStage === "confirm" ? (
+              <>
+                <h2 id="registration-modal-title" className="text-center text-lg font-black text-[#111]">
+                  Create a new account?
+                </h2>
+                <p className="mb-6 mt-2 text-center text-sm font-semibold leading-5 text-[#555]">
+                  Are you sure you want to create a new account?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    className="h-12 flex-1 rounded-[14px] border-2 border-[#111] font-black text-[#111] active:opacity-70 disabled:opacity-60"
+                    disabled={isBusy}
+                    onClick={idGate.cancelRegistration}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="h-12 flex-1 rounded-[14px] bg-[#C62828] font-black text-white active:opacity-80 disabled:opacity-60"
+                    disabled={isBusy}
+                    onClick={() => void idGate.confirmRegistration()}
+                    type="button"
+                  >
+                    {idGate.busyAction === "create" ? "..." : "Create"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 id="registration-modal-title" className="text-center text-lg font-black text-[#111]">
+                  Your new account ID
+                </h2>
+                <p className="mb-4 mt-2 text-center text-xs font-semibold leading-[18px] text-[#555]">
+                  Copy this ID now and keep it private. You will use it to log in.
+                </p>
+                <div className="flex overflow-hidden rounded-[14px] border-2 border-[#C62828] bg-white">
+                  <input
+                    aria-label="New account ID"
+                    className="min-w-0 flex-1 bg-white px-3 font-mono text-xs font-black text-[#C62828] outline-none"
+                    readOnly
+                    type="text"
+                    value={idGate.createdRecoveryId ?? ""}
+                  />
+                  <button
+                    aria-label="Copy new account ID"
+                    className="flex h-[50px] w-[54px] shrink-0 items-center justify-center bg-[#C62828] text-white active:opacity-80"
+                    onClick={() => void idGate.copyCreatedRecoveryId()}
+                    type="button"
+                  >
+                    <Copy aria-hidden="true" className="h-5 w-5" />
+                  </button>
+                </div>
+                <p className="mt-4 text-center text-xs font-bold leading-[17px] text-[#C62828]">
+                  If you lose this ID, support cannot reveal it to you.
+                </p>
+              </>
+            )}
+          </section>
+        </div>
+      )}
     </main>
   );
 }

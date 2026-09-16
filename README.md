@@ -20,6 +20,7 @@ tokens. Each app includes its own `.env.example` with non-secret configuration n
 ## Common commands
 
 ```bash
+npm ci
 npm run dev:mobile
 npm run dev:web
 npm run dev:api
@@ -29,3 +30,8 @@ npm run test:api
 
 Install all workspace dependencies from the repository root with `npm ci`. The root lockfile
 keeps mobile, web, API, and future shared packages reproducible together.
+
+For frontend-only local development, copy each app's `.env.example` to `.env.local`. Both
+examples point to the hosted staging API, so the API does not need to run locally. Start Next.js
+with `npm run dev:web`. Start Expo with `npm run dev:mobile`, or run Expo Web explicitly with
+`npm --prefix apps/mobile run web -- --port 8082` when port 8081 is already occupied.

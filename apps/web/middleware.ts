@@ -26,6 +26,10 @@ export function middleware(request: NextRequest) {
   const userRole = request.cookies.get("user_role");
   const hasAuth = sessionHint?.value === "1";
 
+  if (pathname === "/") {
+    return redirectTo(request, hasAuth ? "/chat" : "/login");
+  }
+
   // Protected routes - require authentication
   const isProtectedRoute = [...protectedRoutes, ...adminRoutes].some((route) =>
     pathname.startsWith(route),
