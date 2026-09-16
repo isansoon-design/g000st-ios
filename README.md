@@ -11,6 +11,10 @@ The g000st monorepo keeps the three product surfaces aligned:
 Infrastructure roles and the staged deployment sequence are documented in
 [`docs/INFRASTRUCTURE_PLAN_AR.md`](docs/INFRASTRUCTURE_PLAN_AR.md).
 
+The current Arabic handoff, verified deployment state, decisions, and next steps are recorded in
+[`docs/PROJECT_STATUS_AR.md`](docs/PROJECT_STATUS_AR.md). Read it first when starting a new work
+session.
+
 The client-provided HTML files and the previous native iOS wrapper are preserved on the
 `archive/pre-monorepo-2026-09-16` branch. They are intentionally absent from `main`.
 
