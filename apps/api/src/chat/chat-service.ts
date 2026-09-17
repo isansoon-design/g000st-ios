@@ -2,6 +2,10 @@ import { randomUUID } from 'node:crypto';
 
 import type { AuthStore } from '../auth/auth-store.js';
 import { ApiError } from '../http/api-error.js';
+import {
+  CHAT_BURN_AFTER_READ_SECONDS,
+  CHAT_MESSAGE_RETENTION_MS,
+} from './chat-policy.js';
 import type { ChatStore } from './chat-store.js';
 import type {
   ChatConversation,
@@ -48,13 +52,22 @@ export class ChatService {
     beforeMs?: number,
   ): Promise<ChatMessagePage> {
     await this.requireParticipant(publicId, conversationId);
-    return await this.store.listMessages(conversationId, limit, beforeMs);
+    const page = await this.store.listMessages(conversationId, limit, this.now(), beforeMs);
+
+    return {
+      ...page,
+      messages: page.messages.map((message) => this.forViewer(message, publicId)),
+    };
   }
 
   async sendTextMessage(
     publicId: string,
     conversationId: string,
-    input: Readonly<{ clientMessageId?: string; content: string }>,
+    input: Readonly<{
+      burnAfterRead?: boolean;
+      clientMessageId?: string;
+      content: string;
+    }>,
   ): Promise<ChatMessage> {
     await this.requireParticipant(publicId, conversationId);
     const content = input.content.trim();
@@ -67,23 +80,74 @@ export class ChatService {
       );
     }
 
+    const nowMs = this.now();
     const clientMessageId = input.clientMessageId ?? randomUUID();
     const message: ChatMessage = {
+      ...(input.burnAfterRead
+        ? { burnAfterReadSeconds: CHAT_BURN_AFTER_READ_SECONDS }
+        : {}),
       clientMessageId,
       content,
       conversationId,
-      createdAtMs: this.now(),
+      createdAtMs: nowMs,
+      expiresAtMs: nowMs + CHAT_MESSAGE_RETENTION_MS,
       id: clientMessageId,
+      locked: false,
       senderPublicId: publicId,
       type: 'text',
     };
 
-    return await this.store.createTextMessage(message);
+    const stored = await this.store.createTextMessage(message);
+    if (
+      stored.senderPublicId !== publicId ||
+      stored.content !== content ||
+      Boolean(stored.burnAfterReadSeconds) !== Boolean(input.burnAfterRead)
+    ) {
+      throw new ApiError(409, 'MESSAGE_ID_CONFLICT', 'This message retry does not match the original.');
+    }
+    if (stored.expiresAtMs <= nowMs) {
+      throw new ApiError(410, 'MESSAGE_EXPIRED', 'This message has expired.');
+    }
+
+    return stored;
+  }
+
+  async openBurnMessage(
+    publicId: string,
+    conversationId: string,
+    messageId: string,
+  ): Promise<ChatMessage> {
+    await this.requireParticipant(publicId, conversationId);
+    const result = await this.store.openBurnMessage(
+      conversationId,
+      messageId,
+      publicId,
+      this.now(),
+    );
+
+    if (result.status === 'not_found') {
+      throw new ApiError(404, 'MESSAGE_NOT_FOUND', 'Message not found or already expired.');
+    }
+    if (result.status === 'not_burnable') {
+      throw new ApiError(400, 'MESSAGE_NOT_BURNABLE', 'This burn message cannot be opened here.');
+    }
+
+    return { ...result.message, locked: false };
   }
 
   async markRead(publicId: string, conversationId: string): Promise<void> {
     await this.requireParticipant(publicId, conversationId);
     await this.store.markRead(conversationId, publicId, this.now());
+  }
+
+  private forViewer(message: ChatMessage, publicId: string): ChatMessage {
+    const locked = Boolean(
+      message.burnAfterReadSeconds &&
+        message.senderPublicId !== publicId &&
+        message.burnStartedAtMs === undefined,
+    );
+
+    return locked ? { ...message, content: '', locked: true } : { ...message, locked: false };
   }
 
   private async requireParticipant(

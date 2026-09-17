@@ -21,11 +21,15 @@ export const chatConversationSummarySchema = z.object({
 });
 
 export const chatMessageSchema = z.object({
+  burnAfterReadSeconds: z.literal(5).optional(),
+  burnStartedAtMs: z.number().int().positive().optional(),
   clientMessageId: z.string().uuid(),
-  content: z.string().min(1).max(4_000),
+  content: z.string().max(4_000),
   conversationId: conversationIdSchema,
   createdAtMs: z.number().int().positive(),
+  expiresAtMs: z.number().int().positive(),
   id: z.string().uuid(),
+  locked: z.boolean(),
   senderPublicId: g000stIdSchema,
   type: z.literal('text'),
 });

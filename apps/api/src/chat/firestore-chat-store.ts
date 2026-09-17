@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
 
-import { FieldValue, type Firestore } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore';
 
-import type { ChatStore } from './chat-store.js';
+import { CHAT_MESSAGE_RETENTION_MS } from './chat-policy.js';
+import type { ChatStore, OpenBurnMessageResult } from './chat-store.js';
 import type {
   ChatConversation,
   ChatConversationSummary,
@@ -81,13 +82,18 @@ export class FirestoreChatStore implements ChatStore {
   async listMessages(
     conversationId: string,
     limit: number,
+    nowMs: number,
     beforeMs?: number,
   ): Promise<ChatMessagePage> {
     let query = this.messages(conversationId).orderBy('createdAtMs', 'desc');
     if (beforeMs !== undefined) query = query.where('createdAtMs', '<', beforeMs);
 
-    const snapshot = await query.limit(limit).get();
-    const descending = snapshot.docs.map((document) => document.data() as ChatMessage);
+    const fetchLimit = Math.min(limit * 5, 500);
+    const snapshot = await query.limit(fetchLimit).get();
+    const descending = snapshot.docs
+      .map((document) => document.data() as ChatMessage)
+      .filter((message) => message.expiresAtMs > nowMs)
+      .slice(0, limit);
     const nextBefore = descending.length === limit ? descending.at(-1)?.createdAtMs : undefined;
 
     return {
@@ -121,12 +127,15 @@ export class FirestoreChatStore implements ChatStore {
         (participant) => participant !== message.senderPublicId,
       )!;
       const summary = {
-        lastMessagePreview: message.content.slice(0, 160),
+        lastMessagePreview: message.burnAfterReadSeconds ? 'Burn message' : 'Message',
         lastMessageSenderId: message.senderPublicId,
         updatedAtMs: message.createdAtMs,
       };
 
-      transaction.create(messageRef, message);
+      transaction.create(messageRef, {
+        ...message,
+        expiresAt: Timestamp.fromMillis(message.expiresAtMs),
+      });
       transaction.update(conversationRef, { updatedAtMs: message.createdAtMs });
       transaction.set(
         this.memberConversation(message.senderPublicId, message.conversationId),
@@ -147,11 +156,72 @@ export class FirestoreChatStore implements ChatStore {
     });
   }
 
+  async openBurnMessage(
+    conversationId: string,
+    messageId: string,
+    publicId: string,
+    nowMs: number,
+  ): Promise<OpenBurnMessageResult> {
+    const messageRef = this.messages(conversationId).doc(messageId);
+
+    return await this.db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(messageRef);
+      if (!snapshot.exists) return { status: 'not_found' };
+
+      const message = snapshot.data() as ChatMessage;
+      if (message.expiresAtMs <= nowMs) {
+        transaction.delete(messageRef);
+        return { status: 'not_found' };
+      }
+      if (!message.burnAfterReadSeconds || message.senderPublicId === publicId) {
+        return { status: 'not_burnable' };
+      }
+      if (message.burnStartedAtMs !== undefined) {
+        return { message: { ...message, locked: false }, status: 'opened' };
+      }
+
+      const expiresAtMs = Math.min(
+        message.expiresAtMs,
+        nowMs + message.burnAfterReadSeconds * 1_000,
+      );
+      const opened = { ...message, burnStartedAtMs: nowMs, expiresAtMs, locked: false };
+      transaction.update(messageRef, {
+        burnStartedAtMs: nowMs,
+        expiresAt: Timestamp.fromMillis(expiresAtMs),
+        expiresAtMs,
+        locked: false,
+      });
+      return { message: opened, status: 'opened' };
+    });
+  }
+
   async markRead(conversationId: string, publicId: string, readAtMs: number): Promise<void> {
     await this.memberConversation(publicId, conversationId).set(
       { lastReadAtMs: readAtMs, unreadCount: 0 },
       { merge: true },
     );
+  }
+
+  async purgeExpiredMessages(nowMs: number, limit: number): Promise<number> {
+    const [explicitlyExpired, retentionExpired] = await Promise.all([
+      this.db.collectionGroup('messages').where('expiresAtMs', '<=', nowMs).limit(limit).get(),
+      this.db
+        .collectionGroup('messages')
+        .where('createdAtMs', '<=', nowMs - CHAT_MESSAGE_RETENTION_MS)
+        .limit(limit)
+        .get(),
+    ]);
+    const expired = new Map(
+      [...explicitlyExpired.docs, ...retentionExpired.docs]
+        .slice(0, limit)
+        .map((document) => [document.ref.path, document] as const),
+    );
+    if (expired.size === 0) return 0;
+
+    const batch = this.db.batch();
+    for (const document of expired.values()) batch.delete(document.ref);
+    await batch.commit();
+    return expired.size;
   }
 
   private conversations() {

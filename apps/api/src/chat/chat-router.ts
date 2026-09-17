@@ -9,9 +9,11 @@ import { ChatService } from './chat-service.js';
 
 const exactPublicId = z.string().length(G000ST_ID_LENGTH).regex(/^[A-Za-z0-9]+$/);
 const conversationId = z.string().length(64).regex(/^[a-f0-9]+$/);
+const messageId = z.string().uuid();
 const createConversationBody = z.object({ participantPublicId: exactPublicId }).strict();
 const createMessageBody = z
   .object({
+    burnAfterRead: z.boolean().default(false),
     clientMessageId: z.string().uuid().optional(),
     content: z.string().min(1).max(4_000),
   })
@@ -96,6 +98,22 @@ export function createChatRouter(authService: AuthService, chatService: ChatServ
       const body = createMessageBody.parse(request.body);
       response.status(201).json({
         message: await chatService.sendTextMessage(request.authenticatedPublicId, id, body),
+      });
+    }),
+  );
+
+  router.post(
+    '/conversations/:conversationId/messages/:messageId/open',
+    chatRateLimit(120),
+    asyncRoute(async (request, response) => {
+      const id = conversationId.parse(request.params.conversationId);
+      const parsedMessageId = messageId.parse(request.params.messageId);
+      response.status(200).json({
+        message: await chatService.openBurnMessage(
+          request.authenticatedPublicId,
+          id,
+          parsedMessageId,
+        ),
       });
     }),
   );

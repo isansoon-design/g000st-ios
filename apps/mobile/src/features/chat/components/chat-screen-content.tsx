@@ -1,9 +1,9 @@
 import { memo } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { G000stWordmark } from '@/components/brand/g000st-wordmark';
 import { FeatureScreen } from '@/components/layout/feature-screen';
+import { KeyboardAwareScroll } from '@/components/layout/keyboard-aware-scroll';
 
 function OnlineSignal() {
   return (
@@ -26,11 +26,11 @@ function ChatScreenContentComponent() {
         </View>
       }
     >
-      <KeyboardAwareScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAwareScroll
         bottomOffset={20}
+        className="flex-1"
+        contentContainerClassName="flex-grow"
+        keyboardShouldPersistTaps="handled"
       >
         <Pressable
           accessibilityRole="button"
@@ -58,12 +58,12 @@ function ChatScreenContentComponent() {
             >
               <Text className="text-[28px] font-bold text-g000st-silver">+</Text>
             </Pressable>
-            <View className="min-h-11 flex-1  justify-center rounded-[22px] border border-black/15 bg-white px-1.5">
+            <View className="min-h-11 flex-1 justify-center rounded-[22px] border border-black/15 bg-white px-1.5">
               <TextInput
-                className="px-2.5 pb-1.5 w-full min-h-11 pt-2.5 text-[15px] text-g000st-black"
+                accessibilityLabel="Message"
+                className="min-h-11 w-full px-2.5 pb-1.5 pt-2.5 text-[15px] text-g000st-black"
                 placeholder="Type a message"
                 placeholderTextColor="#777777"
-                onChange={() => { console.log('TextInput pressed'); }}
               />
             </View>
             <Pressable
@@ -79,7 +79,7 @@ function ChatScreenContentComponent() {
             Kept 2 hours · extra 5s burn if on · Screenshots possible
           </Text>
         </View>
-      </KeyboardAwareScrollView>
+      </KeyboardAwareScroll>
     </FeatureScreen>
   );
 }

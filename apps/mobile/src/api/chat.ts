@@ -1,5 +1,3 @@
-import { randomUUID } from 'expo-crypto';
-
 import axiosInstance from '@/api/axios';
 import { parseApiPayload } from '@/api/parse-api-payload';
 import {
@@ -24,11 +22,24 @@ export async function listChatMessages(conversationId: string) {
   return parseApiPayload(chatMessagePageSchema, response.data);
 }
 
-export async function sendChatTextMessage(conversationId: string, content: string) {
+export async function sendChatTextMessage(
+  conversationId: string,
+  content: string,
+  clientMessageId: string,
+  burnAfterRead: boolean,
+) {
   const response = await axiosInstance.post(`/chat/conversations/${conversationId}/messages`, {
-    clientMessageId: randomUUID(),
+    burnAfterRead,
+    clientMessageId,
     content,
   });
+  return parseApiPayload(sendChatMessageResultSchema, response.data).message;
+}
+
+export async function openChatBurnMessage(conversationId: string, messageId: string) {
+  const response = await axiosInstance.post(
+    `/chat/conversations/${conversationId}/messages/${messageId}/open`,
+  );
   return parseApiPayload(sendChatMessageResultSchema, response.data).message;
 }
 

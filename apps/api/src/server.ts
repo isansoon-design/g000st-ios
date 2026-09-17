@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { AuthService } from './auth/auth-service.js';
 import { FirestoreAuthStore } from './auth/firestore-auth-store.js';
 import { createApp } from './app.js';
+import { ChatExpirationWorker } from './chat/chat-expiration-worker.js';
 import { ChatService } from './chat/chat-service.js';
 import { FirestoreChatStore } from './chat/firestore-chat-store.js';
 import { readEnvironment } from './config/env.js';
@@ -13,16 +14,17 @@ async function main(): Promise<void> {
   const firestore = await createFirestore(environment.firebaseServiceAccountPath);
   const store = new FirestoreAuthStore(firestore, environment.collectionPrefix);
   const authService = new AuthService(store, environment.recoveryPepper);
-  const chatService = new ChatService(
-    new FirestoreChatStore(firestore, environment.collectionPrefix),
-    store,
-  );
+  const chatStore = new FirestoreChatStore(firestore, environment.collectionPrefix);
+  const chatService = new ChatService(chatStore, store);
+  const expirationWorker = new ChatExpirationWorker(chatStore);
   const app = createApp({ allowedOrigins: environment.allowedOrigins, authService, chatService });
   const server = app.listen(environment.port, environment.host, () => {
+    expirationWorker.start();
     console.log(`g000st API listening on ${environment.host}:${environment.port}`);
   });
 
   const close = () => {
+    expirationWorker.stop();
     server.close((error) => {
       if (error) {
         console.error('g000st API shutdown failed');

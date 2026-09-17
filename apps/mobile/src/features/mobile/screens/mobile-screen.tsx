@@ -1,4 +1,3 @@
-
 import { MobileScreenContent } from '@/features/mobile/components/mobile-screen-content';
 import { useMobileDialer } from '@/features/mobile/hooks/use-mobile-dialer';
 

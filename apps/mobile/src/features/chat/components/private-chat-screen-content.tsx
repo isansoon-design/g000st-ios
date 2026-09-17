@@ -43,17 +43,20 @@ function PrivateChatScreenContentComponent() {
     >
       {chat.activeConversation ? (
         <ChatThread
+          burnAfterRead={chat.burnAfterRead}
           draft={chat.draft}
           error={chat.messagesError}
           isLoading={chat.isLoadingMessages}
-          isSending={chat.isSending}
           messages={chat.messages}
+          nowMs={chat.nowMs}
           onBack={chat.closeConversation}
           onChangeDraft={chat.updateDraft}
+          onOpenBurn={chat.openBurnMessage}
           onRefresh={() => void chat.refreshMessages()}
+          onRetry={chat.retryMessage}
           onSend={chat.submitMessage}
+          onToggleBurn={chat.toggleBurnAfterRead}
           participantPublicId={chat.activeConversation.participantPublicId}
-          sendError={chat.sendError}
           userPublicId={chat.userPublicId}
         />
       ) : (

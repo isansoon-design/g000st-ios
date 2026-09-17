@@ -9,8 +9,9 @@ import type {
   RotateRefreshResult,
   SessionMaterial,
 } from '../src/auth/auth-store.js';
+import { CHAT_MESSAGE_RETENTION_MS } from '../src/chat/chat-policy.js';
 import { ChatService } from '../src/chat/chat-service.js';
-import type { ChatStore } from '../src/chat/chat-store.js';
+import type { ChatStore, OpenBurnMessageResult } from '../src/chat/chat-store.js';
 import type {
   ChatConversation,
   ChatConversationSummary,
@@ -105,9 +106,11 @@ class MemoryChatStore implements ChatStore {
   async listMessages(
     conversationId: string,
     limit: number,
+    nowMs: number,
     beforeMs?: number,
   ): Promise<ChatMessagePage> {
     const messages = (this.messages.get(conversationId) ?? [])
+      .filter((message) => message.expiresAtMs > nowMs)
       .filter((message) => beforeMs === undefined || message.createdAtMs < beforeMs)
       .slice(-limit);
     return { messages };
@@ -122,8 +125,46 @@ class MemoryChatStore implements ChatStore {
     return message;
   }
 
+  async openBurnMessage(
+    conversationId: string,
+    messageId: string,
+    publicId: string,
+    nowMs: number,
+  ): Promise<OpenBurnMessageResult> {
+    const message = this.messages
+      .get(conversationId)
+      ?.find((candidate) => candidate.id === messageId);
+    if (!message || message.expiresAtMs <= nowMs) return { status: 'not_found' };
+    if (!message.burnAfterReadSeconds || message.senderPublicId === publicId) {
+      return { status: 'not_burnable' };
+    }
+    if (message.burnStartedAtMs !== undefined) return { message, status: 'opened' };
+
+    const opened = {
+      ...message,
+      burnStartedAtMs: nowMs,
+      expiresAtMs: Math.min(message.expiresAtMs, nowMs + message.burnAfterReadSeconds * 1_000),
+    };
+    const messages = this.messages.get(conversationId)!;
+    messages[messages.indexOf(message)] = opened;
+    return { message: opened, status: 'opened' };
+  }
+
   async markRead(conversationId: string, publicId: string, readAtMs: number): Promise<void> {
     this.readBy.set(`${conversationId}:${publicId}`, readAtMs);
+  }
+
+  async purgeExpiredMessages(nowMs: number, limit: number): Promise<number> {
+    let deleted = 0;
+    for (const [conversationId, messages] of this.messages) {
+      const remaining = messages.filter((message) => {
+        if (deleted >= limit || message.expiresAtMs > nowMs) return true;
+        deleted += 1;
+        return false;
+      });
+      this.messages.set(conversationId, remaining);
+    }
+    return deleted;
   }
 }
 
@@ -132,10 +173,17 @@ function expectApiError(code: string) {
 }
 
 function createFixture() {
+  let nowMs = NOW;
   const chatStore = new MemoryChatStore();
   const authStore = new ActiveUsersStore(new Set([USER_A, USER_B, USER_C]));
-  const service = new ChatService(chatStore, authStore, () => NOW);
-  return { chatStore, service };
+  const service = new ChatService(chatStore, authStore, () => nowMs);
+  return {
+    advance: (milliseconds: number) => {
+      nowMs += milliseconds;
+    },
+    chatStore,
+    service,
+  };
 }
 
 describe('ChatService', () => {
@@ -161,7 +209,7 @@ describe('ChatService', () => {
     );
   });
 
-  it('prevents a third user from reading, sending, or marking a conversation as read', async () => {
+  it('prevents a third user from reading, sending, opening, or marking read', async () => {
     const { service } = createFixture();
     const conversation = await service.startConversation(USER_A, USER_B);
 
@@ -174,12 +222,16 @@ describe('ChatService', () => {
       expectApiError('CONVERSATION_NOT_FOUND'),
     );
     await assert.rejects(
+      () => service.openBurnMessage(USER_C, conversation.id, randomMessageId),
+      expectApiError('CONVERSATION_NOT_FOUND'),
+    );
+    await assert.rejects(
       () => service.markRead(USER_C, conversation.id),
       expectApiError('CONVERSATION_NOT_FOUND'),
     );
   });
 
-  it('trims, stores, and deduplicates a text message by client ID', async () => {
+  it('stores messages for two hours and deduplicates matching retries', async () => {
     const { chatStore, service } = createFixture();
     const conversation = await service.startConversation(USER_A, USER_B);
     const clientMessageId = '018f6f5d-58e4-7a30-8df8-5f237c0666bb';
@@ -194,8 +246,34 @@ describe('ChatService', () => {
     });
 
     assert.equal(first.content, 'Hello privately');
+    assert.equal(first.expiresAtMs, NOW + CHAT_MESSAGE_RETENTION_MS);
     assert.equal(retried.id, first.id);
     assert.equal(chatStore.messages.get(conversation.id)?.length, 1);
+  });
+
+  it('hides a burn message until its recipient opens it and removes it after five seconds', async () => {
+    const { advance, chatStore, service } = createFixture();
+    const conversation = await service.startConversation(USER_A, USER_B);
+    const sent = await service.sendTextMessage(USER_A, conversation.id, {
+      burnAfterRead: true,
+      content: 'Secret for five seconds',
+    });
+
+    const senderPage = await service.listMessages(USER_A, conversation.id, 50);
+    const recipientPage = await service.listMessages(USER_B, conversation.id, 50);
+    assert.equal(senderPage.messages[0]?.content, 'Secret for five seconds');
+    assert.equal(recipientPage.messages[0]?.content, '');
+    assert.equal(recipientPage.messages[0]?.locked, true);
+
+    const opened = await service.openBurnMessage(USER_B, conversation.id, sent.id);
+    assert.equal(opened.content, 'Secret for five seconds');
+    assert.equal(opened.expiresAtMs, NOW + 5_000);
+
+    advance(5_001);
+    const expiredPage = await service.listMessages(USER_B, conversation.id, 50);
+    assert.equal(expiredPage.messages.length, 0);
+    assert.equal(await chatStore.purgeExpiredMessages(NOW + 5_001, 100), 1);
+    assert.equal(chatStore.messages.get(conversation.id)?.length, 0);
   });
 
   it('rejects empty messages and records a participant read marker', async () => {
@@ -210,3 +288,5 @@ describe('ChatService', () => {
     assert.equal(chatStore.readBy.get(`${conversation.id}:${USER_B}`), NOW);
   });
 });
+
+const randomMessageId = '018f6f5d-58e4-7a30-8df8-5f237c0666bc';
