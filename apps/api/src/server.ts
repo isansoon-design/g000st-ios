@@ -3,6 +3,8 @@ import 'dotenv/config';
 import { AuthService } from './auth/auth-service.js';
 import { FirestoreAuthStore } from './auth/firestore-auth-store.js';
 import { createApp } from './app.js';
+import { ChatService } from './chat/chat-service.js';
+import { FirestoreChatStore } from './chat/firestore-chat-store.js';
 import { readEnvironment } from './config/env.js';
 import { createFirestore } from './firebase/create-firestore.js';
 
@@ -11,7 +13,11 @@ async function main(): Promise<void> {
   const firestore = await createFirestore(environment.firebaseServiceAccountPath);
   const store = new FirestoreAuthStore(firestore, environment.collectionPrefix);
   const authService = new AuthService(store, environment.recoveryPepper);
-  const app = createApp({ allowedOrigins: environment.allowedOrigins, authService });
+  const chatService = new ChatService(
+    new FirestoreChatStore(firestore, environment.collectionPrefix),
+    store,
+  );
+  const app = createApp({ allowedOrigins: environment.allowedOrigins, authService, chatService });
   const server = app.listen(environment.port, environment.host, () => {
     console.log(`g000st API listening on ${environment.host}:${environment.port}`);
   });

@@ -4,14 +4,17 @@ import { z } from 'zod';
 
 import { createAuthRouter } from './auth/auth-router.js';
 import { AuthService } from './auth/auth-service.js';
+import { createChatRouter } from './chat/chat-router.js';
+import { ChatService } from './chat/chat-service.js';
 import { ApiError } from './http/api-error.js';
 
 type CreateAppOptions = Readonly<{
   allowedOrigins: readonly string[];
   authService: AuthService;
+  chatService: ChatService;
 }>;
 
-export function createApp({ allowedOrigins, authService }: CreateAppOptions): Express {
+export function createApp({ allowedOrigins, authService, chatService }: CreateAppOptions): Express {
   const app = express();
   const allowed = new Set(allowedOrigins);
 
@@ -31,6 +34,7 @@ export function createApp({ allowedOrigins, authService }: CreateAppOptions): Ex
     response.status(200).json({ ok: true });
   });
   app.use('/api/v1/auth', createAuthRouter(authService));
+  app.use('/api/v1/chat', createChatRouter(authService, chatService));
 
   app.use('/api/v1', (_request, response) => {
     response.status(404).json({ code: 'NOT_FOUND', message: 'API route not found.' });
