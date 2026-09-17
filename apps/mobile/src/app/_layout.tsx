@@ -6,11 +6,11 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/features/auth/context/auth-provider';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { QueryProvider } from '@/providers/query-provider';
-import { SafeAreaProvider } from "react-native-safe-area-context";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -28,17 +28,16 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <KeyboardProvider>
-        <QueryProvider>
-          <AuthProvider>
-            <SafeAreaProvider>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <KeyboardProvider>
+          <QueryProvider>
+            <AuthProvider>
               <RootNavigator />
-            </SafeAreaProvider>
-          </AuthProvider>
-        </QueryProvider>
-      </KeyboardProvider>
+            </AuthProvider>
+          </QueryProvider>
+        </KeyboardProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

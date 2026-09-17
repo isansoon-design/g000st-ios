@@ -1,5 +1,5 @@
-import { ChatScreenContent } from '@/features/chat/components/chat-screen-content';
+import { PrivateChatScreenContent } from '@/features/chat/components/private-chat-screen-content';
 
 export function ChatScreen() {
-  return <ChatScreenContent />;
+  return <PrivateChatScreenContent />;
 }
