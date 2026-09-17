@@ -11,7 +11,7 @@
     "dev": "tsx watch src/server.ts",
     "smoke:staging": "node scripts/staging-smoke.mjs",
     "start": "node dist/server.js",
-    "test": "node --import tsx --test test/**/*.test.ts",
+    "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
     "typecheck:tests": "tsc -p tsconfig.test.json"
   },
