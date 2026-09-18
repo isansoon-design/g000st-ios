@@ -1,6 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  type InfiniteData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   listChatConversations,
@@ -24,8 +30,12 @@ const MESSAGE_RETENTION_MS = 2 * 60 * 60 * 1_000;
 
 type ActiveConversation = Readonly<{
   conversationId: string;
+  firstUnreadMessageId?: string;
   participantPublicId: string;
+  participantStatus: 'active' | 'deleted';
 }>;
+
+type MessagePages = InfiniteData<ChatMessagePage, string | undefined>;
 
 export type OutboxMessage = ChatMessage & Readonly<{ status: 'failed' | 'pending' }>;
 
@@ -33,7 +43,22 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
 }
 
-export function usePrivateChat() {
+function appendServerMessage(current: MessagePages | undefined, message: ChatMessage): MessagePages {
+  if (!current) {
+    return { pageParams: [undefined], pages: [{ messages: [message] }] };
+  }
+  if (current.pages.some((page) => page.messages.some((item) => item.id === message.id))) {
+    return current;
+  }
+
+  const [newest = { messages: [] }, ...older] = current.pages;
+  return {
+    ...current,
+    pages: [{ ...newest, messages: [...newest.messages, message] }, ...older],
+  };
+}
+
+export function usePrivateChat(initialConversationId?: string, openRequestId?: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeConversation, setActiveConversation] = useState<ActiveConversation | null>(null);
@@ -44,6 +69,7 @@ export function usePrivateChat() {
   const [outbox, setOutbox] = useState<readonly OutboxMessage[]>([]);
   const [participantInput, setParticipantInput] = useState('');
   const [participantError, setParticipantError] = useState<string | null>(null);
+  const handledOpenRequestRef = useRef<string | null>(null);
 
   const conversationsQuery = useQuery({
     queryKey: conversationsKey,
@@ -51,16 +77,18 @@ export function usePrivateChat() {
     refetchInterval: 5_000,
   });
 
-  const messagesQuery = useQuery({
+  const messagesQuery = useInfiniteQuery({
     queryKey: messagesKey(activeConversation?.conversationId ?? 'none'),
-    queryFn: () => listChatMessages(activeConversation!.conversationId),
+    queryFn: ({ pageParam }) =>
+      listChatMessages(activeConversation!.conversationId, pageParam),
     enabled: activeConversation !== null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: undefined as string | undefined,
     refetchInterval: activeConversation ? 3_000 : false,
   });
 
   useEffect(() => {
     if (!activeConversation) return;
-    setClockMs(Date.now());
     const timer = setInterval(() => setClockMs(Date.now()), 1_000);
     return () => clearInterval(timer);
   }, [activeConversation]);
@@ -68,7 +96,12 @@ export function usePrivateChat() {
   const startMutation = useMutation({
     mutationFn: startChatConversation,
     onSuccess: (conversation, participantPublicId) => {
-      setActiveConversation({ conversationId: conversation.id, participantPublicId });
+      setClockMs(Date.now());
+      setActiveConversation({
+        conversationId: conversation.id,
+        participantPublicId,
+        participantStatus: 'active',
+      });
       setIsNewChatOpen(false);
       setParticipantInput('');
       setParticipantError(null);
@@ -98,10 +131,10 @@ export function usePrivateChat() {
       );
     },
     onSuccess: (message) => {
-      queryClient.setQueryData<ChatMessagePage>(messagesKey(message.conversationId), (current) => {
-        if (current?.messages.some((candidate) => candidate.id === message.id)) return current;
-        return { ...current, messages: [...(current?.messages ?? []), message] };
-      });
+      queryClient.setQueryData<MessagePages>(
+        messagesKey(message.conversationId),
+        (current) => appendServerMessage(current, message),
+      );
       setOutbox((current) =>
         current.filter((item) => item.clientMessageId !== message.clientMessageId),
       );
@@ -116,25 +149,36 @@ export function usePrivateChat() {
       void queryClient.invalidateQueries({ queryKey: messagesKey(variables.conversationId) });
     },
     onSuccess: (message) => {
-      queryClient.setQueryData<ChatMessagePage>(messagesKey(message.conversationId), (current) => ({
-        ...current,
-        messages: (current?.messages ?? []).map((candidate) =>
-          candidate.id === message.id ? message : candidate,
-        ),
-      }));
+      queryClient.setQueryData<MessagePages>(messagesKey(message.conversationId), (current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          pages: current.pages.map((page) => ({
+            ...page,
+            messages: page.messages.map((candidate) =>
+              candidate.id === message.id ? message : candidate,
+            ),
+          })),
+        };
+      });
       setClockMs(Date.now());
     },
   });
 
   const displayMessages = useMemo(() => {
-    const serverMessages = (messagesQuery.data?.messages ?? []).filter(
-      (message) => message.expiresAtMs > clockMs,
-    );
+    const unique = new Map<string, ChatMessage>();
+    const pages = messagesQuery.data?.pages ?? [];
+    for (const page of [...pages].reverse()) {
+      for (const message of page.messages) {
+        if (message.expiresAtMs > clockMs) unique.set(message.id, message);
+      }
+    }
+    const serverMessages = [...unique.values()];
     const outstanding = outbox.filter(
       (item) => !serverMessages.some((message) => message.id === item.id),
     );
     return [...serverMessages, ...outstanding] as readonly (ChatMessage | OutboxMessage)[];
-  }, [clockMs, messagesQuery.data, outbox]);
+  }, [clockMs, messagesQuery.data?.pages, outbox]);
 
   const activeSummary = useMemo(
     () =>
@@ -143,6 +187,20 @@ export function usePrivateChat() {
       ),
     [activeConversation?.conversationId, conversationsQuery.data],
   );
+
+  useEffect(() => {
+    const firstUnreadMessageId = activeConversation?.firstUnreadMessageId;
+    if (
+      !firstUnreadMessageId ||
+      messagesQuery.isLoading ||
+      messagesQuery.isFetchingNextPage ||
+      displayMessages.some((message) => message.id === firstUnreadMessageId) ||
+      !messagesQuery.hasNextPage
+    ) {
+      return;
+    }
+    void messagesQuery.fetchNextPage();
+  }, [activeConversation?.firstUnreadMessageId, displayMessages, messagesQuery]);
 
   useEffect(() => {
     if (!activeConversation || !activeSummary?.unreadCount) return;
@@ -154,7 +212,12 @@ export function usePrivateChat() {
         queryClient.setQueryData<readonly ChatConversationSummary[]>(conversationsKey, (items) =>
           items?.map((item) =>
             item.conversationId === activeConversation.conversationId
-              ? { ...item, unreadCount: 0 }
+              ? {
+                  ...item,
+                  firstUnreadCreatedAtMs: undefined,
+                  firstUnreadMessageId: undefined,
+                  unreadCount: 0,
+                }
               : item,
           ),
         );
@@ -166,16 +229,22 @@ export function usePrivateChat() {
     };
   }, [activeConversation, activeSummary?.unreadCount, queryClient]);
 
-  const updateParticipantInput = useCallback((value: string) => {
-    setParticipantInput(value.replace(/\s/g, ''));
-    setParticipantError(null);
-    startMutation.reset();
-  }, [startMutation]);
+  const updateParticipantInput = useCallback(
+    (value: string) => {
+      setParticipantInput(value.replace(/\s/g, ''));
+      setParticipantError(null);
+      startMutation.reset();
+    },
+    [startMutation],
+  );
 
   const submitNewChat = useCallback(() => {
     const participantPublicId = participantInput.trim();
 
-    if (participantPublicId.length !== G000ST_ID_LENGTH || !/^[A-Za-z0-9]+$/.test(participantPublicId)) {
+    if (
+      participantPublicId.length !== G000ST_ID_LENGTH ||
+      !/^[A-Za-z0-9]+$/.test(participantPublicId)
+    ) {
       setParticipantError(`Enter a valid ${G000ST_ID_LENGTH}-character Public ID.`);
       return;
     }
@@ -188,14 +257,33 @@ export function usePrivateChat() {
   }, [participantInput, startMutation, user?.publicId]);
 
   const openConversation = useCallback((conversation: ChatConversationSummary) => {
+    setClockMs(Date.now());
     setActiveConversation({
       conversationId: conversation.conversationId,
+      ...(conversation.firstUnreadMessageId
+        ? { firstUnreadMessageId: conversation.firstUnreadMessageId }
+        : {}),
       participantPublicId: conversation.participantPublicId,
+      participantStatus: conversation.participantStatus,
     });
     setDraft('');
     setOutbox([]);
     sendMutation.reset();
   }, [sendMutation]);
+
+  useEffect(() => {
+    if (!initialConversationId || !openRequestId || handledOpenRequestRef.current === openRequestId) {
+      return;
+    }
+    const requested = conversationsQuery.data?.find(
+      (conversation) => conversation.conversationId === initialConversationId,
+    );
+    if (!requested) return;
+
+    handledOpenRequestRef.current = openRequestId;
+    const timer = setTimeout(() => openConversation(requested), 0);
+    return () => clearTimeout(timer);
+  }, [conversationsQuery.data, initialConversationId, openConversation, openRequestId]);
 
   const closeConversation = useCallback(() => {
     setActiveConversation(null);
@@ -210,7 +298,14 @@ export function usePrivateChat() {
 
   const submitMessage = useCallback(() => {
     const content = draft.trim();
-    if (!activeConversation || !content || !user?.publicId) return;
+    if (
+      !activeConversation ||
+      activeConversation.participantStatus === 'deleted' ||
+      !content ||
+      !user?.publicId
+    ) {
+      return;
+    }
 
     const nowMs = Date.now();
     const clientMessageId = randomUUID();
@@ -244,7 +339,7 @@ export function usePrivateChat() {
       const failed = outbox.find(
         (item) => item.clientMessageId === clientMessageId && item.status === 'failed',
       );
-      if (!failed) return;
+      if (!failed || activeConversation?.participantStatus === 'deleted') return;
 
       setOutbox((current) =>
         current.map((item) =>
@@ -258,7 +353,7 @@ export function usePrivateChat() {
         conversationId: failed.conversationId,
       });
     },
-    [outbox, sendMutation],
+    [activeConversation?.participantStatus, outbox, sendMutation],
   );
 
   const openBurnMessage = useCallback(
@@ -287,8 +382,11 @@ export function usePrivateChat() {
       ? errorMessage(conversationsQuery.error)
       : null,
     draft,
+    firstUnreadMessageId: activeConversation?.firstUnreadMessageId,
+    hasOlderMessages: Boolean(messagesQuery.hasNextPage),
     isLoadingConversations: conversationsQuery.isLoading,
     isLoadingMessages: messagesQuery.isLoading,
+    isLoadingOlderMessages: messagesQuery.isFetchingNextPage,
     isNewChatOpen,
     isStartingChat: startMutation.isPending,
     messages: displayMessages,
@@ -309,5 +407,6 @@ export function usePrivateChat() {
     updateDraft,
     updateParticipantInput,
     userPublicId: user?.publicId ?? '',
+    loadOlderMessages: messagesQuery.fetchNextPage,
   };
 }

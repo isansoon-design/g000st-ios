@@ -4,6 +4,7 @@ const envSchema = z.object({
   AUTH_COLLECTION_PREFIX: z.string().regex(/^[a-z0-9_]+$/i).default('staging_v1'),
   AUTH_RECOVERY_PEPPER: z.string().min(32),
   CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
+  EXPO_PUSH_ACCESS_TOKEN: z.string().min(1).optional(),
   FIREBASE_SERVICE_ACCOUNT_PATH: z.string().min(1),
   HOST: z.string().default('127.0.0.1'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -13,6 +14,7 @@ const envSchema = z.object({
 export type ApiEnvironment = Readonly<{
   allowedOrigins: readonly string[];
   collectionPrefix: string;
+  expoPushAccessToken?: string;
   firebaseServiceAccountPath: string;
   host: string;
   nodeEnv: 'development' | 'test' | 'production';
@@ -33,6 +35,9 @@ export function readEnvironment(source: NodeJS.ProcessEnv = process.env): ApiEnv
       .map((origin) => origin.trim())
       .filter(Boolean),
     collectionPrefix: result.data.AUTH_COLLECTION_PREFIX,
+    ...(result.data.EXPO_PUSH_ACCESS_TOKEN
+      ? { expoPushAccessToken: result.data.EXPO_PUSH_ACCESS_TOKEN }
+      : {}),
     firebaseServiceAccountPath: result.data.FIREBASE_SERVICE_ACCOUNT_PATH,
     host: result.data.HOST,
     nodeEnv: result.data.NODE_ENV,

@@ -1,5 +1,6 @@
 import { type PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react';
 
+import { unregisterPushDevice } from '@/api/notifications';
 import type { AuthenticationResult, AuthenticatedUser } from '@/domain/auth/types';
 import {
   AuthContext,
@@ -7,6 +8,7 @@ import {
   type AuthStatus,
 } from '@/features/auth/context/auth-context';
 import { subscribeToSessionCleared } from '@/services/session/session-events';
+import { getPushDeviceId } from '@/services/notifications/device-id';
 import { sessionStorage } from '@/services/session/session-storage';
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -51,6 +53,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const signOut = useCallback(async () => {
+    const deviceId = await getPushDeviceId();
+    if (deviceId) {
+      try {
+        await unregisterPushDevice(deviceId);
+      } catch {
+        // Signing out locally must still succeed if the device is offline.
+      }
+    }
     await sessionStorage.clear();
   }, []);
 

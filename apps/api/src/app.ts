@@ -7,14 +7,22 @@ import { AuthService } from './auth/auth-service.js';
 import { createChatRouter } from './chat/chat-router.js';
 import { ChatService } from './chat/chat-service.js';
 import { ApiError } from './http/api-error.js';
+import { createNotificationRouter } from './notifications/notification-router.js';
+import { NotificationService } from './notifications/notification-service.js';
 
 type CreateAppOptions = Readonly<{
   allowedOrigins: readonly string[];
   authService: AuthService;
   chatService: ChatService;
+  notificationService: NotificationService;
 }>;
 
-export function createApp({ allowedOrigins, authService, chatService }: CreateAppOptions): Express {
+export function createApp({
+  allowedOrigins,
+  authService,
+  chatService,
+  notificationService,
+}: CreateAppOptions): Express {
   const app = express();
   const allowed = new Set(allowedOrigins);
 
@@ -35,6 +43,10 @@ export function createApp({ allowedOrigins, authService, chatService }: CreateAp
   });
   app.use('/api/v1/auth', createAuthRouter(authService));
   app.use('/api/v1/chat', createChatRouter(authService, chatService));
+  app.use(
+    '/api/v1/notifications',
+    createNotificationRouter(authService, notificationService),
+  );
 
   app.use('/api/v1', (_request, response) => {
     response.status(404).json({ code: 'NOT_FOUND', message: 'API route not found.' });

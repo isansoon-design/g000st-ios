@@ -13,9 +13,18 @@ export const chatConversationSchema = z.object({
 
 export const chatConversationSummarySchema = z.object({
   conversationId: conversationIdSchema,
+  firstUnreadCreatedAtMs: z.number().int().positive().optional(),
+  firstUnreadExpiresAtMs: z.number().int().positive().optional(),
+  firstUnreadMessageId: z.string().uuid().optional(),
+  lastMessageCreatedAtMs: z.number().int().positive().optional(),
+  lastMessageId: z.string().uuid().optional(),
   lastMessagePreview: z.string(),
   lastMessageSenderId: g000stIdSchema.optional(),
+  lastReadAtMs: z.number().int().positive().optional(),
+  lastReadMessageId: z.string().uuid().optional(),
+  lastReadObservedAtMs: z.number().int().positive().optional(),
   participantPublicId: g000stIdSchema,
+  participantStatus: z.enum(['active', 'deleted']),
   unreadCount: z.number().int().nonnegative(),
   updatedAtMs: z.number().int().positive(),
 });
@@ -30,6 +39,7 @@ export const chatMessageSchema = z.object({
   expiresAtMs: z.number().int().positive(),
   id: z.string().uuid(),
   locked: z.boolean(),
+  readAtMs: z.number().int().positive().optional(),
   senderPublicId: g000stIdSchema,
   type: z.literal('text'),
 });
@@ -44,7 +54,7 @@ export const startChatConversationResultSchema = z.object({
 
 export const chatMessagePageSchema = z.object({
   messages: z.array(chatMessageSchema),
-  nextBefore: z.number().int().positive().optional(),
+  nextCursor: z.string().min(1).optional(),
 });
 
 export const sendChatMessageResultSchema = z.object({

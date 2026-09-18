@@ -102,7 +102,9 @@ function ConversationList({
           </span>
           <span className="ml-3 min-w-0 flex-1">
             <span className="block font-mono text-[12px] font-black text-[#111]">
-              {shortId(conversation.participantPublicId)}
+              {conversation.participantStatus === "deleted"
+                ? "Deleted account"
+                : shortId(conversation.participantPublicId)}
             </span>
             <span className="mt-1 block truncate text-xs font-semibold text-black/45">
               {conversation.lastMessagePreview || "Private conversation"}
@@ -127,12 +129,26 @@ function ConversationList({
 export default function PrivateChatPage() {
   const chat = usePrivateChat();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const didScrollToUnreadRef = useRef<string | null>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "instant" });
-  }, [chat.messages.length]);
+    didScrollToUnreadRef.current = null;
+  }, [chat.activeConversation?.conversationId]);
 
-  const canSend = chat.draft.trim().length > 0 && !chat.isSending;
+  useEffect(() => {
+    if (chat.firstUnreadMessageId) {
+      if (didScrollToUnreadRef.current === chat.firstUnreadMessageId) return;
+      const message = document.getElementById(`chat-message-${chat.firstUnreadMessageId}`);
+      if (!message) return;
+      didScrollToUnreadRef.current = chat.firstUnreadMessageId;
+      message.scrollIntoView({ behavior: "instant", block: "center" });
+      return;
+    }
+    bottomRef.current?.scrollIntoView({ behavior: "instant" });
+  }, [chat.firstUnreadMessageId, chat.messages.length]);
+
+  const participantDeleted = chat.activeConversation?.participantStatus === "deleted";
+  const canSend = chat.draft.trim().length > 0 && !chat.isSending && !participantDeleted;
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[#D8D8D8]">
@@ -165,7 +181,9 @@ export default function PrivateChatPage() {
             <div className="ml-1 min-w-0 flex-1">
               <p className="text-[10px] font-bold text-black/45">PRIVATE CHAT</p>
               <p className="truncate font-mono text-[12px] font-black text-[#111]">
-                {shortId(chat.activeConversation.participantPublicId)}
+                {participantDeleted
+                  ? "Deleted account"
+                  : shortId(chat.activeConversation.participantPublicId)}
               </p>
             </div>
           </div>
@@ -187,6 +205,16 @@ export default function PrivateChatPage() {
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-3">
+              {chat.hasOlderMessages || chat.isLoadingOlderMessages ? (
+                <button
+                  className="mb-3 h-9 w-full rounded-full bg-white/60 text-[11px] font-black text-black/50 disabled:opacity-60"
+                  disabled={chat.isLoadingOlderMessages}
+                  onClick={() => void chat.loadOlderMessages()}
+                  type="button"
+                >
+                  {chat.isLoadingOlderMessages ? "Loading…" : "Load earlier messages"}
+                </button>
+              ) : null}
               {chat.messages.length === 0 ? (
                 <div className="flex h-full items-center justify-center px-7">
                   <p className="text-center text-[13px] font-semibold leading-5 text-black/45">
@@ -196,24 +224,53 @@ export default function PrivateChatPage() {
               ) : (
                 chat.messages.map((message) => {
                   const mine = message.senderPublicId === chat.userPublicId;
+                  const secondsLeft = message.burnStartedAtMs
+                    ? Math.max(0, Math.ceil((message.expiresAtMs - chat.nowMs) / 1_000))
+                    : null;
+                  const deliveryLabel = mine
+                    ? message.burnAfterReadSeconds
+                      ? message.burnStartedAtMs
+                        ? "Opened"
+                        : "Sent"
+                      : message.readAtMs
+                        ? "Read"
+                        : "Sent"
+                    : null;
                   return (
-                    <div
-                      className={`mb-2 flex ${mine ? "justify-end" : "justify-start"}`}
-                      key={message.id}
-                    >
-                      <div
-                        className={`max-w-[78%] px-3 py-2 ${
-                          mine
-                            ? "rounded-[18px] rounded-br border border-[#9A9A9A] bg-[#E0E0E0]"
-                            : "rounded-[18px] rounded-bl border-2 border-[#9A9A9A] bg-[#A8A8A8]"
-                        }`}
-                      >
-                        <p className={`whitespace-pre-wrap break-words text-sm font-bold ${mine ? "text-black" : "text-white"}`}>
-                          {message.content}
-                        </p>
-                        <p className={`mt-1 text-right text-[10px] font-bold ${mine ? "text-black/40" : "text-white/75"}`}>
-                          {formatTime(message.createdAtMs)}
-                        </p>
+                    <div id={`chat-message-${message.id}`} key={message.id}>
+                      {message.id === chat.firstUnreadMessageId ? (
+                        <div className="mb-3 mt-1 flex items-center gap-2">
+                          <span className="h-px flex-1 bg-[#C62828]/40" />
+                          <span className="text-[10px] font-black uppercase tracking-wider text-[#C62828]">
+                            Unread
+                          </span>
+                          <span className="h-px flex-1 bg-[#C62828]/40" />
+                        </div>
+                      ) : null}
+                      <div className={`mb-2 flex ${mine ? "justify-end" : "justify-start"}`}>
+                        <button
+                          className={`max-w-[78%] px-3 py-2 text-left ${
+                            mine
+                              ? "rounded-[18px] rounded-br border border-[#9A9A9A] bg-[#E0E0E0]"
+                              : "rounded-[18px] rounded-bl border-2 border-[#9A9A9A] bg-[#A8A8A8]"
+                          }`}
+                          disabled={!message.locked}
+                          onClick={() => void chat.openBurnMessage(message.id)}
+                          type="button"
+                        >
+                          <p className={`whitespace-pre-wrap break-words text-sm font-bold ${mine ? "text-black" : "text-white"}`}>
+                            {message.locked ? "🔒 Click to open · burns in 5s" : message.content}
+                          </p>
+                          <p className={`mt-1 text-right text-[10px] font-bold ${mine ? "text-black/40" : "text-white/75"}`}>
+                            {message.burnAfterReadSeconds ? (
+                              <span className={mine ? "text-[#C62828]" : "text-white"}>
+                                {secondsLeft === null ? "🔥 Burn 5s · " : `🔥 ${secondsLeft}s · `}
+                              </span>
+                            ) : null}
+                            {formatTime(message.createdAtMs)}
+                            {deliveryLabel ? ` · ${deliveryLabel}` : null}
+                          </p>
+                        </button>
                       </div>
                     </div>
                   );
@@ -229,48 +286,70 @@ export default function PrivateChatPage() {
             </p>
           ) : null}
 
-          <div className="shrink-0 border-t border-black/10 bg-[#D0D0D0] px-[10px] pb-1 pt-1.5">
-            <div className="flex items-end gap-2">
-              <button
-                aria-label="Attach"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-bold text-[#9A9A9A] opacity-40"
-                disabled
-                type="button"
-              >
-                +
-              </button>
-              <div className="flex min-h-11 flex-1 items-center rounded-[22px] border border-black/15 bg-white px-1.5">
-                <textarea
-                  aria-label="Message"
-                  className="max-h-28 min-h-11 w-full resize-none bg-transparent px-2.5 pb-1.5 pt-2.5 text-[15px] text-[#111] outline-none"
-                  disabled={chat.isSending}
-                  maxLength={4_000}
-                  onChange={(event) => chat.updateDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      void chat.submitMessage();
-                    }
-                  }}
-                  placeholder="Type a message"
-                  rows={1}
-                  value={chat.draft}
-                />
-              </div>
-              <button
-                aria-label="Send"
-                className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-[#9A9A9A] text-base font-black text-white disabled:opacity-50"
-                disabled={!canSend}
-                onClick={() => void chat.submitMessage()}
-                type="button"
-              >
-                ➤
-              </button>
+          {participantDeleted ? (
+            <div className="shrink-0 border-t border-black/10 bg-[#D0D0D0] px-4 py-3">
+              <p className="text-center text-xs font-bold text-black/50">
+                This account was deleted. You can read retained messages, but cannot send new ones.
+              </p>
             </div>
-            <p className="pt-0.5 text-center text-[10px] font-bold leading-3 text-black/40">
-              Private conversation · Screenshots may be possible
-            </p>
-          </div>
+          ) : (
+            <div className="shrink-0 border-t border-black/10 bg-[#D0D0D0] px-[10px] pb-1 pt-1.5">
+              <div className="flex items-end gap-2">
+                <div className="flex flex-col items-center">
+                  <button
+                    aria-label="Attach"
+                    className="flex h-8 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-bold text-[#9A9A9A] opacity-40"
+                    disabled
+                    type="button"
+                  >
+                    +
+                  </button>
+                  <button
+                    aria-checked={chat.burnAfterRead}
+                    aria-label={`Burn after read ${chat.burnAfterRead ? "on" : "off"}`}
+                    className={`min-w-10 rounded-full px-1.5 py-0.5 text-[8px] font-black text-white ${
+                      chat.burnAfterRead ? "bg-[#C62828]" : "bg-black/20"
+                    }`}
+                    onClick={chat.toggleBurnAfterRead}
+                    role="switch"
+                    type="button"
+                  >
+                    {chat.burnAfterRead ? "🔥 ON" : "BURN"}
+                  </button>
+                </div>
+                <div className="flex min-h-11 flex-1 items-center rounded-[22px] border border-black/15 bg-white px-1.5">
+                  <textarea
+                    aria-label="Message"
+                    className="max-h-28 min-h-11 w-full resize-none bg-transparent px-2.5 pb-1.5 pt-2.5 text-[15px] text-[#111] outline-none"
+                    disabled={chat.isSending}
+                    maxLength={4_000}
+                    onChange={(event) => chat.updateDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        void chat.submitMessage();
+                      }
+                    }}
+                    placeholder="Type a message"
+                    rows={1}
+                    value={chat.draft}
+                  />
+                </div>
+                <button
+                  aria-label="Send"
+                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-[#9A9A9A] text-base font-black text-white disabled:opacity-50"
+                  disabled={!canSend}
+                  onClick={() => void chat.submitMessage()}
+                  type="button"
+                >
+                  ➤
+                </button>
+              </div>
+              <p className="pt-0.5 text-center text-[10px] font-bold leading-3 text-black/40">
+                Kept 2 hours · Burn 5s {chat.burnAfterRead ? "ON" : "OFF"} · Screenshots possible
+              </p>
+            </div>
+          )}
         </div>
       ) : (
         <ConversationList

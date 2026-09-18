@@ -89,7 +89,7 @@ function ChatConversationListComponent({
           </View>
           <View className="ml-3 min-w-0 flex-1">
             <Text className="font-mono text-[12px] font-black text-g000st-black">
-              {shortId(item.participantPublicId)}
+              {item.participantStatus === 'deleted' ? 'Deleted account' : shortId(item.participantPublicId)}
             </Text>
             <Text className="mt-1" numberOfLines={1}>
               <Text className="text-xs font-semibold text-black/45">

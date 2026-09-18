@@ -21,11 +21,16 @@ type ChatThreadProps = Readonly<{
   burnAfterRead: boolean;
   draft: string;
   error: string | null;
+  firstUnreadMessageId?: string;
+  hasOlderMessages: boolean;
   isLoading: boolean;
+  isLoadingOlderMessages: boolean;
+  isParticipantDeleted: boolean;
   messages: readonly ChatThreadMessage[];
   nowMs: number;
   onBack: () => void;
   onChangeDraft: (value: string) => void;
+  onLoadOlder: () => void;
   onOpenBurn: (messageId: string) => void;
   onRefresh: () => void;
   onRetry: (clientMessageId: string) => void;
@@ -77,6 +82,15 @@ function MessageBubbleComponent({
   const burnSecondsLeft = message.burnStartedAtMs
     ? Math.max(0, Math.ceil((message.expiresAtMs - nowMs) / 1_000))
     : null;
+  const deliveryLabel = mine && !pending
+    ? message.burnAfterReadSeconds
+      ? message.burnStartedAtMs
+        ? 'Opened'
+        : 'Sent'
+      : message.readAtMs
+        ? 'Read'
+        : 'Sent'
+    : null;
 
   const handlePress = () => {
     if (failed) onRetry(message.clientMessageId);
@@ -119,7 +133,9 @@ function MessageBubbleComponent({
               </Text>
             ) : null}
             <Text className={`text-[10px] font-bold ${mine ? 'text-black/40' : 'text-white/75'}`}>
-              {pending ? 'Sending…' : formatTime(message.createdAtMs)}
+              {pending
+                ? 'Sending…'
+                : `${formatTime(message.createdAtMs)}${deliveryLabel ? ` · ${deliveryLabel}` : ''}`}
             </Text>
           </View>
         )}
@@ -128,7 +144,6 @@ function MessageBubbleComponent({
   );
 
   if (!isNew) return bubble;
-
   return <Animated.View entering={messageEntering}>{bubble}</Animated.View>;
 }
 
@@ -138,11 +153,16 @@ function ChatThreadComponent({
   burnAfterRead,
   draft,
   error,
+  firstUnreadMessageId,
+  hasOlderMessages,
   isLoading,
+  isLoadingOlderMessages,
+  isParticipantDeleted,
   messages,
   nowMs,
   onBack,
   onChangeDraft,
+  onLoadOlder,
   onOpenBurn,
   onRefresh,
   onRetry,
@@ -154,22 +174,48 @@ function ChatThreadComponent({
   const listRef = useRef<FlatList<ChatThreadMessage>>(null);
   const isNearBottomRef = useRef(true);
   const hasHydratedRef = useRef(false);
+  const didScrollToUnreadRef = useRef(false);
   const prevIdsRef = useRef<Set<string> | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-  const canSend = draft.trim().length > 0;
+  const canSend = !isParticipantDeleted && draft.trim().length > 0;
+
+  useEffect(() => {
+    didScrollToUnreadRef.current = false;
+    hasHydratedRef.current = false;
+    isNearBottomRef.current = !firstUnreadMessageId;
+  }, [firstUnreadMessageId, participantPublicId]);
 
   useEffect(() => {
     prevIdsRef.current = new Set(messages.map((message) => message.id));
   }, [messages]);
 
   useEffect(() => {
-    if (messages.length === 0 || !isNearBottomRef.current) return;
+    if (!firstUnreadMessageId || didScrollToUnreadRef.current) return;
+    const index = messages.findIndex((message) => message.id === firstUnreadMessageId);
+    if (index < 0) return;
+
+    didScrollToUnreadRef.current = true;
+    isNearBottomRef.current = false;
+    const frame = requestAnimationFrame(() => {
+      listRef.current?.scrollToIndex({ animated: false, index, viewPosition: 0.18 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [firstUnreadMessageId, messages]);
+
+  useEffect(() => {
+    if (
+      messages.length === 0 ||
+      !isNearBottomRef.current ||
+      (firstUnreadMessageId && !didScrollToUnreadRef.current)
+    ) {
+      return;
+    }
 
     const animated = hasHydratedRef.current;
     const frame = requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated }));
     hasHydratedRef.current = true;
     return () => cancelAnimationFrame(frame);
-  }, [messages]);
+  }, [firstUnreadMessageId, messages]);
 
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
@@ -192,17 +238,28 @@ function ChatThreadComponent({
     ({ item }: { item: ChatThreadMessage }) => {
       const isNew = prevIdsRef.current !== null && !prevIdsRef.current.has(item.id);
       return (
-        <MessageBubble
-          isNew={isNew}
-          message={item}
-          mine={item.senderPublicId === userPublicId}
-          nowMs={nowMs}
-          onOpenBurn={onOpenBurn}
-          onRetry={onRetry}
-        />
+        <View>
+          {item.id === firstUnreadMessageId ? (
+            <View className="mb-3 mt-1 flex-row items-center gap-2">
+              <View className="h-px flex-1 bg-g000st-red/40" />
+              <Text className="text-[10px] font-black uppercase tracking-wider text-g000st-red">
+                Unread
+              </Text>
+              <View className="h-px flex-1 bg-g000st-red/40" />
+            </View>
+          ) : null}
+          <MessageBubble
+            isNew={isNew}
+            message={item}
+            mine={item.senderPublicId === userPublicId}
+            nowMs={nowMs}
+            onOpenBurn={onOpenBurn}
+            onRetry={onRetry}
+          />
+        </View>
       );
     },
-    [nowMs, onOpenBurn, onRetry, userPublicId],
+    [firstUnreadMessageId, nowMs, onOpenBurn, onRetry, userPublicId],
   );
 
   return (
@@ -219,7 +276,7 @@ function ChatThreadComponent({
         <View className="ml-1 min-w-0 flex-1">
           <Text className="text-[11px] font-bold text-black/45">PRIVATE CHAT</Text>
           <Text className="font-mono text-[12px] font-black text-g000st-black" numberOfLines={1}>
-            {shortId(participantPublicId)}
+            {isParticipantDeleted ? 'Deleted account' : shortId(participantPublicId)}
           </Text>
         </View>
       </View>
@@ -249,8 +306,32 @@ function ChatThreadComponent({
             keyExtractor={(item) => item.id}
             keyboardDismissMode="interactive"
             keyboardShouldPersistTaps="handled"
+            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
             onScroll={handleScroll}
+            onScrollToIndexFailed={({ index }) => {
+              setTimeout(() => {
+                listRef.current?.scrollToIndex({ animated: false, index, viewPosition: 0.18 });
+              }, 100);
+            }}
             scrollEventThrottle={100}
+            ListHeaderComponent={
+              hasOlderMessages || isLoadingOlderMessages ? (
+                <Pressable
+                  accessibilityRole="button"
+                  className="mb-3 h-9 items-center justify-center rounded-full bg-white/60"
+                  disabled={isLoadingOlderMessages}
+                  onPress={onLoadOlder}
+                >
+                  {isLoadingOlderMessages ? (
+                    <ActivityIndicator color="#9A9A9A" size="small" />
+                  ) : (
+                    <Text className="text-[11px] font-black text-black/50">
+                      Load earlier messages
+                    </Text>
+                  )}
+                </Pressable>
+              ) : null
+            }
             ListEmptyComponent={
               <View className="flex-1 items-center justify-center px-7 py-12">
                 <Text className="text-center text-[13px] font-semibold leading-5 text-black/45">
@@ -273,61 +354,69 @@ function ChatThreadComponent({
         </View>
       )}
 
-      <View className="border-t border-black/10 bg-[#D0D0D0] px-[10px] pb-1 pt-1.5">
-        <View className="flex-row items-end gap-2">
-          <View className="items-center">
-            <Pressable
-              accessibilityLabel="Attach"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: true }}
-              className="h-8 w-10 items-center justify-center rounded-full opacity-40"
-              disabled
-            >
-              <Text className="text-[28px] font-bold text-g000st-silver">+</Text>
-            </Pressable>
-            <Pressable
-              accessibilityLabel={`Burn after read ${burnAfterRead ? 'on' : 'off'}`}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: burnAfterRead }}
-              className={`min-w-10 rounded-full px-1.5 py-0.5 ${
-                burnAfterRead ? 'bg-g000st-red' : 'bg-black/20'
-              }`}
-              onPress={onToggleBurn}
-            >
-              <Text className="text-center text-[8px] font-black text-white">
-                {burnAfterRead ? '🔥 ON' : 'BURN'}
-              </Text>
-            </Pressable>
-          </View>
-          <View className="min-h-11 flex-1 justify-center rounded-[22px] border border-black/15 bg-white px-1.5">
-            <TextInput
-              accessibilityLabel="Message"
-              className="max-h-28 min-h-11 w-full px-2.5 pb-1.5 pt-2.5 text-[15px] text-g000st-black"
-              maxLength={4_000}
-              multiline
-              onChangeText={onChangeDraft}
-              placeholder="Type a message"
-              placeholderTextColor="#777777"
-              value={draft}
-            />
-          </View>
-          <Pressable
-            accessibilityLabel="Send"
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canSend }}
-            className={`h-[42px] w-[42px] items-center justify-center rounded-full bg-g000st-silver ${
-              canSend ? '' : 'opacity-50'
-            }`}
-            disabled={!canSend}
-            onPress={handleSend}
-          >
-            <Text className="text-base font-black text-white">➤</Text>
-          </Pressable>
+      {isParticipantDeleted ? (
+        <View className="border-t border-black/10 bg-[#D0D0D0] px-4 py-3">
+          <Text className="text-center text-xs font-bold text-black/50">
+            This account was deleted. You can read retained messages, but cannot send new ones.
+          </Text>
         </View>
-        <Text className="pt-0.5 text-center text-[10px] font-bold leading-3 text-black/40">
-          Kept 2 hours · Burn 5s {burnAfterRead ? 'ON' : 'OFF'} · Screenshots possible
-        </Text>
-      </View>
+      ) : (
+        <View className="border-t border-black/10 bg-[#D0D0D0] px-[10px] pb-1 pt-1.5">
+          <View className="flex-row items-end gap-2">
+            <View className="items-center">
+              <Pressable
+                accessibilityLabel="Attach"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: true }}
+                className="h-8 w-10 items-center justify-center rounded-full opacity-40"
+                disabled
+              >
+                <Text className="text-[28px] font-bold text-g000st-silver">+</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel={`Burn after read ${burnAfterRead ? 'on' : 'off'}`}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: burnAfterRead }}
+                className={`min-w-10 rounded-full px-1.5 py-0.5 ${
+                  burnAfterRead ? 'bg-g000st-red' : 'bg-black/20'
+                }`}
+                onPress={onToggleBurn}
+              >
+                <Text className="text-center text-[8px] font-black text-white">
+                  {burnAfterRead ? '🔥 ON' : 'BURN'}
+                </Text>
+              </Pressable>
+            </View>
+            <View className="min-h-11 flex-1 justify-center rounded-[22px] border border-black/15 bg-white px-1.5">
+              <TextInput
+                accessibilityLabel="Message"
+                className="max-h-28 min-h-11 w-full px-2.5 pb-1.5 pt-2.5 text-[15px] text-g000st-black"
+                maxLength={4_000}
+                multiline
+                onChangeText={onChangeDraft}
+                placeholder="Type a message"
+                placeholderTextColor="#777777"
+                value={draft}
+              />
+            </View>
+            <Pressable
+              accessibilityLabel="Send"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !canSend }}
+              className={`h-[42px] w-[42px] items-center justify-center rounded-full bg-g000st-silver ${
+                canSend ? '' : 'opacity-50'
+              }`}
+              disabled={!canSend}
+              onPress={handleSend}
+            >
+              <Text className="text-base font-black text-white">➤</Text>
+            </Pressable>
+          </View>
+          <Text className="pt-0.5 text-center text-[10px] font-bold leading-3 text-black/40">
+            Kept 2 hours · Burn 5s {burnAfterRead ? 'ON' : 'OFF'} · Screenshots possible
+          </Text>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }

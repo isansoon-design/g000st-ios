@@ -19,8 +19,16 @@ function OnlineSignal() {
   );
 }
 
-function PrivateChatScreenContentComponent() {
-  const chat = usePrivateChat();
+type PrivateChatScreenContentProps = Readonly<{
+  initialConversationId?: string;
+  openRequestId?: string;
+}>;
+
+function PrivateChatScreenContentComponent({
+  initialConversationId,
+  openRequestId,
+}: PrivateChatScreenContentProps) {
+  const chat = usePrivateChat(initialConversationId, openRequestId);
 
   return (
     <FeatureScreen
@@ -46,11 +54,16 @@ function PrivateChatScreenContentComponent() {
           burnAfterRead={chat.burnAfterRead}
           draft={chat.draft}
           error={chat.messagesError}
+          firstUnreadMessageId={chat.firstUnreadMessageId}
+          hasOlderMessages={chat.hasOlderMessages}
           isLoading={chat.isLoadingMessages}
+          isLoadingOlderMessages={chat.isLoadingOlderMessages}
+          isParticipantDeleted={chat.activeConversation.participantStatus === 'deleted'}
           messages={chat.messages}
           nowMs={chat.nowMs}
           onBack={chat.closeConversation}
           onChangeDraft={chat.updateDraft}
+          onLoadOlder={() => void chat.loadOlderMessages()}
           onOpenBurn={chat.openBurnMessage}
           onRefresh={() => void chat.refreshMessages()}
           onRetry={chat.retryMessage}

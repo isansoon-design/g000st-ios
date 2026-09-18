@@ -11,6 +11,7 @@ import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-c
 import { AuthProvider } from '@/features/auth/context/auth-provider';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { QueryProvider } from '@/providers/query-provider';
+import { NotificationsBootstrap } from '@/services/notifications/notifications-bootstrap';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -33,6 +34,7 @@ export default function RootLayout() {
         <KeyboardProvider>
           <QueryProvider>
             <AuthProvider>
+              <NotificationsBootstrap />
               <RootNavigator />
             </AuthProvider>
           </QueryProvider>

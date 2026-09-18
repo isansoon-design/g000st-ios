@@ -22,7 +22,7 @@ const listConversationsQuery = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(30),
 });
 const listMessagesQuery = z.object({
-  before: z.coerce.number().int().positive().optional(),
+  cursor: z.string().min(1).max(256).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
@@ -83,9 +83,9 @@ export function createChatRouter(authService: AuthService, chatService: ChatServ
     '/conversations/:conversationId/messages',
     asyncRoute(async (request, response) => {
       const id = conversationId.parse(request.params.conversationId);
-      const { before, limit } = listMessagesQuery.parse(request.query);
+      const { cursor, limit } = listMessagesQuery.parse(request.query);
       response.status(200).json(
-        await chatService.listMessages(request.authenticatedPublicId, id, limit, before),
+        await chatService.listMessages(request.authenticatedPublicId, id, limit, cursor),
       );
     }),
   );
@@ -123,8 +123,9 @@ export function createChatRouter(authService: AuthService, chatService: ChatServ
     chatRateLimit(120),
     asyncRoute(async (request, response) => {
       const id = conversationId.parse(request.params.conversationId);
-      await chatService.markRead(request.authenticatedPublicId, id);
-      response.status(204).end();
+      response.status(200).json({
+        readState: await chatService.markRead(request.authenticatedPublicId, id),
+      });
     }),
   );
 

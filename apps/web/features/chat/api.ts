@@ -22,9 +22,13 @@ export async function startChatConversation(
   return response.data.conversation;
 }
 
-export async function listChatMessages(conversationId: string): Promise<ChatMessagePage> {
+export async function listChatMessages(
+  conversationId: string,
+  cursor?: string,
+): Promise<ChatMessagePage> {
   const response = await axios.get<ChatMessagePage>(
     `/chat/conversations/${conversationId}/messages`,
+    { params: { cursor, limit: 50 } },
   );
   return response.data;
 }
@@ -32,10 +36,21 @@ export async function listChatMessages(conversationId: string): Promise<ChatMess
 export async function sendChatTextMessage(
   conversationId: string,
   content: string,
+  burnAfterRead: boolean,
 ): Promise<ChatMessage> {
   const response = await axios.post<{ message: ChatMessage }>(
     `/chat/conversations/${conversationId}/messages`,
-    { clientMessageId: crypto.randomUUID(), content },
+    { burnAfterRead, clientMessageId: crypto.randomUUID(), content },
+  );
+  return response.data.message;
+}
+
+export async function openChatBurnMessage(
+  conversationId: string,
+  messageId: string,
+): Promise<ChatMessage> {
+  const response = await axios.post<{ message: ChatMessage }>(
+    `/chat/conversations/${conversationId}/messages/${messageId}/open`,
   );
   return response.data.message;
 }

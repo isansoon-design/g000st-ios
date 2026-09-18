@@ -7,4 +7,5 @@ function normalizeBaseUrl(value: string | undefined): string {
 
 export const env = Object.freeze({
   apiBaseUrl: normalizeBaseUrl(process.env.EXPO_PUBLIC_API_URL),
+  easProjectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim() || undefined,
 });

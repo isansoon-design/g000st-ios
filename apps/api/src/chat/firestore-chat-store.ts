@@ -1,14 +1,21 @@
 import { createHash } from 'node:crypto';
 
-import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore';
+import { FieldPath, FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore';
 
+import { encodeChatCursor } from './chat-cursor.js';
 import { CHAT_MESSAGE_RETENTION_MS } from './chat-policy.js';
-import type { ChatStore, OpenBurnMessageResult } from './chat-store.js';
+import type {
+  ChatStore,
+  CreateTextMessageResult,
+  OpenBurnMessageResult,
+} from './chat-store.js';
 import type {
   ChatConversation,
-  ChatConversationSummary,
+  ChatConversationMemberSummary,
   ChatMessage,
+  ChatMessageCursor,
   ChatMessagePage,
+  ChatReadState,
 } from './chat-types.js';
 
 type StoredConversation = Readonly<{
@@ -17,7 +24,7 @@ type StoredConversation = Readonly<{
   updatedAtMs: number;
 }>;
 
-type StoredConversationSummary = Omit<ChatConversationSummary, 'conversationId'>;
+type StoredConversationSummary = Omit<ChatConversationMemberSummary, 'conversationId'>;
 
 export class FirestoreChatStore implements ChatStore {
   constructor(
@@ -64,56 +71,90 @@ export class FirestoreChatStore implements ChatStore {
     return snapshot.exists ? this.toConversation(snapshot.id, snapshot.data()) : null;
   }
 
+  async findConversationMember(
+    publicId: string,
+    conversationId: string,
+  ): Promise<ChatConversationMemberSummary | null> {
+    const snapshot = await this.memberConversation(publicId, conversationId).get();
+    return snapshot.exists
+      ? {
+          ...(snapshot.data() as StoredConversationSummary),
+          conversationId,
+        }
+      : null;
+  }
+
   async listConversations(
     publicId: string,
     limit: number,
-  ): Promise<readonly ChatConversationSummary[]> {
+    nowMs: number,
+  ): Promise<readonly ChatConversationMemberSummary[]> {
     const snapshot = await this.memberConversations(publicId)
       .orderBy('updatedAtMs', 'desc')
       .limit(limit)
       .get();
 
-    return snapshot.docs.map((document) => ({
-      ...(document.data() as StoredConversationSummary),
-      conversationId: document.id,
-    }));
+    return await Promise.all(
+      snapshot.docs.map((document) =>
+        this.reconcileUnreadSummary(
+          publicId,
+          {
+            ...(document.data() as StoredConversationSummary),
+            conversationId: document.id,
+          },
+          nowMs,
+        ),
+      ),
+    );
   }
 
   async listMessages(
     conversationId: string,
     limit: number,
     nowMs: number,
-    beforeMs?: number,
+    cursor?: ChatMessageCursor,
   ): Promise<ChatMessagePage> {
-    let query = this.messages(conversationId).orderBy('createdAtMs', 'desc');
-    if (beforeMs !== undefined) query = query.where('createdAtMs', '<', beforeMs);
+    const visible: ChatMessage[] = [];
+    const batchSize = Math.min(Math.max(limit * 2, 50), 200);
+    let scanCursor = cursor;
+    let exhausted = false;
 
-    const fetchLimit = Math.min(limit * 5, 500);
-    const snapshot = await query.limit(fetchLimit).get();
-    const descending = snapshot.docs
-      .map((document) => document.data() as ChatMessage)
-      .filter((message) => message.expiresAtMs > nowMs)
-      .slice(0, limit);
-    const nextBefore = descending.length === limit ? descending.at(-1)?.createdAtMs : undefined;
+    while (visible.length < limit + 1 && !exhausted) {
+      let query = this.messages(conversationId)
+        .orderBy('createdAtMs', 'desc')
+        .orderBy(FieldPath.documentId(), 'desc');
+      if (scanCursor) query = query.startAfter(scanCursor.createdAtMs, scanCursor.id);
 
+      const snapshot = await query.limit(batchSize).get();
+      exhausted = snapshot.size < batchSize;
+
+      for (const document of snapshot.docs) {
+        const message = this.toMessage(document.id, document.data());
+        scanCursor = { createdAtMs: message.createdAtMs, id: message.id };
+        if (message.expiresAtMs > nowMs) visible.push(message);
+        if (visible.length >= limit + 1) break;
+      }
+
+      if (snapshot.empty) exhausted = true;
+    }
+
+    const descendingPage = visible.slice(0, limit);
+    const oldest = descendingPage.at(-1);
     return {
-      messages: descending.reverse(),
-      ...(nextBefore === undefined ? {} : { nextBefore }),
+      messages: descendingPage.reverse(),
+      ...(visible.length > limit && oldest
+        ? { nextCursor: encodeChatCursor({ createdAtMs: oldest.createdAtMs, id: oldest.id }) }
+        : {}),
     };
   }
 
-  async createTextMessage(message: ChatMessage): Promise<ChatMessage> {
+  async createTextMessage(message: ChatMessage): Promise<CreateTextMessageResult> {
     const conversationRef = this.conversations().doc(message.conversationId);
     const messageRef = this.messages(message.conversationId).doc(message.id);
 
     return await this.db.runTransaction(async (transaction) => {
-      const [conversationSnapshot, existingMessage] = await Promise.all([
-        transaction.get(conversationRef),
-        transaction.get(messageRef),
-      ]);
-
+      const conversationSnapshot = await transaction.get(conversationRef);
       if (!conversationSnapshot.exists) throw new Error('Conversation disappeared.');
-      if (existingMessage.exists) return existingMessage.data() as ChatMessage;
 
       const conversation = this.toConversation(
         conversationSnapshot.id,
@@ -126,7 +167,25 @@ export class FirestoreChatStore implements ChatStore {
       const recipientPublicId = conversation.participants.find(
         (participant) => participant !== message.senderPublicId,
       )!;
+      const recipientMemberRef = this.memberConversation(
+        recipientPublicId,
+        message.conversationId,
+      );
+      const [existingMessage, recipientMember] = await Promise.all([
+        transaction.get(messageRef),
+        transaction.get(recipientMemberRef),
+      ]);
+      if (existingMessage.exists) {
+        return {
+          created: false,
+          message: this.toMessage(existingMessage.id, existingMessage.data()),
+        };
+      }
+
+      const recipientSummary = recipientMember.data() as StoredConversationSummary | undefined;
       const summary = {
+        lastMessageCreatedAtMs: message.createdAtMs,
+        lastMessageId: message.id,
         lastMessagePreview: message.burnAfterReadSeconds ? 'Burn message' : 'Message',
         lastMessageSenderId: message.senderPublicId,
         updatedAtMs: message.createdAtMs,
@@ -143,16 +202,23 @@ export class FirestoreChatStore implements ChatStore {
         { merge: true },
       );
       transaction.set(
-        this.memberConversation(recipientPublicId, message.conversationId),
+        recipientMemberRef,
         {
           ...summary,
+          ...(recipientSummary?.unreadCount
+            ? {}
+            : {
+                firstUnreadCreatedAtMs: message.createdAtMs,
+                firstUnreadExpiresAtMs: message.expiresAtMs,
+                firstUnreadMessageId: message.id,
+              }),
           participantPublicId: message.senderPublicId,
           unreadCount: FieldValue.increment(1),
         },
         { merge: true },
       );
 
-      return message;
+      return { created: true, message };
     });
   }
 
@@ -163,12 +229,16 @@ export class FirestoreChatStore implements ChatStore {
     nowMs: number,
   ): Promise<OpenBurnMessageResult> {
     const messageRef = this.messages(conversationId).doc(messageId);
+    const memberRef = this.memberConversation(publicId, conversationId);
 
     return await this.db.runTransaction(async (transaction) => {
-      const snapshot = await transaction.get(messageRef);
+      const [snapshot, memberSnapshot] = await Promise.all([
+        transaction.get(messageRef),
+        transaction.get(memberRef),
+      ]);
       if (!snapshot.exists) return { status: 'not_found' };
 
-      const message = snapshot.data() as ChatMessage;
+      const message = this.toMessage(snapshot.id, snapshot.data());
       if (message.expiresAtMs <= nowMs) {
         transaction.delete(messageRef);
         return { status: 'not_found' };
@@ -191,15 +261,54 @@ export class FirestoreChatStore implements ChatStore {
         expiresAtMs,
         locked: false,
       });
+      if (
+        memberSnapshot.exists &&
+        (memberSnapshot.data() as StoredConversationSummary).firstUnreadMessageId === message.id
+      ) {
+        transaction.set(memberRef, { firstUnreadExpiresAtMs: expiresAtMs }, { merge: true });
+      }
       return { message: opened, status: 'opened' };
     });
   }
 
-  async markRead(conversationId: string, publicId: string, readAtMs: number): Promise<void> {
-    await this.memberConversation(publicId, conversationId).set(
-      { lastReadAtMs: readAtMs, unreadCount: 0 },
-      { merge: true },
-    );
+  async markRead(
+    conversationId: string,
+    publicId: string,
+    readAtMs: number,
+  ): Promise<ChatReadState> {
+    const memberRef = this.memberConversation(publicId, conversationId);
+
+    return await this.db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(memberRef);
+      if (!snapshot.exists) throw new Error('Conversation membership disappeared.');
+
+      const summary = snapshot.data() as StoredConversationSummary;
+      const state: ChatReadState = {
+        ...(summary.lastMessageCreatedAtMs === undefined
+          ? {}
+          : { lastReadAtMs: summary.lastMessageCreatedAtMs }),
+        ...(summary.lastMessageId === undefined
+          ? {}
+          : { lastReadMessageId: summary.lastMessageId }),
+        unreadCount: 0,
+      };
+      transaction.set(
+        memberRef,
+        {
+          firstUnreadCreatedAtMs: FieldValue.delete(),
+          firstUnreadExpiresAtMs: FieldValue.delete(),
+          firstUnreadMessageId: FieldValue.delete(),
+          lastReadObservedAtMs: readAtMs,
+          ...(state.lastReadAtMs === undefined ? {} : { lastReadAtMs: state.lastReadAtMs }),
+          ...(state.lastReadMessageId === undefined
+            ? {}
+            : { lastReadMessageId: state.lastReadMessageId }),
+          unreadCount: 0,
+        },
+        { merge: true },
+      );
+      return state;
+    });
   }
 
   async purgeExpiredMessages(nowMs: number, limit: number): Promise<number> {
@@ -222,6 +331,97 @@ export class FirestoreChatStore implements ChatStore {
     for (const document of expired.values()) batch.delete(document.ref);
     await batch.commit();
     return expired.size;
+  }
+
+  private async reconcileUnreadSummary(
+    publicId: string,
+    summary: ChatConversationMemberSummary,
+    nowMs: number,
+  ): Promise<ChatConversationMemberSummary> {
+    if (
+      summary.unreadCount === 0 ||
+      (summary.firstUnreadExpiresAtMs !== undefined &&
+        summary.firstUnreadExpiresAtMs > nowMs)
+    ) {
+      return summary;
+    }
+
+    const unread: ChatMessage[] = [];
+    const batchSize = 200;
+    let scanCursor: ChatMessageCursor | undefined =
+      summary.lastReadAtMs === undefined || summary.lastReadMessageId === undefined
+        ? undefined
+        : { createdAtMs: summary.lastReadAtMs, id: summary.lastReadMessageId };
+
+    while (true) {
+      let query = this.messages(summary.conversationId)
+        .orderBy('createdAtMs', 'asc')
+        .orderBy(FieldPath.documentId(), 'asc');
+      if (scanCursor) query = query.startAfter(scanCursor.createdAtMs, scanCursor.id);
+
+      const snapshot = await query.limit(batchSize).get();
+      for (const document of snapshot.docs) {
+        const message = this.toMessage(document.id, document.data());
+        scanCursor = { createdAtMs: message.createdAtMs, id: message.id };
+        if (
+          message.expiresAtMs > nowMs &&
+          message.senderPublicId === summary.participantPublicId
+        ) {
+          unread.push(message);
+        }
+      }
+      if (snapshot.size < batchSize) break;
+    }
+
+    const firstUnread = unread[0];
+    const reconciled: ChatConversationMemberSummary = {
+      ...summary,
+      ...(firstUnread
+        ? {
+            firstUnreadCreatedAtMs: firstUnread.createdAtMs,
+            firstUnreadExpiresAtMs: firstUnread.expiresAtMs,
+            firstUnreadMessageId: firstUnread.id,
+          }
+        : {
+            firstUnreadCreatedAtMs: undefined,
+            firstUnreadExpiresAtMs: undefined,
+            firstUnreadMessageId: undefined,
+          }),
+      unreadCount: unread.length,
+    };
+    const memberRef = this.memberConversation(publicId, summary.conversationId);
+
+    return await this.db.runTransaction(async (transaction) => {
+      const currentSnapshot = await transaction.get(memberRef);
+      if (!currentSnapshot.exists) return reconciled;
+
+      const current = currentSnapshot.data() as StoredConversationSummary;
+      if (
+        current.updatedAtMs !== summary.updatedAtMs ||
+        current.lastMessageId !== summary.lastMessageId
+      ) {
+        return { ...current, conversationId: summary.conversationId };
+      }
+
+      transaction.set(
+        memberRef,
+        firstUnread
+          ? {
+              firstUnreadCreatedAtMs: firstUnread.createdAtMs,
+              firstUnreadExpiresAtMs: firstUnread.expiresAtMs,
+              firstUnreadMessageId: firstUnread.id,
+              unreadCount: unread.length,
+            }
+          : {
+              firstUnreadCreatedAtMs: FieldValue.delete(),
+              firstUnreadExpiresAtMs: FieldValue.delete(),
+              firstUnreadMessageId: FieldValue.delete(),
+              unreadCount: 0,
+            },
+        { merge: true },
+      );
+      return reconciled;
+    });
   }
 
   private conversations() {
@@ -262,6 +462,25 @@ export class FirestoreChatStore implements ChatStore {
       id,
       participants: data.participants as [string, string],
       updatedAtMs: data.updatedAtMs,
+    };
+  }
+
+  private toMessage(
+    id: string,
+    data: FirebaseFirestore.DocumentData | undefined,
+  ): ChatMessage {
+    if (!data || typeof data.createdAtMs !== 'number') {
+      throw new Error(`Invalid chat message: ${id}`);
+    }
+
+    return {
+      ...(data as ChatMessage),
+      expiresAtMs:
+        typeof data.expiresAtMs === 'number'
+          ? data.expiresAtMs
+          : data.createdAtMs + CHAT_MESSAGE_RETENTION_MS,
+      id,
+      locked: false,
     };
   }
 }

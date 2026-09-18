@@ -17,8 +17,10 @@ export async function startChatConversation(participantPublicId: string) {
   return parseApiPayload(startChatConversationResultSchema, response.data).conversation;
 }
 
-export async function listChatMessages(conversationId: string) {
-  const response = await axiosInstance.get(`/chat/conversations/${conversationId}/messages`);
+export async function listChatMessages(conversationId: string, cursor?: string) {
+  const response = await axiosInstance.get(`/chat/conversations/${conversationId}/messages`, {
+    params: { cursor, limit: 50 },
+  });
   return parseApiPayload(chatMessagePageSchema, response.data);
 }
 

@@ -5,14 +5,25 @@ export type ChatConversation = Readonly<{
   updatedAtMs: number;
 }>;
 
-export type ChatConversationSummary = Readonly<{
+export type ChatConversationMemberSummary = Readonly<{
   conversationId: string;
+  firstUnreadCreatedAtMs?: number;
+  firstUnreadExpiresAtMs?: number;
+  firstUnreadMessageId?: string;
+  lastMessageCreatedAtMs?: number;
+  lastMessageId?: string;
   lastMessagePreview: string;
   lastMessageSenderId?: string;
+  lastReadAtMs?: number;
+  lastReadMessageId?: string;
+  lastReadObservedAtMs?: number;
   participantPublicId: string;
   unreadCount: number;
   updatedAtMs: number;
 }>;
+
+export type ChatConversationSummary = ChatConversationMemberSummary &
+  Readonly<{ participantStatus: 'active' | 'deleted' }>;
 
 export type ChatMessage = Readonly<{
   burnAfterReadSeconds?: 5;
@@ -24,11 +35,23 @@ export type ChatMessage = Readonly<{
   expiresAtMs: number;
   id: string;
   locked: boolean;
+  readAtMs?: number;
   senderPublicId: string;
   type: 'text';
 }>;
 
+export type ChatMessageCursor = Readonly<{
+  createdAtMs: number;
+  id: string;
+}>;
+
 export type ChatMessagePage = Readonly<{
   messages: readonly ChatMessage[];
-  nextBefore?: number;
+  nextCursor?: string;
+}>;
+
+export type ChatReadState = Readonly<{
+  lastReadAtMs?: number;
+  lastReadMessageId?: string;
+  unreadCount: number;
 }>;

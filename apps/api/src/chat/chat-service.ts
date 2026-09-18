@@ -2,16 +2,20 @@ import { randomUUID } from 'node:crypto';
 
 import type { AuthStore } from '../auth/auth-store.js';
 import { ApiError } from '../http/api-error.js';
+import { decodeChatCursor } from './chat-cursor.js';
 import {
   CHAT_BURN_AFTER_READ_SECONDS,
   CHAT_MESSAGE_RETENTION_MS,
 } from './chat-policy.js';
+import type { ChatNotifier } from '../notifications/notification-service.js';
 import type { ChatStore } from './chat-store.js';
 import type {
   ChatConversation,
+  ChatConversationMemberSummary,
   ChatConversationSummary,
   ChatMessage,
   ChatMessagePage,
+  ChatReadState,
 } from './chat-types.js';
 
 const MAX_MESSAGE_LENGTH = 4_000;
@@ -21,6 +25,7 @@ export class ChatService {
     private readonly store: ChatStore,
     private readonly authStore: AuthStore,
     private readonly now: () => number = Date.now,
+    private readonly notifier?: ChatNotifier,
   ) {}
 
   async startConversation(
@@ -42,21 +47,40 @@ export class ChatService {
     publicId: string,
     limit: number,
   ): Promise<readonly ChatConversationSummary[]> {
-    return await this.store.listConversations(publicId, limit);
+    const summaries = await this.store.listConversations(publicId, limit, this.now());
+    return await Promise.all(
+      summaries.map(async (summary) => ({
+        ...summary,
+        participantStatus: (await this.authStore.isUserActive(summary.participantPublicId))
+          ? ('active' as const)
+          : ('deleted' as const),
+      })),
+    );
   }
 
   async listMessages(
     publicId: string,
     conversationId: string,
     limit: number,
-    beforeMs?: number,
+    cursorValue?: string,
   ): Promise<ChatMessagePage> {
-    await this.requireParticipant(publicId, conversationId);
-    const page = await this.store.listMessages(conversationId, limit, this.now(), beforeMs);
+    const conversation = await this.requireParticipant(publicId, conversationId);
+    const participantPublicId = conversation.participants.find((id) => id !== publicId)!;
+    const [page, participantSummary] = await Promise.all([
+      this.store.listMessages(
+        conversationId,
+        limit,
+        this.now(),
+        decodeChatCursor(cursorValue),
+      ),
+      this.store.findConversationMember(participantPublicId, conversationId),
+    ]);
 
     return {
       ...page,
-      messages: page.messages.map((message) => this.forViewer(message, publicId)),
+      messages: page.messages.map((message) =>
+        this.forViewer(message, publicId, participantSummary),
+      ),
     };
   }
 
@@ -69,9 +93,17 @@ export class ChatService {
       content: string;
     }>,
   ): Promise<ChatMessage> {
-    await this.requireParticipant(publicId, conversationId);
-    const content = input.content.trim();
+    const conversation = await this.requireParticipant(publicId, conversationId);
+    const recipientPublicId = conversation.participants.find((id) => id !== publicId)!;
+    if (!(await this.authStore.isUserActive(recipientPublicId))) {
+      throw new ApiError(
+        410,
+        'PARTICIPANT_UNAVAILABLE',
+        'This account is no longer available.',
+      );
+    }
 
+    const content = input.content.trim();
     if (!content || content.length > MAX_MESSAGE_LENGTH) {
       throw new ApiError(
         400,
@@ -97,7 +129,8 @@ export class ChatService {
       type: 'text',
     };
 
-    const stored = await this.store.createTextMessage(message);
+    const result = await this.store.createTextMessage(message);
+    const stored = result.message;
     if (
       stored.senderPublicId !== publicId ||
       stored.content !== content ||
@@ -107,6 +140,12 @@ export class ChatService {
     }
     if (stored.expiresAtMs <= nowMs) {
       throw new ApiError(410, 'MESSAGE_EXPIRED', 'This message has expired.');
+    }
+
+    if (result.created && this.notifier) {
+      void this.notifier
+        .notifyNewMessage({ conversationId, recipientPublicId })
+        .catch(() => undefined);
     }
 
     return stored;
@@ -135,19 +174,35 @@ export class ChatService {
     return { ...result.message, locked: false };
   }
 
-  async markRead(publicId: string, conversationId: string): Promise<void> {
+  async markRead(publicId: string, conversationId: string): Promise<ChatReadState> {
     await this.requireParticipant(publicId, conversationId);
-    await this.store.markRead(conversationId, publicId, this.now());
+    return await this.store.markRead(conversationId, publicId, this.now());
   }
 
-  private forViewer(message: ChatMessage, publicId: string): ChatMessage {
+  private forViewer(
+    message: ChatMessage,
+    publicId: string,
+    participantSummary: ChatConversationMemberSummary | null,
+  ): ChatMessage {
     const locked = Boolean(
       message.burnAfterReadSeconds &&
         message.senderPublicId !== publicId &&
         message.burnStartedAtMs === undefined,
     );
 
-    return locked ? { ...message, content: '', locked: true } : { ...message, locked: false };
+    const readAtMs =
+      message.senderPublicId === publicId &&
+      participantSummary?.lastReadAtMs !== undefined &&
+      participantSummary.lastReadMessageId !== undefined &&
+      (message.createdAtMs < participantSummary.lastReadAtMs ||
+        (message.createdAtMs === participantSummary.lastReadAtMs &&
+          message.id <= participantSummary.lastReadMessageId))
+        ? (participantSummary.lastReadObservedAtMs ?? participantSummary.lastReadAtMs)
+        : undefined;
+    const visible = locked
+      ? { ...message, content: '', locked: true }
+      : { ...message, locked: false };
+    return readAtMs === undefined ? visible : { ...visible, readAtMs };
   }
 
   private async requireParticipant(
