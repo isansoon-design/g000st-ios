@@ -8,6 +8,31 @@ type RetriableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
 };
 
+type CompatibleHeaders = InternalAxiosRequestConfig['headers'] &
+  Record<string, unknown> & {
+    set?: (name: string, value: string) => void;
+    toJSON?: () => unknown;
+  };
+
+function setHeader(
+  config: InternalAxiosRequestConfig,
+  name: string,
+  value: string,
+): void {
+  const headers = config.headers as CompatibleHeaders;
+  if (typeof headers.set === "function") {
+    headers.set(name, value);
+    return;
+  }
+
+  headers[name] = value;
+}
+
+function headersForLog(config: InternalAxiosRequestConfig): unknown {
+  const headers = config.headers as CompatibleHeaders;
+  return typeof headers.toJSON === "function" ? headers.toJSON() : headers;
+}
+
 const axiosInstance = create({
   baseURL: env.apiBaseUrl,
   timeout: 15_000,
@@ -21,17 +46,17 @@ axiosInstance.interceptors.request.use(async (config) => {
   const isFormData =
     typeof FormData !== "undefined" && config.data instanceof FormData;
 
-  config.headers.set("Accept-Language", "en");
+  setHeader(config, "Accept-Language", "en");
 
   if (config.data != null && !isFormData) {
-    config.headers.set("Content-Type", "application/json");
+    setHeader(config, "Content-Type", "application/json");
   }
 
   if (__DEV__) {
     console.log("Request:", {
       url: config.url,
       method: config.method,
-      headers: Object.fromEntries(config.headers.entries()),
+      headers: headersForLog(config),
       data: config.data,
     });
   } else {
@@ -39,7 +64,7 @@ axiosInstance.interceptors.request.use(async (config) => {
   }
 
   if (token) {
-    config.headers.set("Authorization", `Bearer ${token}`);
+    setHeader(config, "Authorization", `Bearer ${token}`);
   }
 
   return config;
@@ -68,7 +93,7 @@ axiosInstance.interceptors.response.use(
 
       try {
         const accessToken = await tokenService.refresh();
-        original.headers.set("Authorization", `Bearer ${accessToken}`);
+        setHeader(original, "Authorization", `Bearer ${accessToken}`);
         return await axiosInstance(original);
       } catch {
         await tokenService.clear();
