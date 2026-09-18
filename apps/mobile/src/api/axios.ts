@@ -34,6 +34,8 @@ axiosInstance.interceptors.request.use(async (config) => {
       headers: Object.fromEntries(config.headers.entries()),
       data: config.data,
     });
+  } else {
+    console.log("Request:");
   }
 
   if (token) {
