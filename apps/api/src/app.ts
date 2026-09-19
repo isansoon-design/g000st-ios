@@ -73,8 +73,10 @@ export function createApp({
       return;
     }
 
-    // Never serialize the raw error: Firebase and credential errors can contain
-    // implementation details that should not be returned to clients.
+    // Never serialize the raw error in the response: Firebase and credential errors can
+    // contain implementation details that should not be returned to clients. Still log it
+    // server-side so the failure is diagnosable.
+    console.error('g000st API unhandled request error', error);
     response.status(500).json({ code: 'INTERNAL_ERROR', message: 'The request failed.' });
   };
 
