@@ -50,6 +50,10 @@ export default function MainTabsLayout() {
         name="mobile"
         options={{ title: 'MOBILE', tabBarIcon: renderTabIcon('mobile') }}
       />
+      <Tabs.Screen
+        name="social"
+        options={{ title: 'SOCIAL', tabBarIcon: renderTabIcon('social') }}
+      />
     </Tabs>
   );
 }

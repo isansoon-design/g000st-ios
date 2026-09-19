@@ -5,6 +5,8 @@ configuration must never be committed.
 
 - `nginx/g000st-staging.conf` routes the HTTPS staging hostname to the internal Next.js and API
   processes. Certificate files are managed and renewed by Certbot on the server.
+- `nginx/g000st-media.conf` proxies signed media traffic to MinIO on `g000st-app` and restricts
+  browser CORS to the production, staging, and approved local-development origins.
 - `deploy/deploy-staging.sh` is the root-owned server entry point used by the manual GitHub
   Actions workflow. It validates artifacts, builds immutable releases, switches the `current`
   symlink, checks health, and rolls back automatically on failure.

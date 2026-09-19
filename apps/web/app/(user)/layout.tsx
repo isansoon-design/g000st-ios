@@ -11,6 +11,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     { href: "/contacts", label: "CONTACTS", icon: "👥" },
     { href: "/profile",  label: "ID",       icon: "🪪" },
     { href: "/mobile",   label: "MOBILE",   icon: "📞" },
+    { href: "/social",   label: "SOCIAL",   icon: "◎" },
   ];
 
   return (

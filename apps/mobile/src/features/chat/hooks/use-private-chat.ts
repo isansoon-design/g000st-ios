@@ -6,6 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { randomUUID } from "expo-crypto";
+import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -29,6 +30,10 @@ import {
   chatConversationsQueryKey,
   chatMessagesQueryKey,
 } from "@/features/chat/query-keys";
+import {
+  dismissConversationNotifications,
+  focusConversationNotifications,
+} from "@/services/notifications/chat-notification-presentation";
 
 const MESSAGE_RETENTION_MS = 2 * 60 * 60 * 1_000;
 
@@ -109,6 +114,21 @@ export function usePrivateChat(
     initialPageParam: undefined as string | undefined,
     refetchInterval: activeConversation ? 3_000 : false,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      const conversationId = activeConversation?.conversationId;
+      if (!conversationId) return;
+
+      const removeConversationFocus =
+        focusConversationNotifications(conversationId);
+      void dismissConversationNotifications(conversationId).catch(
+        () => undefined,
+      );
+
+      return removeConversationFocus;
+    }, [activeConversation?.conversationId]),
+  );
 
   useEffect(() => {
     if (!activeConversation) return;

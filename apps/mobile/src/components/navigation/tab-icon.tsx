@@ -2,7 +2,7 @@ import { memo } from 'react';
 import type { ColorValue } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-export type TabIconName = 'chat' | 'contacts' | 'identity' | 'mobile';
+export type TabIconName = 'chat' | 'contacts' | 'identity' | 'mobile' | 'social';
 
 type TabIconProps = Readonly<{
   color: ColorValue;
@@ -47,6 +47,16 @@ function TabIconComponent({ color, name }: TabIconProps) {
           strokeWidth={1.7}
           strokeLinecap="round"
         />
+      </Svg>
+    );
+  }
+
+  if (name === 'social') {
+    return (
+      <Svg width={28} height={28} viewBox="0 0 28 28" fill="none">
+        <Circle cx={14} cy={14} r={10.5} stroke={color} strokeWidth={2} />
+        <Circle cx={14} cy={14} r={4} stroke={color} strokeWidth={2} />
+        <Path d="M14 3.5v6M14 18.5v6M3.5 14h6M18.5 14h6" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
       </Svg>
     );
   }

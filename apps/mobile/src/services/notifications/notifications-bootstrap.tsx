@@ -13,25 +13,27 @@ import {
   chatConversationsQueryKey,
   chatMessagesQueryKey,
 } from '@/features/chat/query-keys';
+import {
+  conversationIdFromNotification,
+  isFocusedConversationNotification,
+} from '@/services/notifications/chat-notification-presentation';
 import { getOrCreatePushDeviceId } from '@/services/notifications/device-id';
 
-const CONVERSATION_ID_PATTERN = /^[a-f0-9]{64}$/;
+let registrationInFlight: Promise<void> | null = null;
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+  handleNotification: async (notification) => {
+    const isFocusedConversation =
+      isFocusedConversationNotification(notification);
 
-function conversationIdFromNotification(
-  notification: Notifications.Notification | null | undefined,
-): string | null {
-  const value = notification?.request.content.data?.conversationId;
-  return typeof value === 'string' && CONVERSATION_ID_PATTERN.test(value) ? value : null;
-}
+    return {
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: !isFocusedConversation,
+      shouldShowList: !isFocusedConversation,
+    };
+  },
+});
 
 function reportRegistrationError(error: unknown): void {
   if (!__DEV__) return;
@@ -41,7 +43,9 @@ function reportRegistrationError(error: unknown): void {
   );
 }
 
-async function registerCurrentDevice(): Promise<void> {
+async function registerCurrentDevice(
+  devicePushToken?: Notifications.DevicePushToken,
+): Promise<void> {
   if (Platform.OS !== 'android' && Platform.OS !== 'ios') return;
 
   const projectId =
@@ -55,10 +59,14 @@ async function registerCurrentDevice(): Promise<void> {
   }
 
   if (Platform.OS === 'android') {
+    const currentChannel =
+      await Notifications.getNotificationChannelAsync('messages');
+    if (currentChannel?.sound === 'custom') {
+      await Notifications.deleteNotificationChannelAsync('messages');
+    }
     await Notifications.setNotificationChannelAsync('messages', {
       importance: Notifications.AndroidImportance.MAX,
       name: 'Private messages',
-      sound: 'default',
       vibrationPattern: [0, 250, 200, 250],
     });
   }
@@ -70,13 +78,27 @@ async function registerCurrentDevice(): Promise<void> {
 
   const [deviceId, token] = await Promise.all([
     getOrCreatePushDeviceId(),
-    Notifications.getExpoPushTokenAsync({ projectId }),
+    Notifications.getExpoPushTokenAsync({
+      ...(devicePushToken ? { devicePushToken } : {}),
+      projectId,
+    }),
   ]);
   await registerPushDevice({
     deviceId,
     expoPushToken: token.data,
     platform: Platform.OS,
   });
+}
+
+function registerCurrentDeviceOnce(
+  devicePushToken?: Notifications.DevicePushToken,
+): Promise<void> {
+  if (registrationInFlight) return registrationInFlight;
+
+  registrationInFlight = registerCurrentDevice(devicePushToken).finally(() => {
+    registrationInFlight = null;
+  });
+  return registrationInFlight;
 }
 
 export function NotificationsBootstrap() {
@@ -88,9 +110,9 @@ export function NotificationsBootstrap() {
 
     let isActive = true;
 
-    void registerCurrentDevice().catch(reportRegistrationError);
-    const tokenSubscription = Notifications.addPushTokenListener(() => {
-      void registerCurrentDevice().catch(reportRegistrationError);
+    void registerCurrentDeviceOnce().catch(reportRegistrationError);
+    const tokenSubscription = Notifications.addPushTokenListener((devicePushToken) => {
+      void registerCurrentDeviceOnce(devicePushToken).catch(reportRegistrationError);
     });
 
     const refreshChat = (notification: Notifications.Notification) => {

@@ -33,6 +33,23 @@ function headersForLog(config: InternalAxiosRequestConfig): unknown {
   return typeof headers.toJSON === "function" ? headers.toJSON() : headers;
 }
 
+function valueForLog(value: unknown): unknown {
+  if (typeof FormData !== "undefined" && value instanceof FormData) {
+    return "[FormData]";
+  }
+  if (Array.isArray(value)) return value.map(valueForLog);
+  if (!value || typeof value !== "object") return value;
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [
+      key,
+      /authorization|cookie|password|private.?key|recovery|secret|token/i.test(key)
+        ? "[REDACTED]"
+        : valueForLog(entry),
+    ]),
+  );
+}
+
 const axiosInstance = create({
   baseURL: env.apiBaseUrl,
   timeout: 15_000,
@@ -56,8 +73,8 @@ axiosInstance.interceptors.request.use(async (config) => {
     console.log("Request:", {
       url: config.url,
       method: config.method,
-      headers: headersForLog(config),
-      data: config.data,
+      headers: valueForLog(headersForLog(config)),
+      data: valueForLog(config.data),
     });
   } else {
     console.log("Request:");
@@ -81,7 +98,7 @@ axiosInstance.interceptors.response.use(
       url: original?.url,
       method: original?.method,
       status: error.response?.status,
-      data: error.response?.data,
+      data: valueForLog(error.response?.data),
     });
     if (
       error.response?.status === 401 &&

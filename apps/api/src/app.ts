@@ -10,12 +10,15 @@ import { ApiError } from './http/api-error.js';
 import { createMediaRouter } from './media/media-router.js';
 import { createNotificationRouter } from './notifications/notification-router.js';
 import { NotificationService } from './notifications/notification-service.js';
+import { createSocialRouter } from './social/social-router.js';
+import { SocialService } from './social/social-service.js';
 
 type CreateAppOptions = Readonly<{
   allowedOrigins: readonly string[];
   authService: AuthService;
   chatService: ChatService;
   notificationService: NotificationService;
+  socialService: SocialService;
 }>;
 
 export function createApp({
@@ -23,6 +26,7 @@ export function createApp({
   authService,
   chatService,
   notificationService,
+  socialService,
 }: CreateAppOptions): Express {
   const app = express();
   const allowed = new Set(allowedOrigins);
@@ -37,6 +41,7 @@ export function createApp({
       },
     }),
   );
+  app.use('/api/v1/social', createSocialRouter(authService, socialService));
   app.use(express.json({ limit: '32kb' }));
 
   app.get('/api/v1/health', (_request, response) => {

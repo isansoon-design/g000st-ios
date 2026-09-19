@@ -48,6 +48,14 @@ type CreateUploadInput = Readonly<{
   publicId: string;
 }>;
 
+type CreateSocialUploadInput = Readonly<{
+  byteSize: number;
+  clientPostId: string;
+  contentType: string;
+  fileName: string;
+  publicId: string;
+}>;
+
 export type MediaStorageConfig = Readonly<{
   accessKeyId: string;
   bucket: string;
@@ -106,6 +114,53 @@ export class MediaService {
       headers: { 'Content-Type': input.contentType },
       uploadUrl,
     };
+  }
+
+  async createSocialUpload(input: CreateSocialUploadInput): Promise<Readonly<{
+    media: PendingAttachmentInput;
+    headers: Readonly<{ 'Content-Type': string }>;
+    uploadUrl: string;
+  }>> {
+    const kind = this.validateFile(input);
+    if (kind !== 'image' && kind !== 'video') throw new ApiError(400, 'UNSUPPORTED_SOCIAL_MEDIA', 'Social posts support images and videos only.');
+    const mediaId = randomUUID();
+    const objectKey = `pending-social/${input.publicId}/${input.clientPostId}/${mediaId}`;
+    const command = new PutObjectCommand({
+      Bucket: this.config.bucket,
+      ContentLength: input.byteSize,
+      ContentType: input.contentType,
+      Key: objectKey,
+      Metadata: {
+        'g000st-byte-size': String(input.byteSize),
+        'g000st-post-id': input.clientPostId,
+        'g000st-owner-id': input.publicId,
+        'g000st-kind': kind,
+      },
+    });
+    return {
+      media: { byteSize: input.byteSize, contentType: input.contentType, fileName: this.safeFileName(input.fileName), id: mediaId, objectKey },
+      headers: { 'Content-Type': input.contentType },
+      uploadUrl: await getSignedUrl(this.client, command, { expiresIn: UPLOAD_URL_TTL_SECONDS }),
+    };
+  }
+
+  async promoteSocialMedia(input: Readonly<{ media: PendingAttachmentInput; postId: string; publicId: string }>): Promise<PendingAttachmentInput & { kind: 'image' | 'video' }> {
+    const kind = this.validateFile(input.media);
+    if (kind !== 'image' && kind !== 'video') throw new ApiError(400, 'UNSUPPORTED_SOCIAL_MEDIA', 'Social posts support images and videos only.');
+    const expected = `pending-social/${input.publicId}/${input.postId}/${input.media.id}`;
+    if (input.media.objectKey !== expected) throw new ApiError(400, 'INVALID_SOCIAL_MEDIA', 'This media does not belong to this post.');
+    const finalKey = `social/${input.postId}/${input.media.id}`;
+    const finalObject = await this.client.send(new HeadObjectCommand({ Bucket: this.config.bucket, Key: finalKey })).catch(() => null);
+    if (finalObject && finalObject.ContentLength === input.media.byteSize && finalObject.ContentType === input.media.contentType && finalObject.Metadata?.['g000st-owner-id'] === input.publicId && finalObject.Metadata?.['g000st-post-id'] === input.postId) {
+      return { ...input.media, kind, objectKey: finalKey };
+    }
+    const object = await this.client.send(new HeadObjectCommand({ Bucket: this.config.bucket, Key: expected })).catch(() => null);
+    if (!object || object.ContentLength !== input.media.byteSize || object.ContentType !== input.media.contentType || object.Metadata?.['g000st-owner-id'] !== input.publicId || object.Metadata?.['g000st-post-id'] !== input.postId || object.Metadata?.['g000st-kind'] !== kind) {
+      throw new ApiError(400, 'UPLOAD_NOT_FOUND', 'Upload is missing or does not match the selected media.');
+    }
+    await this.client.send(new CopyObjectCommand({ Bucket: this.config.bucket, CopySource: `/${this.config.bucket}/${encodeURIComponent(expected).replaceAll('%2F', '/')}`, Key: finalKey, MetadataDirective: 'COPY' }));
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.config.bucket, Key: expected }));
+    return { ...input.media, kind, objectKey: finalKey };
   }
 
   async promoteAttachments(input: Readonly<{

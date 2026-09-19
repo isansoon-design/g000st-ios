@@ -116,6 +116,10 @@ class MemoryChatStore implements ChatStore {
     return this.members.get(`${publicId}:${conversationId}`) ?? null;
   }
 
+  async findMessage(conversationId: string, messageId: string): Promise<ChatMessage | null> {
+    return (this.messages.get(conversationId) ?? []).find((message) => message.id === messageId) ?? null;
+  }
+
   async listConversations(
     publicId: string,
     limit: number,

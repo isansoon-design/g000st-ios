@@ -12,6 +12,8 @@ import { ExpoPushGateway } from './notifications/expo-push-gateway.js';
 import { FirestoreNotificationStore } from './notifications/firestore-notification-store.js';
 import { NotificationService } from './notifications/notification-service.js';
 import { MediaService } from './media/media-service.js';
+import { FirestoreSocialStore } from './social/firestore-social-store.js';
+import { SocialService } from './social/social-service.js';
 
 async function main(): Promise<void> {
   const environment = readEnvironment();
@@ -35,12 +37,19 @@ async function main(): Promise<void> {
     notificationService,
     mediaService,
   );
+  const socialService = new SocialService(
+    new FirestoreSocialStore(firestore, environment.collectionPrefix),
+    store,
+    Date.now,
+    mediaService,
+  );
   const expirationWorker = new ChatExpirationWorker(chatStore, Date.now, mediaService);
   const app = createApp({
     allowedOrigins: environment.allowedOrigins,
     authService,
     chatService,
     notificationService,
+    socialService,
   });
   const server = app.listen(environment.port, environment.host, () => {
     expirationWorker.start();

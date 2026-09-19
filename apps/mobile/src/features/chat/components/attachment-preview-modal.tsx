@@ -2,8 +2,12 @@ import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { memo, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { cssInterop } from 'nativewind';
 
 import type { SelectedChatAttachment } from '@/features/chat/hooks/use-chat-attachments';
+
+cssInterop(Image, { className: 'style' });
+cssInterop(VideoView, { className: 'style' });
 
 type AttachmentPreviewModalProps = Readonly<{
   attachments: readonly SelectedChatAttachment[];
@@ -37,6 +41,51 @@ function VideoPreview({ uri }: Readonly<{ uri: string }>) {
   );
 }
 
+function ImagePreview({
+  contentFit,
+  uri,
+}: Readonly<{
+  contentFit: 'contain' | 'cover';
+  uri: string;
+}>) {
+  const [failed, setFailed] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  return (
+    <View className="h-full w-full items-center justify-center bg-black">
+      {!failed ? (
+        <Image
+          className="h-full w-full"
+          contentFit={contentFit}
+          onError={() => {
+            setFailed(true);
+            setIsLoading(false);
+          }}
+          onLoad={() => setIsLoading(false)}
+          onLoadStart={() => {
+            setFailed(false);
+            setIsLoading(true);
+          }}
+          source={uri}
+          transition={150}
+        />
+      ) : (
+        <View className="items-center px-4">
+          <Text className="text-3xl">🖼️</Text>
+          <Text className="mt-2 text-center text-xs font-bold text-white/70">
+            Unable to preview this image
+          </Text>
+        </View>
+      )}
+      {isLoading ? (
+        <View className="absolute inset-0 items-center justify-center bg-black">
+          <ActivityIndicator color="white" />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function AttachmentPreviewModalComponent({
   attachments,
   error,
@@ -54,7 +103,7 @@ function AttachmentPreviewModalComponent({
   return (
     <Modal animationType="slide" onRequestClose={onCancel} transparent visible={attachments.length > 0}>
       <View className="flex-1 justify-end bg-black/70">
-        <View className="max-h-[92%] rounded-t-[30px] bg-[#EFEFEF] px-4 pb-5 pt-3">
+        <View className="max-h-[92%] mb-10 rounded-t-[30px] bg-[#EFEFEF] px-4 pb-5 pt-3">
           <View className="mb-3 flex-row items-center justify-between">
             <Pressable className="h-10 justify-center px-2" disabled={isSending} onPress={onCancel}>
               <Text className="font-bold text-g000st-red">Cancel</Text>
@@ -74,7 +123,7 @@ function AttachmentPreviewModalComponent({
 
           <View className="h-[390px] items-center justify-center overflow-hidden rounded-[22px] bg-black">
             {active && kindOf(active.contentType) === 'image' ? (
-              <Image className="h-full w-full" contentFit="contain" source={active.localUri} />
+              <ImagePreview key={active.localUri} contentFit="contain" uri={active.localUri} />
             ) : active && kindOf(active.contentType) === 'video' ? (
               <VideoPreview key={active.localUri} uri={active.localUri} />
             ) : active ? (
@@ -98,7 +147,7 @@ function AttachmentPreviewModalComponent({
                   key={attachment.localUri}
                   onPress={() => setActiveUri(attachment.localUri)}
                 >
-                  {kind === 'image' ? <Image className="h-full w-full" contentFit="cover" source={attachment.localUri} /> : (
+                  {kind === 'image' ? <ImagePreview contentFit="cover" uri={attachment.localUri} /> : (
                     <View className="h-full w-full items-center justify-center px-1">
                       <Text className="text-2xl">{kind === 'video' ? '▶️' : '📄'}</Text>
                       <Text className="mt-1 text-center text-[8px] font-bold text-white" numberOfLines={1}>{attachment.fileName}</Text>
