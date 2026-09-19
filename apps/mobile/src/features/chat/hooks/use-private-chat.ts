@@ -13,9 +13,10 @@ import {
   listChatMessages,
   markChatConversationRead,
   openChatBurnMessage,
-  sendChatTextMessage,
+  sendChatMessage,
   startChatConversation,
 } from '@/api/chat';
+import { createChatAttachmentUpload, uploadChatAttachment } from '@/api/media';
 import type {
   ChatConversationSummary,
   ChatMessage,
@@ -23,6 +24,7 @@ import type {
 } from '@/domain/chat/types';
 import { G000ST_ID_LENGTH } from '@/domain/identity/constants';
 import { useAuth } from '@/features/auth/hooks/use-auth';
+import { useChatAttachments } from '@/features/chat/hooks/use-chat-attachments';
 
 const conversationsKey = ['chat', 'conversations'] as const;
 const messagesKey = (conversationId: string) => ['chat', 'messages', conversationId] as const;
@@ -69,6 +71,8 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
   const [outbox, setOutbox] = useState<readonly OutboxMessage[]>([]);
   const [participantInput, setParticipantInput] = useState('');
   const [participantError, setParticipantError] = useState<string | null>(null);
+  const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
+  const chatAttachments = useChatAttachments();
   const handledOpenRequestRef = useRef<string | null>(null);
 
   const conversationsQuery = useQuery({
@@ -115,12 +119,14 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
       clientMessageId,
       content,
       conversationId,
+      attachments,
     }: {
+      attachments?: Parameters<typeof sendChatMessage>[4];
       burn: boolean;
       clientMessageId: string;
       content: string;
       conversationId: string;
-    }) => sendChatTextMessage(conversationId, content, clientMessageId, burn),
+    }) => sendChatMessage(conversationId, content, clientMessageId, burn, attachments),
     onError: (_error, variables) => {
       setOutbox((current) =>
         current.map((item) =>
@@ -296,12 +302,12 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
     setDraft(value);
   }, []);
 
-  const submitMessage = useCallback(() => {
+  const submitMessage = useCallback(async () => {
     const content = draft.trim();
     if (
       !activeConversation ||
       activeConversation.participantStatus === 'deleted' ||
-      !content ||
+      (!content && chatAttachments.attachments.length === 0) ||
       !user?.publicId
     ) {
       return;
@@ -309,6 +315,21 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
 
     const nowMs = Date.now();
     const clientMessageId = randomUUID();
+    setIsUploadingAttachments(true);
+    try {
+      const attachments = await Promise.all(
+        chatAttachments.attachments.map(async (attachment) => {
+          const upload = await createChatAttachmentUpload({
+            byteSize: attachment.byteSize,
+            clientMessageId,
+            contentType: attachment.contentType,
+            conversationId: activeConversation.conversationId,
+            fileName: attachment.fileName,
+          });
+          await uploadChatAttachment(attachment.localUri, upload);
+          return upload.attachment;
+        }),
+      );
     setOutbox((current) => [
       ...current,
       {
@@ -326,13 +347,18 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
       },
     ]);
     setDraft('');
+      chatAttachments.clearAttachments();
     sendMutation.mutate({
+        ...(attachments.length ? { attachments } : {}),
       burn: burnAfterRead,
       clientMessageId,
       content,
       conversationId: activeConversation.conversationId,
     });
-  }, [activeConversation, burnAfterRead, draft, sendMutation, user]);
+    } finally {
+      setIsUploadingAttachments(false);
+    }
+  }, [activeConversation, burnAfterRead, chatAttachments, draft, sendMutation, user]);
 
   const retryMessage = useCallback(
     (clientMessageId: string) => {
@@ -375,6 +401,9 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
   return {
     activeConversation,
     burnAfterRead,
+    attachmentError: chatAttachments.error,
+    attachments: chatAttachments.attachments,
+    captureAttachment: chatAttachments.captureWithCamera,
     closeConversation,
     closeNewChat,
     conversations: conversationsQuery.data ?? [],
@@ -389,17 +418,21 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
     isLoadingOlderMessages: messagesQuery.isFetchingNextPage,
     isNewChatOpen,
     isStartingChat: startMutation.isPending,
+    isUploadingAttachments,
     messages: displayMessages,
     messagesError: messagesQuery.error ? errorMessage(messagesQuery.error) : null,
     nowMs: clockMs,
     openBurnMessage,
     openConversation,
     openNewChat: () => setIsNewChatOpen(true),
+    pickDocumentAttachment: chatAttachments.pickDocument,
+    pickLibraryAttachment: chatAttachments.pickFromLibrary,
     participantError:
       participantError ?? (startMutation.error ? errorMessage(startMutation.error) : null),
     participantInput,
     refreshConversations: conversationsQuery.refetch,
     refreshMessages: messagesQuery.refetch,
+    removeAttachment: chatAttachments.removeAttachment,
     retryMessage,
     submitMessage,
     submitNewChat,

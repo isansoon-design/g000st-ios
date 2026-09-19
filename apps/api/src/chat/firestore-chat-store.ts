@@ -84,6 +84,11 @@ export class FirestoreChatStore implements ChatStore {
       : null;
   }
 
+  async findMessage(conversationId: string, messageId: string): Promise<ChatMessage | null> {
+    const snapshot = await this.messages(conversationId).doc(messageId).get();
+    return snapshot.exists ? this.toMessage(snapshot.id, snapshot.data()) : null;
+  }
+
   async listConversations(
     publicId: string,
     limit: number,
@@ -186,7 +191,7 @@ export class FirestoreChatStore implements ChatStore {
       const summary = {
         lastMessageCreatedAtMs: message.createdAtMs,
         lastMessageId: message.id,
-        lastMessagePreview: message.burnAfterReadSeconds ? 'Burn message' : 'Message',
+        lastMessagePreview: this.messagePreview(message),
         lastMessageSenderId: message.senderPublicId,
         updatedAtMs: message.createdAtMs,
       };
@@ -311,7 +316,7 @@ export class FirestoreChatStore implements ChatStore {
     });
   }
 
-  async purgeExpiredMessages(nowMs: number, limit: number): Promise<number> {
+  async purgeExpiredMessages(nowMs: number, limit: number): Promise<readonly ChatMessage[]> {
     const [explicitlyExpired, retentionExpired] = await Promise.all([
       this.db.collectionGroup('messages').where('expiresAtMs', '<=', nowMs).limit(limit).get(),
       this.db
@@ -325,12 +330,15 @@ export class FirestoreChatStore implements ChatStore {
         .slice(0, limit)
         .map((document) => [document.ref.path, document] as const),
     );
-    if (expired.size === 0) return 0;
+    if (expired.size === 0) return [];
 
+    const messages = [...expired.values()].map((document) =>
+      this.toMessage(document.id, document.data()),
+    );
     const batch = this.db.batch();
     for (const document of expired.values()) batch.delete(document.ref);
     await batch.commit();
-    return expired.size;
+    return messages;
   }
 
   private async reconcileUnreadSummary(
@@ -482,5 +490,13 @@ export class FirestoreChatStore implements ChatStore {
       id,
       locked: false,
     };
+  }
+
+  private messagePreview(message: ChatMessage): string {
+    if (message.burnAfterReadSeconds) return 'Burn message';
+    const first = message.attachments?.[0];
+    if (!first) return 'Message';
+    if (message.attachments.length > 1) return `${message.attachments.length} attachments`;
+    return first.kind === 'image' ? 'Photo' : first.kind === 'video' ? 'Video' : 'Document';
   }
 }

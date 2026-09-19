@@ -8,7 +8,8 @@ import {
   listChatMessages,
   markChatConversationRead,
   openChatBurnMessage,
-  sendChatTextMessage,
+  createChatAttachmentUpload,
+  sendChatMessage,
   startChatConversation,
 } from "@/features/chat/api";
 import type { ChatConversationSummary, ChatMessage } from "@/features/chat/types";
@@ -56,6 +57,7 @@ export function usePrivateChat() {
   const [participantError, setParticipantError] = useState<string | null>(null);
   const [participantInput, setParticipantInput] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<readonly File[]>([]);
   const userPublicId = sessionStorage.get()?.user.publicId ?? "";
 
   const loadConversations = useCallback(async (showLoader = false) => {
@@ -222,7 +224,7 @@ export function usePrivateChat() {
     if (
       !activeConversation ||
       activeConversation.participantStatus === "deleted" ||
-      !content ||
+      (!content && attachments.length === 0) ||
       isSending
     ) {
       return;
@@ -231,20 +233,43 @@ export function usePrivateChat() {
     setIsSending(true);
     setSendError(null);
     try {
-      const message = await sendChatTextMessage(
+      const clientMessageId = crypto.randomUUID();
+      const uploaded = await Promise.all(
+        attachments.map(async (file) => {
+          if (file.size > 5 * 1024 * 1024) throw new Error("Each attachment must be 5 MB or smaller.");
+          const upload = await createChatAttachmentUpload({
+            byteSize: file.size,
+            clientMessageId,
+            contentType: file.type,
+            conversationId: activeConversation.conversationId,
+            fileName: file.name,
+          });
+          const response = await fetch(upload.uploadUrl, {
+            body: file,
+            headers: upload.headers,
+            method: "PUT",
+          });
+          if (!response.ok) throw new Error("Attachment upload failed.");
+          return upload.attachment;
+        }),
+      );
+      const message = await sendChatMessage(
         activeConversation.conversationId,
         content,
         burnAfterRead,
+        clientMessageId,
+        uploaded,
       );
       setMessages((items) => mergeMessages(items, [message]));
       setDraft("");
+      setAttachments([]);
       await loadConversations();
     } catch (error) {
       setSendError(errorMessage(error));
     } finally {
       setIsSending(false);
     }
-  }, [activeConversation, burnAfterRead, draft, isSending, loadConversations]);
+  }, [activeConversation, attachments, burnAfterRead, draft, isSending, loadConversations]);
 
   const openBurnMessage = useCallback(
     async (messageId: string) => {
@@ -304,6 +329,7 @@ export function usePrivateChat() {
     isNewChatOpen,
     isSending,
     isStartingChat,
+    attachments,
     messages: visibleMessages,
     messagesError,
     loadOlderMessages,
@@ -317,6 +343,23 @@ export function usePrivateChat() {
     refreshMessages: () =>
       activeConversation ? loadMessages(activeConversation.conversationId, true) : Promise.resolve(),
     sendError,
+    setAttachments: (files: readonly File[]) => {
+      const invalid = files.find(
+        (file) =>
+          file.size > 5 * 1024 * 1024 ||
+          ![
+            "image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/quicktime", "video/webm",
+            "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          ].includes(file.type),
+      );
+      if (invalid) {
+        setSendError("Only images, videos, PDF, and Word files up to 5 MB are allowed.");
+        return;
+      }
+      setAttachments(files.slice(0, 5));
+      setSendError(null);
+    },
+    removeAttachment: (index: number) => setAttachments((items) => items.filter((_, itemIndex) => itemIndex !== index)),
     submitMessage,
     submitNewChat,
     toggleBurnAfterRead: () => setBurnAfterRead((current) => !current),

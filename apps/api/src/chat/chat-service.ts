@@ -9,6 +9,7 @@ import {
 } from './chat-policy.js';
 import type { ChatNotifier } from '../notifications/notification-service.js';
 import type { ChatStore } from './chat-store.js';
+import type { MediaService, PendingAttachmentInput } from '../media/media-service.js';
 import type {
   ChatConversation,
   ChatConversationMemberSummary,
@@ -26,6 +27,7 @@ export class ChatService {
     private readonly authStore: AuthStore,
     private readonly now: () => number = Date.now,
     private readonly notifier?: ChatNotifier,
+    private readonly mediaService?: MediaService,
   ) {}
 
   async startConversation(
@@ -93,6 +95,19 @@ export class ChatService {
       content: string;
     }>,
   ): Promise<ChatMessage> {
+    return await this.sendMessage(publicId, conversationId, input);
+  }
+
+  async sendMessage(
+    publicId: string,
+    conversationId: string,
+    input: Readonly<{
+      attachments?: readonly PendingAttachmentInput[];
+      burnAfterRead?: boolean;
+      clientMessageId?: string;
+      content?: string;
+    }>,
+  ): Promise<ChatMessage> {
     const conversation = await this.requireParticipant(publicId, conversationId);
     const recipientPublicId = conversation.participants.find((id) => id !== publicId)!;
     if (!(await this.authStore.isUserActive(recipientPublicId))) {
@@ -103,18 +118,27 @@ export class ChatService {
       );
     }
 
-    const content = input.content.trim();
-    if (!content || content.length > MAX_MESSAGE_LENGTH) {
+    const content = input.content?.trim() ?? '';
+    if ((!content && !input.attachments?.length) || content.length > MAX_MESSAGE_LENGTH) {
       throw new ApiError(
         400,
         'INVALID_MESSAGE',
-        `Messages must contain between 1 and ${MAX_MESSAGE_LENGTH} characters.`,
+        `Messages must contain text or attachments, with text up to ${MAX_MESSAGE_LENGTH} characters.`,
       );
     }
 
     const nowMs = this.now();
     const clientMessageId = input.clientMessageId ?? randomUUID();
+    const attachments = input.attachments?.length
+      ? await this.requireMedia().promoteAttachments({
+          attachments: input.attachments,
+          conversationId,
+          messageId: clientMessageId,
+          publicId,
+        })
+      : undefined;
     const message: ChatMessage = {
+      ...(attachments ? { attachments } : {}),
       ...(input.burnAfterRead
         ? { burnAfterReadSeconds: CHAT_BURN_AFTER_READ_SECONDS }
         : {}),
@@ -134,6 +158,7 @@ export class ChatService {
     if (
       stored.senderPublicId !== publicId ||
       stored.content !== content ||
+      JSON.stringify(stored.attachments ?? []) !== JSON.stringify(attachments ?? []) ||
       Boolean(stored.burnAfterReadSeconds) !== Boolean(input.burnAfterRead)
     ) {
       throw new ApiError(409, 'MESSAGE_ID_CONFLICT', 'This message retry does not match the original.');
@@ -149,6 +174,36 @@ export class ChatService {
     }
 
     return stored;
+  }
+
+  async createUpload(
+    publicId: string,
+    input: Readonly<{
+      byteSize: number;
+      clientMessageId: string;
+      contentType: string;
+      conversationId: string;
+      fileName: string;
+    }>,
+  ) {
+    await this.requireParticipant(publicId, input.conversationId);
+    return await this.requireMedia().createUpload({ ...input, publicId });
+  }
+
+  async getAttachmentDownload(
+    publicId: string,
+    conversationId: string,
+    messageId: string,
+    attachmentId: string,
+  ) {
+    await this.requireParticipant(publicId, conversationId);
+    const message = await this.store.findMessage(conversationId, messageId);
+    if (!message || message.expiresAtMs <= this.now()) {
+      throw new ApiError(404, 'MESSAGE_NOT_FOUND', 'Message not found or already expired.');
+    }
+    const attachment = message.attachments?.find((item) => item.id === attachmentId);
+    if (!attachment) throw new ApiError(404, 'ATTACHMENT_NOT_FOUND', 'Attachment not found.');
+    return await this.requireMedia().getDownloadUrl(attachment);
   }
 
   async openBurnMessage(
@@ -215,5 +270,12 @@ export class ChatService {
     }
 
     return conversation;
+  }
+
+  private requireMedia(): MediaService {
+    if (!this.mediaService) {
+      throw new ApiError(503, 'MEDIA_UNAVAILABLE', 'Media storage is not available.');
+    }
+    return this.mediaService;
   }
 }

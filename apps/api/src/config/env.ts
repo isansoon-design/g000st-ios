@@ -7,6 +7,11 @@ const envSchema = z.object({
   EXPO_PUSH_ACCESS_TOKEN: z.string().min(1).optional(),
   FIREBASE_SERVICE_ACCOUNT_PATH: z.string().min(1),
   HOST: z.string().default('127.0.0.1'),
+  MEDIA_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+  MEDIA_S3_BUCKET: z.string().min(3).optional(),
+  MEDIA_S3_ENDPOINT: z.url().optional(),
+  MEDIA_S3_REGION: z.string().min(1).default('us-east-1'),
+  MEDIA_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3100),
 });
@@ -17,6 +22,13 @@ export type ApiEnvironment = Readonly<{
   expoPushAccessToken?: string;
   firebaseServiceAccountPath: string;
   host: string;
+  media?: Readonly<{
+    accessKeyId: string;
+    bucket: string;
+    endpoint: string;
+    region: string;
+    secretAccessKey: string;
+  }>;
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
   recoveryPepper: string;
@@ -30,6 +42,18 @@ export function readEnvironment(source: NodeJS.ProcessEnv = process.env): ApiEnv
     throw new Error(`Invalid API environment fields: ${[...new Set(fields)].join(', ')}`);
   }
 
+  const mediaValues = [
+    result.data.MEDIA_S3_ACCESS_KEY_ID,
+    result.data.MEDIA_S3_BUCKET,
+    result.data.MEDIA_S3_ENDPOINT,
+    result.data.MEDIA_S3_SECRET_ACCESS_KEY,
+  ];
+  const hasAnyMediaValue = mediaValues.some(Boolean);
+  const hasCompleteMediaConfig = mediaValues.every(Boolean);
+  if (hasAnyMediaValue && !hasCompleteMediaConfig) {
+    throw new Error('Invalid API environment fields: incomplete media storage configuration');
+  }
+
   return {
     allowedOrigins: result.data.CORS_ALLOWED_ORIGINS.split(',')
       .map((origin) => origin.trim())
@@ -40,6 +64,17 @@ export function readEnvironment(source: NodeJS.ProcessEnv = process.env): ApiEnv
       : {}),
     firebaseServiceAccountPath: result.data.FIREBASE_SERVICE_ACCOUNT_PATH,
     host: result.data.HOST,
+    ...(hasCompleteMediaConfig
+      ? {
+          media: {
+            accessKeyId: result.data.MEDIA_S3_ACCESS_KEY_ID!,
+            bucket: result.data.MEDIA_S3_BUCKET!,
+            endpoint: result.data.MEDIA_S3_ENDPOINT!,
+            region: result.data.MEDIA_S3_REGION,
+            secretAccessKey: result.data.MEDIA_S3_SECRET_ACCESS_KEY!,
+          },
+        }
+      : {}),
     nodeEnv: result.data.NODE_ENV,
     port: result.data.PORT,
     recoveryPepper: result.data.AUTH_RECOVERY_PEPPER,

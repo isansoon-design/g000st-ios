@@ -30,6 +30,49 @@ function PrivateChatScreenContentComponent({
 }: PrivateChatScreenContentProps) {
   const chat = usePrivateChat(initialConversationId, openRequestId);
 
+  if (chat.activeConversation) {
+    return (
+      <>
+        <ChatThread
+          attachments={chat.attachments}
+          burnAfterRead={chat.burnAfterRead}
+          draft={chat.draft}
+          error={chat.messagesError}
+          firstUnreadMessageId={chat.firstUnreadMessageId}
+          hasOlderMessages={chat.hasOlderMessages}
+          isLoading={chat.isLoadingMessages}
+          isLoadingOlderMessages={chat.isLoadingOlderMessages}
+          isParticipantDeleted={chat.activeConversation.participantStatus === 'deleted'}
+          messages={chat.messages}
+          nowMs={chat.nowMs}
+          onBack={chat.closeConversation}
+          onCaptureAttachment={chat.captureAttachment}
+          onChangeDraft={chat.updateDraft}
+          onLoadOlder={() => void chat.loadOlderMessages()}
+          onPickDocumentAttachment={chat.pickDocumentAttachment}
+          onPickLibraryAttachment={chat.pickLibraryAttachment}
+          onOpenBurn={chat.openBurnMessage}
+          onRefresh={() => void chat.refreshMessages()}
+          onRetry={chat.retryMessage}
+          onRemoveAttachment={chat.removeAttachment}
+          onSend={chat.submitMessage}
+          onToggleBurn={chat.toggleBurnAfterRead}
+          participantPublicId={chat.activeConversation.participantPublicId}
+          userPublicId={chat.userPublicId}
+        />
+        <NewChatModal
+          error={chat.participantError}
+          isBusy={chat.isStartingChat}
+          isOpen={chat.isNewChatOpen}
+          onChange={chat.updateParticipantInput}
+          onClose={chat.closeNewChat}
+          onSubmit={chat.submitNewChat}
+          value={chat.participantInput}
+        />
+      </>
+    );
+  }
+
   return (
     <FeatureScreen
       rightAction={
@@ -49,39 +92,14 @@ function PrivateChatScreenContentComponent({
         </View>
       }
     >
-      {chat.activeConversation ? (
-        <ChatThread
-          burnAfterRead={chat.burnAfterRead}
-          draft={chat.draft}
-          error={chat.messagesError}
-          firstUnreadMessageId={chat.firstUnreadMessageId}
-          hasOlderMessages={chat.hasOlderMessages}
-          isLoading={chat.isLoadingMessages}
-          isLoadingOlderMessages={chat.isLoadingOlderMessages}
-          isParticipantDeleted={chat.activeConversation.participantStatus === 'deleted'}
-          messages={chat.messages}
-          nowMs={chat.nowMs}
-          onBack={chat.closeConversation}
-          onChangeDraft={chat.updateDraft}
-          onLoadOlder={() => void chat.loadOlderMessages()}
-          onOpenBurn={chat.openBurnMessage}
-          onRefresh={() => void chat.refreshMessages()}
-          onRetry={chat.retryMessage}
-          onSend={chat.submitMessage}
-          onToggleBurn={chat.toggleBurnAfterRead}
-          participantPublicId={chat.activeConversation.participantPublicId}
-          userPublicId={chat.userPublicId}
-        />
-      ) : (
-        <ChatConversationList
-          conversations={chat.conversations}
-          error={chat.conversationsError}
-          isLoading={chat.isLoadingConversations}
-          onOpen={chat.openConversation}
-          onRefresh={() => void chat.refreshConversations()}
-          onStart={chat.openNewChat}
-        />
-      )}
+      <ChatConversationList
+        conversations={chat.conversations}
+        error={chat.conversationsError}
+        isLoading={chat.isLoadingConversations}
+        onOpen={chat.openConversation}
+        onRefresh={() => void chat.refreshConversations()}
+        onStart={chat.openNewChat}
+      />
 
       <NewChatModal
         error={chat.participantError}

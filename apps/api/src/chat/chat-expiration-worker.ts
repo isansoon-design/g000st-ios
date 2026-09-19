@@ -3,6 +3,7 @@ import {
   CHAT_EXPIRATION_SWEEP_INTERVAL_MS,
 } from './chat-policy.js';
 import type { ChatStore } from './chat-store.js';
+import type { MediaService } from '../media/media-service.js';
 
 export class ChatExpirationWorker {
   private running = false;
@@ -11,6 +12,7 @@ export class ChatExpirationWorker {
   constructor(
     private readonly store: ChatStore,
     private readonly now: () => number = Date.now,
+    private readonly mediaService?: MediaService,
   ) {}
 
   start(): void {
@@ -31,7 +33,13 @@ export class ChatExpirationWorker {
     this.running = true;
 
     try {
-      await this.store.purgeExpiredMessages(this.now(), CHAT_EXPIRATION_SWEEP_BATCH_SIZE);
+      const expired = await this.store.purgeExpiredMessages(
+        this.now(),
+        CHAT_EXPIRATION_SWEEP_BATCH_SIZE,
+      );
+      await Promise.all(
+        expired.map((message) => this.mediaService?.deleteAttachments(message.attachments)),
+      );
     } catch {
       console.error('g000st chat expiration sweep failed');
     } finally {

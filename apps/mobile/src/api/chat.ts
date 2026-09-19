@@ -6,6 +6,7 @@ import {
   sendChatMessageResultSchema,
   startChatConversationResultSchema,
 } from '@/domain/chat/types';
+import type { PendingChatAttachment } from '@/api/media';
 
 export async function listChatConversations() {
   const response = await axiosInstance.get('/chat/conversations');
@@ -24,16 +25,18 @@ export async function listChatMessages(conversationId: string, cursor?: string) 
   return parseApiPayload(chatMessagePageSchema, response.data);
 }
 
-export async function sendChatTextMessage(
+export async function sendChatMessage(
   conversationId: string,
   content: string,
   clientMessageId: string,
   burnAfterRead: boolean,
+  attachments?: readonly PendingChatAttachment[],
 ) {
   const response = await axiosInstance.post(`/chat/conversations/${conversationId}/messages`, {
     burnAfterRead,
     clientMessageId,
     content,
+    ...(attachments?.length ? { attachments } : {}),
   });
   return parseApiPayload(sendChatMessageResultSchema, response.data).message;
 }

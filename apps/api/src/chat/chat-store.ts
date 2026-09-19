@@ -19,6 +19,7 @@ export type CreateTextMessageResult = Readonly<{
 
 export interface ChatStore {
   createTextMessage(message: ChatMessage): Promise<CreateTextMessageResult>;
+  findMessage(conversationId: string, messageId: string): Promise<ChatMessage | null>;
   findConversation(conversationId: string): Promise<ChatConversation | null>;
   findConversationMember(
     publicId: string,
@@ -47,5 +48,5 @@ export interface ChatStore {
     publicId: string,
     nowMs: number,
   ): Promise<OpenBurnMessageResult>;
-  purgeExpiredMessages(nowMs: number, limit: number): Promise<number>;
+  purgeExpiredMessages(nowMs: number, limit: number): Promise<readonly ChatMessage[]>;
 }

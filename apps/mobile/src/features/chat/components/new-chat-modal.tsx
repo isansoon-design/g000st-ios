@@ -1,8 +1,8 @@
-import { memo } from 'react';
-import { Modal, Pressable, Text, TextInput, View } from 'react-native';
-
 import { FieldError } from '@/components/forms/field-error';
 import { G000ST_ID_LENGTH } from '@/domain/identity/constants';
+import { memo } from 'react';
+import { Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 type NewChatModalProps = Readonly<{
   error: string | null;
@@ -30,7 +30,12 @@ function NewChatModalComponent({
       transparent
       visible={isOpen}
     >
-      <View className="flex-1 items-center justify-center bg-black/50 px-5">
+      <KeyboardAwareScrollView
+        bottomOffset={20}
+        contentContainerStyle={{ alignItems: 'center', flexGrow: 1, justifyContent: 'center' }}
+        keyboardShouldPersistTaps="handled"
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', flex: 1, paddingHorizontal: 20 }}
+      >
         <View className="w-full max-w-[360px] rounded-[24px] border border-white/60 bg-[#D8D8D8] p-5">
           <Text className="text-lg font-black text-g000st-black">New private chat</Text>
           <Text className="mb-4 mt-1 text-xs font-semibold leading-5 text-black/55">
@@ -76,9 +81,10 @@ function NewChatModalComponent({
             </Pressable>
           </View>
         </View>
-      </View>
+      </KeyboardAwareScrollView>
     </Modal>
   );
 }
+
 
 export const NewChatModal = memo(NewChatModalComponent);

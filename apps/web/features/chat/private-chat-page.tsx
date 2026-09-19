@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 
 import type { ChatConversationSummary } from "@/features/chat/types";
+import { getChatAttachmentDownload } from "@/features/chat/api";
 import { usePrivateChat } from "@/features/chat/use-private-chat";
 
 function shortId(publicId: string): string {
@@ -129,6 +130,7 @@ function ConversationList({
 export default function PrivateChatPage() {
   const chat = usePrivateChat();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const didScrollToUnreadRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -148,7 +150,10 @@ export default function PrivateChatPage() {
   }, [chat.firstUnreadMessageId, chat.messages.length]);
 
   const participantDeleted = chat.activeConversation?.participantStatus === "deleted";
-  const canSend = chat.draft.trim().length > 0 && !chat.isSending && !participantDeleted;
+  const canSend =
+    (chat.draft.trim().length > 0 || chat.attachments.length > 0) &&
+    !chat.isSending &&
+    !participantDeleted;
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[#D8D8D8]">
@@ -261,6 +266,32 @@ export default function PrivateChatPage() {
                           <p className={`whitespace-pre-wrap break-words text-sm font-bold ${mine ? "text-black" : "text-white"}`}>
                             {message.locked ? "🔒 Click to open · burns in 5s" : message.content}
                           </p>
+                          {!message.locked && message.attachments?.length ? (
+                            <div className="mt-2 flex flex-col gap-1">
+                              {message.attachments.map((attachment) => (
+                                <span
+                                  className={`rounded-lg px-2 py-1 text-[11px] font-black ${mine ? "bg-black/10 text-black" : "bg-white/15 text-white"}`}
+                                  key={attachment.id}
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <button
+                                    className="text-left underline"
+                                    onClick={() =>
+                                      void getChatAttachmentDownload(
+                                        message.conversationId,
+                                        message.id,
+                                        attachment.id,
+                                      ).then((url) => window.open(url, "_blank", "noopener,noreferrer"))
+                                    }
+                                    type="button"
+                                  >
+                                    {attachment.kind === "image" ? "🖼 " : attachment.kind === "video" ? "🎬 " : "📄 "}
+                                    {attachment.fileName}
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
                           <p className={`mt-1 text-right text-[10px] font-bold ${mine ? "text-black/40" : "text-white/75"}`}>
                             {message.burnAfterReadSeconds ? (
                               <span className={mine ? "text-[#C62828]" : "text-white"}>
@@ -298,12 +329,23 @@ export default function PrivateChatPage() {
                 <div className="flex flex-col items-center">
                   <button
                     aria-label="Attach"
-                    className="flex h-8 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-bold text-[#9A9A9A] opacity-40"
-                    disabled
+                    className="flex h-8 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-bold text-[#9A9A9A]"
+                    onClick={() => attachmentInputRef.current?.click()}
                     type="button"
                   >
                     +
                   </button>
+                  <input
+                    accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="hidden"
+                    multiple
+                    onChange={(event) => {
+                      chat.setAttachments(Array.from(event.target.files ?? []));
+                      event.target.value = "";
+                    }}
+                    ref={attachmentInputRef}
+                    type="file"
+                  />
                   <button
                     aria-checked={chat.burnAfterRead}
                     aria-label={`Burn after read ${chat.burnAfterRead ? "on" : "off"}`}
@@ -345,6 +387,21 @@ export default function PrivateChatPage() {
                   ➤
                 </button>
               </div>
+              {chat.attachments.length > 0 ? (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {chat.attachments.map((file, index) => (
+                    <button
+                      className="max-w-full rounded-full bg-white/70 px-2 py-1 text-left text-[10px] font-bold text-[#111]"
+                      key={`${file.name}-${index}`}
+                      onClick={() => chat.removeAttachment(index)}
+                      title="Remove attachment"
+                      type="button"
+                    >
+                      {file.name} ×
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               <p className="pt-0.5 text-center text-[10px] font-bold leading-3 text-black/40">
                 Kept 2 hours · Burn 5s {chat.burnAfterRead ? "ON" : "OFF"} · Screenshots possible
               </p>

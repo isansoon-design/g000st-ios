@@ -24,6 +24,7 @@ export type ChatConversationSummary = Readonly<{
 }>;
 
 export type ChatMessage = Readonly<{
+  attachments?: readonly ChatAttachment[];
   burnAfterReadSeconds?: 5;
   burnStartedAtMs?: number;
   clientMessageId: string;
@@ -36,6 +37,15 @@ export type ChatMessage = Readonly<{
   readAtMs?: number;
   senderPublicId: string;
   type: "text";
+}>;
+
+export type ChatAttachment = Readonly<{
+  byteSize: number;
+  contentType: string;
+  fileName: string;
+  id: string;
+  kind: "document" | "image" | "video";
+  objectKey: string;
 }>;
 
 export type ChatMessagePage = Readonly<{

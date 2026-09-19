@@ -286,12 +286,12 @@ class MemoryChatStore implements ChatStore {
     return state;
   }
 
-  async purgeExpiredMessages(nowMs: number, limit: number): Promise<number> {
-    let deleted = 0;
+  async purgeExpiredMessages(nowMs: number, limit: number): Promise<readonly ChatMessage[]> {
+    const deleted: ChatMessage[] = [];
     for (const [conversationId, messages] of this.messages) {
       const remaining = messages.filter((message) => {
-        if (deleted >= limit || message.expiresAtMs > nowMs) return true;
-        deleted += 1;
+        if (deleted.length >= limit || message.expiresAtMs > nowMs) return true;
+        deleted.push(message);
         return false;
       });
       this.messages.set(conversationId, remaining);
@@ -454,14 +454,15 @@ describe('ChatService', () => {
     advance(5_001);
     const expiredPage = await service.listMessages(USER_B, conversation.id, 50);
     assert.equal(expiredPage.messages.length, 0);
-    assert.equal(await chatStore.purgeExpiredMessages(NOW + 5_001, 100), 1);
+    assert.equal((await chatStore.purgeExpiredMessages(NOW + 5_001, 100)).length, 1);
     assert.equal(chatStore.messages.get(conversation.id)?.length, 0);
   });
 
   it('records the first unread message and atomically clears the conversation unread state', async () => {
-    const { chatStore, service } = createFixture();
+    const { advance, chatStore, service } = createFixture();
     const conversation = await service.startConversation(USER_A, USER_B);
     const first = await service.sendTextMessage(USER_A, conversation.id, { content: 'First' });
+    advance(1);
     await service.sendTextMessage(USER_A, conversation.id, { content: 'Second' });
 
     const unread = (await service.listConversations(USER_B, 30))[0];
@@ -477,10 +478,10 @@ describe('ChatService', () => {
     assert.equal(readState.unreadCount, 0);
     assert.equal(read?.unreadCount, 0);
     assert.equal(read?.firstUnreadMessageId, undefined);
-    assert.equal(chatStore.readBy.get(`${USER_B}:${conversation.id}`), NOW);
+    assert.equal(chatStore.readBy.get(`${USER_B}:${conversation.id}`), NOW + 1);
     assert.equal(
       (await service.listMessages(USER_A, conversation.id, 50)).messages[0]?.readAtMs,
-      NOW,
+      NOW + 1,
     );
   });
 

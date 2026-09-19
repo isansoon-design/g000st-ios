@@ -7,6 +7,7 @@ import { AuthService } from './auth/auth-service.js';
 import { createChatRouter } from './chat/chat-router.js';
 import { ChatService } from './chat/chat-service.js';
 import { ApiError } from './http/api-error.js';
+import { createMediaRouter } from './media/media-router.js';
 import { createNotificationRouter } from './notifications/notification-router.js';
 import { NotificationService } from './notifications/notification-service.js';
 
@@ -43,6 +44,7 @@ export function createApp({
   });
   app.use('/api/v1/auth', createAuthRouter(authService));
   app.use('/api/v1/chat', createChatRouter(authService, chatService));
+  app.use('/api/v1/media', createMediaRouter(authService, chatService));
   app.use(
     '/api/v1/notifications',
     createNotificationRouter(authService, notificationService),

@@ -2,16 +2,19 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
+  Modal,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
   Pressable,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import Animated, { Easing, FadeInDown, ReduceMotion } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { KeyboardAvoidingView } from '@/components/layout/keyboard-avoiding-view';
 import type { ChatMessage } from '@/domain/chat/types';
 import type { OutboxMessage } from '@/features/chat/hooks/use-private-chat';
 
@@ -29,15 +32,20 @@ type ChatThreadProps = Readonly<{
   messages: readonly ChatThreadMessage[];
   nowMs: number;
   onBack: () => void;
+  onCaptureAttachment: () => Promise<void>;
   onChangeDraft: (value: string) => void;
   onLoadOlder: () => void;
+  onPickDocumentAttachment: () => Promise<void>;
+  onPickLibraryAttachment: () => Promise<void>;
   onOpenBurn: (messageId: string) => void;
   onRefresh: () => void;
   onRetry: (clientMessageId: string) => void;
+  onRemoveAttachment: (fileName: string) => void;
   onSend: () => void;
   onToggleBurn: () => void;
   participantPublicId: string;
   userPublicId: string;
+  attachments: readonly Readonly<{ fileName: string }> [];
 }>;
 
 const NEAR_BOTTOM_THRESHOLD = 80;
@@ -161,22 +169,29 @@ function ChatThreadComponent({
   messages,
   nowMs,
   onBack,
+  onCaptureAttachment,
   onChangeDraft,
   onLoadOlder,
+  onPickDocumentAttachment,
+  onPickLibraryAttachment,
   onOpenBurn,
   onRefresh,
   onRetry,
+  onRemoveAttachment,
   onSend,
   onToggleBurn,
   participantPublicId,
   userPublicId,
+  attachments,
 }: ChatThreadProps) {
+  const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<ChatThreadMessage>>(null);
   const isNearBottomRef = useRef(true);
   const hasHydratedRef = useRef(false);
   const didScrollToUnreadRef = useRef(false);
   const prevIdsRef = useRef<Set<string> | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const canSend = !isParticipantDeleted && draft.trim().length > 0;
 
   useEffect(() => {
@@ -263,7 +278,8 @@ function ChatThreadComponent({
   );
 
   return (
-    <KeyboardAvoidingView behavior="padding" className="flex-1">
+    <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: '#D0D0D0' }}>
+      {/* Header */}
       <View className="h-12 flex-row items-center border-b border-black/10 bg-[#D0D0D0] px-2">
         <Pressable
           accessibilityLabel="Back to conversations"
@@ -281,6 +297,7 @@ function ChatThreadComponent({
         </View>
       </View>
 
+      {/* Messages area */}
       {isLoading ? (
         <View className="flex-1 items-center justify-center bg-[#D8D8D8]">
           <ActivityIndicator color="#9A9A9A" />
@@ -297,11 +314,11 @@ function ChatThreadComponent({
           </Pressable>
         </View>
       ) : (
-        <View className="flex-1">
+        <View style={{ flex: 1 }}>
           <FlatList
             ref={listRef}
-            className="flex-1 bg-[#D8D8D8]"
-            contentContainerClassName="grow justify-end p-3"
+            style={{ flex: 1, backgroundColor: '#D8D8D8' }}
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end', padding: 12 }}
             data={messages}
             keyExtractor={(item) => item.id}
             keyboardDismissMode="interactive"
@@ -354,70 +371,100 @@ function ChatThreadComponent({
         </View>
       )}
 
-      {isParticipantDeleted ? (
-        <View className="border-t border-black/10 bg-[#D0D0D0] px-4 py-3">
-          <Text className="text-center text-xs font-bold text-black/50">
-            This account was deleted. You can read retained messages, but cannot send new ones.
-          </Text>
-        </View>
-      ) : (
-        <View className="border-t border-black/10 bg-[#D0D0D0] px-[10px] pb-1 pt-1.5">
-          <View className="flex-row items-end gap-2">
-            <View className="items-center">
-              <Pressable
-                accessibilityLabel="Attach"
-                accessibilityRole="button"
-                accessibilityState={{ disabled: true }}
-                className="h-8 w-10 items-center justify-center rounded-full opacity-40"
-                disabled
-              >
-                <Text className="text-[28px] font-bold text-g000st-silver">+</Text>
-              </Pressable>
-              <Pressable
-                accessibilityLabel={`Burn after read ${burnAfterRead ? 'on' : 'off'}`}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: burnAfterRead }}
-                className={`min-w-10 rounded-full px-1.5 py-0.5 ${
-                  burnAfterRead ? 'bg-g000st-red' : 'bg-black/20'
-                }`}
-                onPress={onToggleBurn}
-              >
-                <Text className="text-center text-[8px] font-black text-white">
-                  {burnAfterRead ? '🔥 ON' : 'BURN'}
-                </Text>
-              </Pressable>
-            </View>
-            <View className="min-h-11 flex-1 justify-center rounded-[22px] border border-black/15 bg-white px-1.5">
-              <TextInput
-                accessibilityLabel="Message"
-                className="max-h-28 min-h-11 w-full px-2.5 pb-1.5 pt-2.5 text-[15px] text-g000st-black"
-                maxLength={4_000}
-                multiline
-                onChangeText={onChangeDraft}
-                placeholder="Type a message"
-                placeholderTextColor="#777777"
-                value={draft}
-              />
-            </View>
-            <Pressable
-              accessibilityLabel="Send"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !canSend }}
-              className={`h-[42px] w-[42px] items-center justify-center rounded-full bg-g000st-silver ${
-                canSend ? '' : 'opacity-50'
-              }`}
-              disabled={!canSend}
-              onPress={handleSend}
-            >
-              <Text className="text-base font-black text-white">➤</Text>
-            </Pressable>
+      {/* Input bar */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={insets.top}
+      >
+        {isParticipantDeleted ? (
+          <View className="border-t border-black/10 bg-[#D0D0D0] px-4 py-3">
+            <Text className="text-center text-xs font-bold text-black/50">
+              This account was deleted. You can read retained messages, but cannot send new ones.
+            </Text>
           </View>
-          <Text className="pt-0.5 text-center text-[10px] font-bold leading-3 text-black/40">
-            Kept 2 hours · Burn 5s {burnAfterRead ? 'ON' : 'OFF'} · Screenshots possible
-          </Text>
-        </View>
-      )}
-    </KeyboardAvoidingView>
+        ) : (
+          <View className="border-t border-black/10 bg-[#D0D0D0] px-[10px] pb-1 pt-1.5">
+            <View className="flex-row items-end gap-2">
+              <View className="items-center">
+                <Pressable
+                  accessibilityLabel="Attach"
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: true }}
+                  className="h-8 w-10 items-center justify-center rounded-full"
+                  onPress={() => setIsAttachmentMenuOpen(true)}
+                >
+                  <Text className="text-[28px] font-bold text-g000st-silver">+</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityLabel={`Burn after read ${burnAfterRead ? 'on' : 'off'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: burnAfterRead }}
+                  className={`min-w-10 rounded-full px-1.5 py-0.5 ${
+                    burnAfterRead ? 'bg-g000st-red' : 'bg-black/20'
+                  }`}
+                  onPress={onToggleBurn}
+                >
+                  <Text className="text-center text-[8px] font-black text-white">
+                    {burnAfterRead ? '🔥 ON' : 'BURN'}
+                  </Text>
+                </Pressable>
+              </View>
+              <View className="min-h-11 flex-1 justify-center rounded-[22px] border border-black/15 bg-white px-1.5">
+                <TextInput
+                  accessibilityLabel="Message"
+                  className="max-h-28 min-h-11 w-full px-2.5 pb-1.5 pt-2.5 text-[15px] text-g000st-black"
+                  maxLength={4_000}
+                  multiline
+                  onChangeText={onChangeDraft}
+                  placeholder="Type a message"
+                  placeholderTextColor="#777777"
+                  value={draft}
+                />
+              </View>
+              <Pressable
+                accessibilityLabel="Send"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !canSend }}
+                className={`h-[42px] w-[42px] items-center justify-center rounded-full bg-g000st-silver ${
+                  canSend ? '' : 'opacity-50'
+                }`}
+                disabled={!canSend}
+                onPress={handleSend}
+              >
+                <Text className="text-base font-black text-white">➤</Text>
+              </Pressable>
+            </View>
+            {attachments.length ? (
+              <View className="mt-1 flex-row flex-wrap gap-1">
+                {attachments.map((attachment) => (
+                  <Pressable key={attachment.fileName} className="rounded-full bg-white px-2 py-1" onPress={() => onRemoveAttachment(attachment.fileName)}>
+                    <Text className="text-[10px] font-bold text-g000st-black">{attachment.fileName} ×</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+            <Text className="pt-0.5 text-center text-[10px] font-bold leading-3 text-black/40">
+              Kept 2 hours · Burn 5s {burnAfterRead ? 'ON' : 'OFF'} · Screenshots possible
+            </Text>
+          </View>
+        )}
+      </KeyboardAvoidingView>
+      <Modal animationType="fade" transparent visible={isAttachmentMenuOpen} onRequestClose={() => setIsAttachmentMenuOpen(false)}>
+        <Pressable className="flex-1 items-center justify-end bg-black/45 p-5" onPress={() => setIsAttachmentMenuOpen(false)}>
+          <View className="w-full rounded-[24px] bg-white p-4 mb-10">
+            {[
+              ['Photo or video library', onPickLibraryAttachment],
+              ['Camera', onCaptureAttachment],
+              ['PDF or Word file', onPickDocumentAttachment],
+            ].map(([label, action]) => (
+              <Pressable key={label as string} className="border-b border-black/10 py-4" onPress={() => { setIsAttachmentMenuOpen(false); void (action as () => Promise<void>)(); }}>
+                <Text className="text-center font-bold text-g000st-black">{label as string}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+    </View>
   );
 }
 

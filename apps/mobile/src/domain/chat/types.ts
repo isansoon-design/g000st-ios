@@ -30,6 +30,19 @@ export const chatConversationSummarySchema = z.object({
 });
 
 export const chatMessageSchema = z.object({
+  attachments: z
+    .array(
+      z.object({
+        byteSize: z.number().int().positive(),
+        contentType: z.string().min(1),
+        fileName: z.string().min(1),
+        id: z.string().uuid(),
+        kind: z.enum(['document', 'image', 'video']),
+        objectKey: z.string().min(1),
+      }),
+    )
+    .max(5)
+    .optional(),
   burnAfterReadSeconds: z.literal(5).optional(),
   burnStartedAtMs: z.number().int().positive().optional(),
   clientMessageId: z.string().uuid(),

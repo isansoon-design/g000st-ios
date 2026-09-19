@@ -13,9 +13,23 @@ const messageId = z.string().uuid();
 const createConversationBody = z.object({ participantPublicId: exactPublicId }).strict();
 const createMessageBody = z
   .object({
+    attachments: z
+      .array(
+        z
+          .object({
+            byteSize: z.number().int().positive().max(5 * 1024 * 1024),
+            contentType: z.string().min(1).max(160),
+            fileName: z.string().min(1).max(255),
+            id: z.string().uuid(),
+            objectKey: z.string().min(1).max(600),
+          })
+          .strict(),
+      )
+      .max(5)
+      .optional(),
     burnAfterRead: z.boolean().default(false),
     clientMessageId: z.string().uuid().optional(),
-    content: z.string().min(1).max(4_000),
+    content: z.string().max(4_000).default(''),
   })
   .strict();
 const listConversationsQuery = z.object({
@@ -97,7 +111,24 @@ export function createChatRouter(authService: AuthService, chatService: ChatServ
       const id = conversationId.parse(request.params.conversationId);
       const body = createMessageBody.parse(request.body);
       response.status(201).json({
-        message: await chatService.sendTextMessage(request.authenticatedPublicId, id, body),
+        message: await chatService.sendMessage(request.authenticatedPublicId, id, body),
+      });
+    }),
+  );
+
+  router.get(
+    '/conversations/:conversationId/messages/:messageId/attachments/:attachmentId',
+    asyncRoute(async (request, response) => {
+      const id = conversationId.parse(request.params.conversationId);
+      const parsedMessageId = messageId.parse(request.params.messageId);
+      const attachmentId = messageId.parse(request.params.attachmentId);
+      response.status(200).json({
+        attachment: await chatService.getAttachmentDownload(
+          request.authenticatedPublicId,
+          id,
+          parsedMessageId,
+          attachmentId,
+        ),
       });
     }),
   );

@@ -1,10 +1,13 @@
 import axios from "@/app/api/axios";
 import type {
+  ChatAttachment,
   ChatConversation,
   ChatConversationSummary,
   ChatMessage,
   ChatMessagePage,
 } from "@/features/chat/types";
+
+export type PendingChatAttachment = Omit<ChatAttachment, "kind">;
 
 export async function listChatConversations(): Promise<readonly ChatConversationSummary[]> {
   const response = await axios.get<{ conversations: ChatConversationSummary[] }>(
@@ -33,16 +36,42 @@ export async function listChatMessages(
   return response.data;
 }
 
-export async function sendChatTextMessage(
+export async function sendChatMessage(
   conversationId: string,
   content: string,
   burnAfterRead: boolean,
+  clientMessageId: string,
+  attachments?: readonly PendingChatAttachment[],
 ): Promise<ChatMessage> {
   const response = await axios.post<{ message: ChatMessage }>(
     `/chat/conversations/${conversationId}/messages`,
-    { burnAfterRead, clientMessageId: crypto.randomUUID(), content },
+    { burnAfterRead, clientMessageId, content, ...(attachments?.length ? { attachments } : {}) },
   );
   return response.data.message;
+}
+
+export async function createChatAttachmentUpload(input: Readonly<{
+  byteSize: number;
+  clientMessageId: string;
+  contentType: string;
+  conversationId: string;
+  fileName: string;
+}>) {
+  const response = await axios.post<{
+    upload: { attachment: PendingChatAttachment; headers: Record<string, string>; uploadUrl: string };
+  }>("/media/uploads", input);
+  return response.data.upload;
+}
+
+export async function getChatAttachmentDownload(
+  conversationId: string,
+  messageId: string,
+  attachmentId: string,
+): Promise<string> {
+  const response = await axios.get<{ attachment: { downloadUrl: string } }>(
+    `/chat/conversations/${conversationId}/messages/${messageId}/attachments/${attachmentId}`,
+  );
+  return response.data.attachment.downloadUrl;
 }
 
 export async function openChatBurnMessage(

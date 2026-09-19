@@ -11,6 +11,7 @@ import { createFirestore } from './firebase/create-firestore.js';
 import { ExpoPushGateway } from './notifications/expo-push-gateway.js';
 import { FirestoreNotificationStore } from './notifications/firestore-notification-store.js';
 import { NotificationService } from './notifications/notification-service.js';
+import { MediaService } from './media/media-service.js';
 
 async function main(): Promise<void> {
   const environment = readEnvironment();
@@ -26,8 +27,15 @@ async function main(): Promise<void> {
     notificationStore,
     new ExpoPushGateway(notificationStore, environment.expoPushAccessToken),
   );
-  const chatService = new ChatService(chatStore, store, Date.now, notificationService);
-  const expirationWorker = new ChatExpirationWorker(chatStore);
+  const mediaService = environment.media ? new MediaService(environment.media) : undefined;
+  const chatService = new ChatService(
+    chatStore,
+    store,
+    Date.now,
+    notificationService,
+    mediaService,
+  );
+  const expirationWorker = new ChatExpirationWorker(chatStore, Date.now, mediaService);
   const app = createApp({
     allowedOrigins: environment.allowedOrigins,
     authService,

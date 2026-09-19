@@ -25,7 +25,6 @@ function IdGateFormComponent({
   recoveryId,
 }: IdGateFormProps) {
   const isBusy = busyAction !== null;
-
   return (
     <KeyboardAwareScroll
       className="flex-1 bg-g000st-metal"
@@ -45,9 +44,8 @@ function IdGateFormComponent({
           accessibilityLabel="Account ID"
           autoCapitalize="none"
           autoCorrect={false}
-          className={`h-[50px] w-full rounded-field bg-white px-[14px] font-extrabold text-g000st-red ${
-            errors.recoveryId ? 'border-2 border-red-600' : 'border-2 border-g000st-red'
-          }`}
+          className={`h-[50px] w-full rounded-field bg-white px-[14px] font-extrabold text-g000st-red ${errors.recoveryId ? 'border-2 border-red-600' : 'border-2 border-g000st-red'
+            }`}
           editable={!isBusy}
           maxLength={50}
           onChangeText={onChangeRecoveryId}
