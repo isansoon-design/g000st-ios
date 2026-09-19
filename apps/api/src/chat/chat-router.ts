@@ -25,7 +25,7 @@ const createMessageBody = z
           })
           .strict(),
       )
-      .max(5)
+      .max(3)
       .optional(),
     burnAfterRead: z.boolean().default(false),
     clientMessageId: z.string().uuid().optional(),

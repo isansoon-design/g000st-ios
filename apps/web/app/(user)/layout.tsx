@@ -14,11 +14,11 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   ];
 
   return (
-    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", background: "#D8DCE3", overflow: "hidden" }}>
-      {/* Main Content */}
-      <main style={{ flex: 1, minHeight: 0, overflow: "hidden", position: "relative" }}>
-        {children}
-      </main>
+    <div className="h-[100dvh] overflow-hidden bg-[#C8CDD5]">
+      <div className="mx-auto flex h-full w-full max-w-5xl flex-col bg-[#D8DCE3] shadow-[0_0_55px_rgba(0,0,0,0.18)]">
+        <main className="relative min-h-0 flex-1 overflow-hidden">
+          {children}
+        </main>
 
       {/* Bottom Navigation - exactly like original */}
       <nav style={{
@@ -59,7 +59,8 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
             </Link>
           );
         })}
-      </nav>
+        </nav>
+      </div>
     </div>
   );
 }

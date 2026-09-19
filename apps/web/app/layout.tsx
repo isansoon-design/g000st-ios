@@ -1,3 +1,4 @@
+import { ConfirmModalProvider } from "@/context/ConfirmModalContext";
 import type { Metadata } from "next";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
@@ -15,8 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        {children}
-        <Toaster position="bottom-center" />
+        <ConfirmModalProvider>
+          {children}
+          <Toaster position="bottom-center" />
+        </ConfirmModalProvider>
       </body>
     </html>
   );

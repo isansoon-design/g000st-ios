@@ -10,6 +10,7 @@ import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-c
 
 import { AuthProvider } from '@/features/auth/context/auth-provider';
 import { useAuth } from '@/features/auth/hooks/use-auth';
+import { ConfirmModalProvider } from '@/providers/confirm-modal-provider';
 import { QueryProvider } from '@/providers/query-provider';
 import { NotificationsBootstrap } from '@/services/notifications/notifications-bootstrap';
 
@@ -34,8 +35,10 @@ export default function RootLayout() {
         <KeyboardProvider>
           <QueryProvider>
             <AuthProvider>
-              <NotificationsBootstrap />
-              <RootNavigator />
+              <ConfirmModalProvider>
+                <NotificationsBootstrap />
+                <RootNavigator />
+              </ConfirmModalProvider>
             </AuthProvider>
           </QueryProvider>
         </KeyboardProvider>

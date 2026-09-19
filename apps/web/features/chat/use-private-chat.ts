@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { sessionStorage } from "@/app/api/session-storage";
 import {
@@ -12,6 +12,10 @@ import {
   sendChatMessage,
   startChatConversation,
 } from "@/features/chat/api";
+import {
+  listenForMessageSoundUnlock,
+  playIncomingMessageSound,
+} from "@/features/chat/message-sound";
 import type { ChatConversationSummary, ChatMessage } from "@/features/chat/types";
 
 const PUBLIC_ID_LENGTH = 50;
@@ -58,12 +62,31 @@ export function usePrivateChat() {
   const [participantInput, setParticipantInput] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<readonly File[]>([]);
+  const hasLoadedConversationsRef = useRef(false);
+  const unreadCountsRef = useRef(new Map<string, number>());
   const userPublicId = sessionStorage.get()?.user.publicId ?? "";
 
   const loadConversations = useCallback(async (showLoader = false) => {
     if (showLoader) setIsLoadingConversations(true);
     try {
-      setConversations(await listChatConversations());
+      const nextConversations = await listChatConversations();
+      const hasNewUnreadMessage =
+        hasLoadedConversationsRef.current &&
+        nextConversations.some(
+          (conversation) =>
+            conversation.unreadCount >
+            (unreadCountsRef.current.get(conversation.conversationId) ?? 0),
+        );
+
+      unreadCountsRef.current = new Map(
+        nextConversations.map((conversation) => [
+          conversation.conversationId,
+          conversation.unreadCount,
+        ]),
+      );
+      hasLoadedConversationsRef.current = true;
+      setConversations(nextConversations);
+      if (hasNewUnreadMessage) void playIncomingMessageSound();
       setConversationsError(null);
     } catch (error) {
       setConversationsError(errorMessage(error));
@@ -71,6 +94,8 @@ export function usePrivateChat() {
       setIsLoadingConversations(false);
     }
   }, []);
+
+  useEffect(() => listenForMessageSoundUnlock(), []);
 
   const loadMessages = useCallback(async (conversationId: string, showLoader = false) => {
     if (showLoader) setIsLoadingMessages(true);
@@ -344,6 +369,11 @@ export function usePrivateChat() {
       activeConversation ? loadMessages(activeConversation.conversationId, true) : Promise.resolve(),
     sendError,
     setAttachments: (files: readonly File[]) => {
+      const containsNonImage = files.some((file) => !file.type.startsWith("image/"));
+      if (containsNonImage && files.length > 1) {
+        setSendError("Videos and documents must be sent one at a time.");
+        return;
+      }
       const invalid = files.find(
         (file) =>
           file.size > 5 * 1024 * 1024 ||
@@ -356,7 +386,11 @@ export function usePrivateChat() {
         setSendError("Only images, videos, PDF, and Word files up to 5 MB are allowed.");
         return;
       }
-      setAttachments(files.slice(0, 5));
+      if (files.length > 3) {
+        setSendError("You can send up to 3 attachments at once.");
+        return;
+      }
+      setAttachments(files);
       setSendError(null);
     },
     removeAttachment: (index: number) => setAttachments((items) => items.filter((_, itemIndex) => itemIndex !== index)),

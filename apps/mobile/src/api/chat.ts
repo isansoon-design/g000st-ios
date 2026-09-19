@@ -7,6 +7,11 @@ import {
   startChatConversationResultSchema,
 } from '@/domain/chat/types';
 import type { PendingChatAttachment } from '@/api/media';
+import { z } from 'zod';
+
+const attachmentDownloadSchema = z.object({
+  attachment: z.object({ downloadUrl: z.url() }),
+});
 
 export async function listChatConversations() {
   const response = await axiosInstance.get('/chat/conversations');
@@ -50,4 +55,15 @@ export async function openChatBurnMessage(conversationId: string, messageId: str
 
 export async function markChatConversationRead(conversationId: string): Promise<void> {
   await axiosInstance.post(`/chat/conversations/${conversationId}/read`);
+}
+
+export async function getChatAttachmentDownload(
+  conversationId: string,
+  messageId: string,
+  attachmentId: string,
+): Promise<string> {
+  const response = await axiosInstance.get(
+    `/chat/conversations/${conversationId}/messages/${messageId}/attachments/${attachmentId}`,
+  );
+  return parseApiPayload(attachmentDownloadSchema, response.data).attachment.downloadUrl;
 }

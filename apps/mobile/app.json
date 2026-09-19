@@ -14,7 +14,10 @@
     },
     "android": {
       "package": "com.g000st.app",
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -31,12 +34,33 @@
         }
       ],
       "expo-secure-store",
-      "expo-notifications",
-      "expo-image"
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "messages"
+        }
+      ],
+      "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow g000st to capture photos and videos for private chat.",
+          "microphonePermission": "Allow g000st to record audio with chat videos.",
+          "photosPermission": "Allow g000st to select photos and videos for private chat."
+        }
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2cfd1331-dd33-43a8-9b21-c2cc2eddf965"
+      }
+    },
+    "owner": "friendvan"
   }
 }

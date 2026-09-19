@@ -16,7 +16,7 @@ import type { ChatAttachment, ChatAttachmentKind } from '../chat/chat-types.js';
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 const UPLOAD_URL_TTL_SECONDS = 10 * 60;
 const DOWNLOAD_URL_TTL_SECONDS = 5 * 60;
-const MAX_ATTACHMENTS_PER_MESSAGE = 5;
+const MAX_ATTACHMENTS_PER_MESSAGE = 3;
 
 const supportedTypes: Readonly<Record<string, ChatAttachmentKind>> = {
   'application/msword': 'document',
@@ -121,10 +121,18 @@ export class MediaService {
     if (uniqueIds.size !== input.attachments.length) {
       throw new ApiError(400, 'INVALID_ATTACHMENTS', 'Attachments must be unique.');
     }
+    const kinds = input.attachments.map((attachment) => this.validateFile(attachment));
+    if (input.attachments.length > 1 && kinds.some((kind) => kind !== 'image')) {
+      throw new ApiError(
+        400,
+        'INVALID_ATTACHMENT_BATCH',
+        'Videos and documents must be sent one at a time.',
+      );
+    }
 
     return await Promise.all(
-      input.attachments.map(async (attachment) => {
-        const kind = this.validateFile(attachment);
+      input.attachments.map(async (attachment, index) => {
+        const kind = kinds[index]!;
         const expectedPendingKey = `pending/${input.publicId}/${input.conversationId}/${input.messageId}/${attachment.id}`;
         const finalKey = `chat/${input.conversationId}/${input.messageId}/${attachment.id}`;
         if (attachment.objectKey !== expectedPendingKey) {

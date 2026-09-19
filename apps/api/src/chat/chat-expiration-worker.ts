@@ -8,6 +8,7 @@ import type { MediaService } from '../media/media-service.js';
 export class ChatExpirationWorker {
   private running = false;
   private timer: NodeJS.Timeout | null = null;
+  private lastFailureLogAtMs = 0;
 
   constructor(
     private readonly store: ChatStore,
@@ -40,8 +41,13 @@ export class ChatExpirationWorker {
       await Promise.all(
         expired.map((message) => this.mediaService?.deleteAttachments(message.attachments)),
       );
-    } catch {
-      console.error('g000st chat expiration sweep failed');
+    } catch (error) {
+      const failedAtMs = this.now();
+      if (failedAtMs - this.lastFailureLogAtMs >= 60_000 || this.lastFailureLogAtMs === 0) {
+        const reason = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`g000st chat expiration sweep failed: ${reason}`);
+        this.lastFailureLogAtMs = failedAtMs;
+      }
     } finally {
       this.running = false;
     }

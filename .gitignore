@@ -51,6 +51,7 @@ yarn-error.*
 **/GoogleService-Info.plist
 **/google-services.json
 firebase-key.json
+**/*firebase-adminsdk*.json
 **/*service-account*.json
 **/*serviceAccount*.json
 

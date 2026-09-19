@@ -2,25 +2,28 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  Platform,
   Pressable,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Animated, { Easing, FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useConfirmModal } from '@/providers/confirm-modal-provider';
+
 import type { ChatMessage } from '@/domain/chat/types';
+import { MessageAttachment } from '@/features/chat/components/message-attachment';
 import type { OutboxMessage } from '@/features/chat/hooks/use-private-chat';
 
 type ChatThreadMessage = ChatMessage | OutboxMessage;
 
 type ChatThreadProps = Readonly<{
+  attachmentError: string | null;
   burnAfterRead: boolean;
   draft: string;
   error: string | null;
@@ -29,6 +32,7 @@ type ChatThreadProps = Readonly<{
   isLoading: boolean;
   isLoadingOlderMessages: boolean;
   isParticipantDeleted: boolean;
+  isSending: boolean;
   messages: readonly ChatThreadMessage[];
   nowMs: number;
   onBack: () => void;
@@ -124,11 +128,23 @@ function MessageBubbleComponent({
           <Text className="text-sm font-black leading-5 text-white">
             🔒 Tap to open · burns in 5s
           </Text>
-        ) : (
+        ) : message.content ? (
           <Text className={`text-sm font-bold leading-5 ${mine ? 'text-black' : 'text-white'}`}>
             {message.content}
           </Text>
-        )}
+        ) : null}
+        {!message.locked && message.attachments?.length ? (
+          <View className={message.content ? 'mt-2 gap-2' : 'gap-2'}>
+            {message.attachments.map((attachment) => (
+              <MessageAttachment
+                attachment={attachment}
+                conversationId={message.conversationId}
+                key={attachment.id}
+                messageId={message.id}
+              />
+            ))}
+          </View>
+        ) : null}
         {failed ? (
           <Text className="mt-1 text-right text-[10px] font-black text-g000st-red">
             Not sent · Tap to retry
@@ -158,6 +174,7 @@ function MessageBubbleComponent({
 const MessageBubble = memo(MessageBubbleComponent);
 
 function ChatThreadComponent({
+  attachmentError,
   burnAfterRead,
   draft,
   error,
@@ -166,6 +183,7 @@ function ChatThreadComponent({
   isLoading,
   isLoadingOlderMessages,
   isParticipantDeleted,
+  isSending,
   messages,
   nowMs,
   onBack,
@@ -192,7 +210,24 @@ function ChatThreadComponent({
   const prevIdsRef = useRef<Set<string> | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
-  const canSend = !isParticipantDeleted && draft.trim().length > 0;
+  const canSend = !isParticipantDeleted && !isSending && (draft.trim().length > 0 || attachments.length > 0);
+  const { confirm } = useConfirmModal();
+
+  const handleToggleBurn = useCallback(async () => {
+    const isCurrentlyOn = burnAfterRead;
+    const confirmed = await confirm({
+      title: isCurrentlyOn ? "Disable Burn After Read?" : "Enable Burn After Read?",
+      message: isCurrentlyOn
+        ? "Messages will no longer burn 5 seconds after they are opened."
+        : "Messages will burn 5 seconds after they are opened. Are you sure you want to enable this?",
+      confirmLabel: isCurrentlyOn ? "Disable" : "Enable",
+      isDangerous: !isCurrentlyOn,
+    });
+
+    if (confirmed) {
+      onToggleBurn();
+    }
+  }, [burnAfterRead, confirm, onToggleBurn]);
 
   useEffect(() => {
     didScrollToUnreadRef.current = false;
@@ -297,85 +332,82 @@ function ChatThreadComponent({
         </View>
       </View>
 
-      {/* Messages area */}
-      {isLoading ? (
-        <View className="flex-1 items-center justify-center bg-[#D8D8D8]">
-          <ActivityIndicator color="#9A9A9A" />
-        </View>
-      ) : error ? (
-        <View className="flex-1 items-center justify-center bg-[#D8D8D8] px-7">
-          <Text className="text-center text-sm font-bold text-g000st-red">{error}</Text>
-          <Pressable
-            accessibilityRole="button"
-            className="mt-4 h-11 rounded-full bg-white px-5"
-            onPress={onRefresh}
-          >
-            <Text className="pt-3 font-black text-g000st-black">Try again</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={{ flex: 1 }}>
-          <FlatList
-            ref={listRef}
-            style={{ flex: 1, backgroundColor: '#D8D8D8' }}
-            contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end', padding: 12 }}
-            data={messages}
-            keyExtractor={(item) => item.id}
-            keyboardDismissMode="interactive"
-            keyboardShouldPersistTaps="handled"
-            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
-            onScroll={handleScroll}
-            onScrollToIndexFailed={({ index }) => {
-              setTimeout(() => {
-                listRef.current?.scrollToIndex({ animated: false, index, viewPosition: 0.18 });
-              }, 100);
-            }}
-            scrollEventThrottle={100}
-            ListHeaderComponent={
-              hasOlderMessages || isLoadingOlderMessages ? (
-                <Pressable
-                  accessibilityRole="button"
-                  className="mb-3 h-9 items-center justify-center rounded-full bg-white/60"
-                  disabled={isLoadingOlderMessages}
-                  onPress={onLoadOlder}
-                >
-                  {isLoadingOlderMessages ? (
-                    <ActivityIndicator color="#9A9A9A" size="small" />
-                  ) : (
-                    <Text className="text-[11px] font-black text-black/50">
-                      Load earlier messages
-                    </Text>
-                  )}
-                </Pressable>
-              ) : null
-            }
-            ListEmptyComponent={
-              <View className="flex-1 items-center justify-center px-7 py-12">
-                <Text className="text-center text-[13px] font-semibold leading-5 text-black/45">
-                  This private conversation is empty. Send the first message.
-                </Text>
-              </View>
-            }
-            renderItem={renderItem}
-          />
-          {showScrollToBottom ? (
+      <KeyboardAvoidingView automaticOffset behavior="padding" style={{ flex: 1 }}>
+        {/* Messages area */}
+        {isLoading ? (
+          <View className="flex-1 items-center justify-center bg-[#D8D8D8]">
+            <ActivityIndicator color="#9A9A9A" />
+          </View>
+        ) : error ? (
+          <View className="flex-1 items-center justify-center bg-[#D8D8D8] px-7">
+            <Text className="text-center text-sm font-bold text-g000st-red">{error}</Text>
             <Pressable
-              accessibilityLabel="Scroll to latest message"
               accessibilityRole="button"
-              className="absolute bottom-3 right-3 h-10 w-10 items-center justify-center rounded-full border border-black/15 bg-white shadow"
-              onPress={scrollToBottom}
+              className="mt-4 h-11 rounded-full bg-white px-5"
+              onPress={onRefresh}
             >
-              <Text className="text-lg font-black text-g000st-black">↓</Text>
+              <Text className="pt-3 font-black text-g000st-black">Try again</Text>
             </Pressable>
-          ) : null}
-        </View>
-      )}
+          </View>
+        ) : (
+          <View style={{ flex: 1 }}>
+            <FlatList
+              ref={listRef}
+              style={{ flex: 1, backgroundColor: '#D8D8D8' }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end', padding: 12 }}
+              data={messages}
+              keyExtractor={(item) => item.id}
+              keyboardDismissMode="interactive"
+              keyboardShouldPersistTaps="handled"
+              maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+              onScroll={handleScroll}
+              onScrollToIndexFailed={({ index }) => {
+                setTimeout(() => {
+                  listRef.current?.scrollToIndex({ animated: false, index, viewPosition: 0.18 });
+                }, 100);
+              }}
+              scrollEventThrottle={100}
+              ListHeaderComponent={
+                hasOlderMessages || isLoadingOlderMessages ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    className="mb-3 h-9 items-center justify-center rounded-full bg-white/60"
+                    disabled={isLoadingOlderMessages}
+                    onPress={onLoadOlder}
+                  >
+                    {isLoadingOlderMessages ? (
+                      <ActivityIndicator color="#9A9A9A" size="small" />
+                    ) : (
+                      <Text className="text-[11px] font-black text-black/50">
+                        Load earlier messages
+                      </Text>
+                    )}
+                  </Pressable>
+                ) : null
+              }
+              ListEmptyComponent={
+                <View className="flex-1 items-center justify-center px-7 py-12">
+                  <Text className="text-center text-[13px] font-semibold leading-5 text-black/45">
+                    This private conversation is empty. Send the first message.
+                  </Text>
+                </View>
+              }
+              renderItem={renderItem}
+            />
+            {showScrollToBottom ? (
+              <Pressable
+                accessibilityLabel="Scroll to latest message"
+                accessibilityRole="button"
+                className="absolute bottom-3 right-3 h-10 w-10 items-center justify-center rounded-full border border-black/15 bg-white shadow"
+                onPress={scrollToBottom}
+              >
+                <Text className="text-lg font-black text-g000st-black">↓</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
 
-      {/* Input bar */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={insets.top}
-      >
+        {/* Input bar */}
         {isParticipantDeleted ? (
           <View className="border-t border-black/10 bg-[#D0D0D0] px-4 py-3">
             <Text className="text-center text-xs font-bold text-black/50">
@@ -389,7 +421,6 @@ function ChatThreadComponent({
                 <Pressable
                   accessibilityLabel="Attach"
                   accessibilityRole="button"
-                  accessibilityState={{ disabled: true }}
                   className="h-8 w-10 items-center justify-center rounded-full"
                   onPress={() => setIsAttachmentMenuOpen(true)}
                 >
@@ -399,10 +430,10 @@ function ChatThreadComponent({
                   accessibilityLabel={`Burn after read ${burnAfterRead ? 'on' : 'off'}`}
                   accessibilityRole="switch"
                   accessibilityState={{ checked: burnAfterRead }}
-                  className={`min-w-10 rounded-full px-1.5 py-0.5 ${
+                  className={`min-w-10 mt-2 rounded-full px-1.5 py-0.5 ${
                     burnAfterRead ? 'bg-g000st-red' : 'bg-black/20'
                   }`}
-                  onPress={onToggleBurn}
+                  onPress={handleToggleBurn}
                 >
                   <Text className="text-center text-[8px] font-black text-white">
                     {burnAfterRead ? '🔥 ON' : 'BURN'}
@@ -434,6 +465,11 @@ function ChatThreadComponent({
                 <Text className="text-base font-black text-white">➤</Text>
               </Pressable>
             </View>
+            {attachmentError ? (
+              <Text className="mt-1 text-center text-[10px] font-bold text-g000st-red">
+                {attachmentError}
+              </Text>
+            ) : null}
             {attachments.length ? (
               <View className="mt-1 flex-row flex-wrap gap-1">
                 {attachments.map((attachment) => (

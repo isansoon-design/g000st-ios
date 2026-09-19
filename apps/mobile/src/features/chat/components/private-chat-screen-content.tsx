@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { G000stWordmark } from '@/components/brand/g000st-wordmark';
 import { FeatureScreen } from '@/components/layout/feature-screen';
+import { AttachmentPreviewModal } from '@/features/chat/components/attachment-preview-modal';
 import { ChatConversationList } from '@/features/chat/components/chat-conversation-list';
 import { ChatThread } from '@/features/chat/components/chat-thread';
 import { NewChatModal } from '@/features/chat/components/new-chat-modal';
@@ -34,6 +35,7 @@ function PrivateChatScreenContentComponent({
     return (
       <>
         <ChatThread
+          attachmentError={chat.attachmentError}
           attachments={chat.attachments}
           burnAfterRead={chat.burnAfterRead}
           draft={chat.draft}
@@ -43,6 +45,7 @@ function PrivateChatScreenContentComponent({
           isLoading={chat.isLoadingMessages}
           isLoadingOlderMessages={chat.isLoadingOlderMessages}
           isParticipantDeleted={chat.activeConversation.participantStatus === 'deleted'}
+          isSending={chat.isSending}
           messages={chat.messages}
           nowMs={chat.nowMs}
           onBack={chat.closeConversation}
@@ -59,6 +62,14 @@ function PrivateChatScreenContentComponent({
           onToggleBurn={chat.toggleBurnAfterRead}
           participantPublicId={chat.activeConversation.participantPublicId}
           userPublicId={chat.userPublicId}
+        />
+        <AttachmentPreviewModal
+          attachments={chat.attachments}
+          error={chat.attachmentError}
+          isSending={chat.isSending}
+          onCancel={chat.discardAttachments}
+          onRemove={chat.removeAttachment}
+          onSend={() => void chat.submitMessage()}
         />
         <NewChatModal
           error={chat.participantError}

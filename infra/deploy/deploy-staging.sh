@@ -64,10 +64,32 @@ fi
 previous_release=""
 activated=false
 
+start_or_restart_process() {
+  if pm2 describe "$process_name" >/dev/null 2>&1; then
+    pm2 restart "$process_name" --update-env
+    return
+  fi
+
+  case "$target" in
+    api)
+      pm2 start "$current_link/dist/server.js" \
+        --name "$process_name" \
+        --cwd "$current_link"
+      ;;
+    web)
+      pm2 start npm \
+        --name "$process_name" \
+        --cwd "$current_link" \
+        -- start --workspace @g000st/web -- --hostname 127.0.0.1 --port 3001
+      ;;
+  esac
+}
+
 rollback() {
   if [[ -n "$previous_release" && -d "$previous_release" ]]; then
     ln -sfn "$previous_release" "$current_link"
-    pm2 restart "$process_name" --update-env >/dev/null
+    start_or_restart_process >/dev/null
+    pm2 save >/dev/null
     printf 'Rolled back %s to %s\n' "$target" "$previous_release" >&2
   fi
 }
@@ -143,7 +165,7 @@ test -d "$previous_release"
 
 ln -sfn "$release_dir" "$current_link"
 activated=true
-pm2 restart "$process_name" --update-env
+start_or_restart_process
 
 wait_for_url "$local_health_url"
 wait_for_url "$public_health_url"
@@ -153,6 +175,7 @@ if [[ "$target" == api ]]; then
   SMOKE_API_BASE_URL="${STAGING_ORIGIN}/api/v1" node apps/api/scripts/staging-smoke.mjs
 fi
 
+pm2 save
 activated=false
 trap - ERR
 printf 'Deployed %s release %s successfully.\n' "$target" "$release_id"

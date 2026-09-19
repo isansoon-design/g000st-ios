@@ -4,9 +4,9 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
-} from '@tanstack/react-query';
-import { randomUUID } from 'expo-crypto';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+} from "@tanstack/react-query";
+import { randomUUID } from "expo-crypto";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   listChatConversations,
@@ -15,41 +15,53 @@ import {
   openChatBurnMessage,
   sendChatMessage,
   startChatConversation,
-} from '@/api/chat';
-import { createChatAttachmentUpload, uploadChatAttachment } from '@/api/media';
+} from "@/api/chat";
+import { createChatAttachmentUpload, uploadChatAttachment } from "@/api/media";
 import type {
   ChatConversationSummary,
   ChatMessage,
   ChatMessagePage,
-} from '@/domain/chat/types';
-import { G000ST_ID_LENGTH } from '@/domain/identity/constants';
-import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useChatAttachments } from '@/features/chat/hooks/use-chat-attachments';
+} from "@/domain/chat/types";
+import { G000ST_ID_LENGTH } from "@/domain/identity/constants";
+import { useAuth } from "@/features/auth/hooks/use-auth";
+import { useChatAttachments } from "@/features/chat/hooks/use-chat-attachments";
+import {
+  chatConversationsQueryKey,
+  chatMessagesQueryKey,
+} from "@/features/chat/query-keys";
 
-const conversationsKey = ['chat', 'conversations'] as const;
-const messagesKey = (conversationId: string) => ['chat', 'messages', conversationId] as const;
 const MESSAGE_RETENTION_MS = 2 * 60 * 60 * 1_000;
 
 type ActiveConversation = Readonly<{
   conversationId: string;
   firstUnreadMessageId?: string;
   participantPublicId: string;
-  participantStatus: 'active' | 'deleted';
+  participantStatus: "active" | "deleted";
 }>;
 
 type MessagePages = InfiniteData<ChatMessagePage, string | undefined>;
 
-export type OutboxMessage = ChatMessage & Readonly<{ status: 'failed' | 'pending' }>;
+export type OutboxMessage = ChatMessage &
+  Readonly<{ status: "failed" | "pending" }>;
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+  return error instanceof Error
+    ? error.message
+    : "Something went wrong. Please try again.";
 }
 
-function appendServerMessage(current: MessagePages | undefined, message: ChatMessage): MessagePages {
+function appendServerMessage(
+  current: MessagePages | undefined,
+  message: ChatMessage,
+): MessagePages {
   if (!current) {
     return { pageParams: [undefined], pages: [{ messages: [message] }] };
   }
-  if (current.pages.some((page) => page.messages.some((item) => item.id === message.id))) {
+  if (
+    current.pages.some((page) =>
+      page.messages.some((item) => item.id === message.id),
+    )
+  ) {
     return current;
   }
 
@@ -60,29 +72,36 @@ function appendServerMessage(current: MessagePages | undefined, message: ChatMes
   };
 }
 
-export function usePrivateChat(initialConversationId?: string, openRequestId?: string) {
+export function usePrivateChat(
+  initialConversationId?: string,
+  openRequestId?: string,
+) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [activeConversation, setActiveConversation] = useState<ActiveConversation | null>(null);
+  const [activeConversation, setActiveConversation] =
+    useState<ActiveConversation | null>(null);
   const [burnAfterRead, setBurnAfterRead] = useState(true);
   const [clockMs, setClockMs] = useState(Date.now);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState("");
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [outbox, setOutbox] = useState<readonly OutboxMessage[]>([]);
-  const [participantInput, setParticipantInput] = useState('');
+  const [participantInput, setParticipantInput] = useState("");
   const [participantError, setParticipantError] = useState<string | null>(null);
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
+  const [attachmentUploadError, setAttachmentUploadError] = useState<
+    string | null
+  >(null);
   const chatAttachments = useChatAttachments();
   const handledOpenRequestRef = useRef<string | null>(null);
 
   const conversationsQuery = useQuery({
-    queryKey: conversationsKey,
+    queryKey: chatConversationsQueryKey,
     queryFn: listChatConversations,
     refetchInterval: 5_000,
   });
 
   const messagesQuery = useInfiniteQuery({
-    queryKey: messagesKey(activeConversation?.conversationId ?? 'none'),
+    queryKey: chatMessagesQueryKey(activeConversation?.conversationId ?? "none"),
     queryFn: ({ pageParam }) =>
       listChatMessages(activeConversation!.conversationId, pageParam),
     enabled: activeConversation !== null,
@@ -104,12 +123,12 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
       setActiveConversation({
         conversationId: conversation.id,
         participantPublicId,
-        participantStatus: 'active',
+        participantStatus: "active",
       });
       setIsNewChatOpen(false);
-      setParticipantInput('');
+      setParticipantInput("");
       setParticipantError(null);
-      void queryClient.invalidateQueries({ queryKey: conversationsKey });
+      void queryClient.invalidateQueries({ queryKey: chatConversationsQueryKey });
     },
   });
 
@@ -126,47 +145,66 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
       clientMessageId: string;
       content: string;
       conversationId: string;
-    }) => sendChatMessage(conversationId, content, clientMessageId, burn, attachments),
+    }) =>
+      sendChatMessage(
+        conversationId,
+        content,
+        clientMessageId,
+        burn,
+        attachments,
+      ),
     onError: (_error, variables) => {
       setOutbox((current) =>
         current.map((item) =>
           item.clientMessageId === variables.clientMessageId
-            ? { ...item, status: 'failed' as const }
+            ? { ...item, status: "failed" as const }
             : item,
         ),
       );
     },
     onSuccess: (message) => {
       queryClient.setQueryData<MessagePages>(
-        messagesKey(message.conversationId),
+        chatMessagesQueryKey(message.conversationId),
         (current) => appendServerMessage(current, message),
       );
       setOutbox((current) =>
-        current.filter((item) => item.clientMessageId !== message.clientMessageId),
+        current.filter(
+          (item) => item.clientMessageId !== message.clientMessageId,
+        ),
       );
-      void queryClient.invalidateQueries({ queryKey: conversationsKey });
+      void queryClient.invalidateQueries({ queryKey: chatConversationsQueryKey });
     },
   });
 
   const openMutation = useMutation({
-    mutationFn: ({ conversationId, messageId }: { conversationId: string; messageId: string }) =>
-      openChatBurnMessage(conversationId, messageId),
+    mutationFn: ({
+      conversationId,
+      messageId,
+    }: {
+      conversationId: string;
+      messageId: string;
+    }) => openChatBurnMessage(conversationId, messageId),
     onError: (_error, variables) => {
-      void queryClient.invalidateQueries({ queryKey: messagesKey(variables.conversationId) });
+      void queryClient.invalidateQueries({
+        queryKey: chatMessagesQueryKey(variables.conversationId),
+      });
     },
     onSuccess: (message) => {
-      queryClient.setQueryData<MessagePages>(messagesKey(message.conversationId), (current) => {
-        if (!current) return current;
-        return {
-          ...current,
-          pages: current.pages.map((page) => ({
-            ...page,
-            messages: page.messages.map((candidate) =>
-              candidate.id === message.id ? message : candidate,
-            ),
-          })),
-        };
-      });
+      queryClient.setQueryData<MessagePages>(
+        chatMessagesQueryKey(message.conversationId),
+        (current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            pages: current.pages.map((page) => ({
+              ...page,
+              messages: page.messages.map((candidate) =>
+                candidate.id === message.id ? message : candidate,
+              ),
+            })),
+          };
+        },
+      );
       setClockMs(Date.now());
     },
   });
@@ -183,13 +221,16 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
     const outstanding = outbox.filter(
       (item) => !serverMessages.some((message) => message.id === item.id),
     );
-    return [...serverMessages, ...outstanding] as readonly (ChatMessage | OutboxMessage)[];
+    return [...serverMessages, ...outstanding] as readonly (
+      ChatMessage | OutboxMessage
+    )[];
   }, [clockMs, messagesQuery.data?.pages, outbox]);
 
   const activeSummary = useMemo(
     () =>
       conversationsQuery.data?.find(
-        (conversation) => conversation.conversationId === activeConversation?.conversationId,
+        (conversation) =>
+          conversation.conversationId === activeConversation?.conversationId,
       ),
     [activeConversation?.conversationId, conversationsQuery.data],
   );
@@ -206,7 +247,11 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
       return;
     }
     void messagesQuery.fetchNextPage();
-  }, [activeConversation?.firstUnreadMessageId, displayMessages, messagesQuery]);
+  }, [
+    activeConversation?.firstUnreadMessageId,
+    displayMessages,
+    messagesQuery,
+  ]);
 
   useEffect(() => {
     if (!activeConversation || !activeSummary?.unreadCount) return;
@@ -215,17 +260,19 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
     void markChatConversationRead(activeConversation.conversationId)
       .then(() => {
         if (!current) return;
-        queryClient.setQueryData<readonly ChatConversationSummary[]>(conversationsKey, (items) =>
-          items?.map((item) =>
-            item.conversationId === activeConversation.conversationId
-              ? {
-                  ...item,
-                  firstUnreadCreatedAtMs: undefined,
-                  firstUnreadMessageId: undefined,
-                  unreadCount: 0,
-                }
-              : item,
-          ),
+        queryClient.setQueryData<readonly ChatConversationSummary[]>(
+          chatConversationsQueryKey,
+          (items) =>
+            items?.map((item) =>
+              item.conversationId === activeConversation.conversationId
+                ? {
+                    ...item,
+                    firstUnreadCreatedAtMs: undefined,
+                    firstUnreadMessageId: undefined,
+                    unreadCount: 0,
+                  }
+                : item,
+            ),
         );
       })
       .catch(() => undefined);
@@ -237,7 +284,7 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
 
   const updateParticipantInput = useCallback(
     (value: string) => {
-      setParticipantInput(value.replace(/\s/g, ''));
+      setParticipantInput(value.replace(/\s/g, ""));
       setParticipantError(null);
       startMutation.reset();
     },
@@ -251,34 +298,45 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
       participantPublicId.length !== G000ST_ID_LENGTH ||
       !/^[A-Za-z0-9]+$/.test(participantPublicId)
     ) {
-      setParticipantError(`Enter a valid ${G000ST_ID_LENGTH}-character Public ID.`);
+      setParticipantError(
+        `Enter a valid ${G000ST_ID_LENGTH}-character Public ID.`,
+      );
       return;
     }
     if (participantPublicId === user?.publicId) {
-      setParticipantError('You cannot start a conversation with your own account.');
+      setParticipantError(
+        "You cannot start a conversation with your own account.",
+      );
       return;
     }
 
     startMutation.mutate(participantPublicId);
   }, [participantInput, startMutation, user?.publicId]);
 
-  const openConversation = useCallback((conversation: ChatConversationSummary) => {
-    setClockMs(Date.now());
-    setActiveConversation({
-      conversationId: conversation.conversationId,
-      ...(conversation.firstUnreadMessageId
-        ? { firstUnreadMessageId: conversation.firstUnreadMessageId }
-        : {}),
-      participantPublicId: conversation.participantPublicId,
-      participantStatus: conversation.participantStatus,
-    });
-    setDraft('');
-    setOutbox([]);
-    sendMutation.reset();
-  }, [sendMutation]);
+  const openConversation = useCallback(
+    (conversation: ChatConversationSummary) => {
+      setClockMs(Date.now());
+      setActiveConversation({
+        conversationId: conversation.conversationId,
+        ...(conversation.firstUnreadMessageId
+          ? { firstUnreadMessageId: conversation.firstUnreadMessageId }
+          : {}),
+        participantPublicId: conversation.participantPublicId,
+        participantStatus: conversation.participantStatus,
+      });
+      setDraft("");
+      setOutbox([]);
+      sendMutation.reset();
+    },
+    [sendMutation],
+  );
 
   useEffect(() => {
-    if (!initialConversationId || !openRequestId || handledOpenRequestRef.current === openRequestId) {
+    if (
+      !initialConversationId ||
+      !openRequestId ||
+      handledOpenRequestRef.current === openRequestId
+    ) {
       return;
     }
     const requested = conversationsQuery.data?.find(
@@ -289,11 +347,16 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
     handledOpenRequestRef.current = openRequestId;
     const timer = setTimeout(() => openConversation(requested), 0);
     return () => clearTimeout(timer);
-  }, [conversationsQuery.data, initialConversationId, openConversation, openRequestId]);
+  }, [
+    conversationsQuery.data,
+    initialConversationId,
+    openConversation,
+    openRequestId,
+  ]);
 
   const closeConversation = useCallback(() => {
     setActiveConversation(null);
-    setDraft('');
+    setDraft("");
     setOutbox([]);
     sendMutation.reset();
   }, [sendMutation]);
@@ -306,7 +369,7 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
     const content = draft.trim();
     if (
       !activeConversation ||
-      activeConversation.participantStatus === 'deleted' ||
+      activeConversation.participantStatus === "deleted" ||
       (!content && chatAttachments.attachments.length === 0) ||
       !user?.publicId
     ) {
@@ -316,6 +379,7 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
     const nowMs = Date.now();
     const clientMessageId = randomUUID();
     setIsUploadingAttachments(true);
+    setAttachmentUploadError(null);
     try {
       const attachments = await Promise.all(
         chatAttachments.attachments.map(async (attachment) => {
@@ -330,46 +394,59 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
           return upload.attachment;
         }),
       );
-    setOutbox((current) => [
-      ...current,
-      {
-        ...(burnAfterRead ? { burnAfterReadSeconds: 5 as const } : {}),
+      setOutbox((current) => [
+        ...current,
+        {
+          ...(burnAfterRead ? { burnAfterReadSeconds: 5 as const } : {}),
+          clientMessageId,
+          content,
+          conversationId: activeConversation.conversationId,
+          createdAtMs: nowMs,
+          expiresAtMs: nowMs + MESSAGE_RETENTION_MS,
+          id: clientMessageId,
+          locked: false,
+          senderPublicId: user.publicId,
+          status: "pending",
+          type: "text",
+        },
+      ]);
+      setDraft("");
+      chatAttachments.clearAttachments();
+      sendMutation.mutate({
+        ...(attachments.length ? { attachments } : {}),
+        burn: burnAfterRead,
         clientMessageId,
         content,
         conversationId: activeConversation.conversationId,
-        createdAtMs: nowMs,
-        expiresAtMs: nowMs + MESSAGE_RETENTION_MS,
-        id: clientMessageId,
-        locked: false,
-        senderPublicId: user.publicId,
-        status: 'pending',
-        type: 'text',
-      },
-    ]);
-    setDraft('');
-      chatAttachments.clearAttachments();
-    sendMutation.mutate({
-        ...(attachments.length ? { attachments } : {}),
-      burn: burnAfterRead,
-      clientMessageId,
-      content,
-      conversationId: activeConversation.conversationId,
-    });
+      });
+    } catch (error) {
+      setAttachmentUploadError(errorMessage(error));
     } finally {
       setIsUploadingAttachments(false);
     }
-  }, [activeConversation, burnAfterRead, chatAttachments, draft, sendMutation, user]);
+  }, [
+    activeConversation,
+    burnAfterRead,
+    chatAttachments,
+    draft,
+    sendMutation,
+    user,
+  ]);
 
   const retryMessage = useCallback(
     (clientMessageId: string) => {
       const failed = outbox.find(
-        (item) => item.clientMessageId === clientMessageId && item.status === 'failed',
+        (item) =>
+          item.clientMessageId === clientMessageId && item.status === "failed",
       );
-      if (!failed || activeConversation?.participantStatus === 'deleted') return;
+      if (!failed || activeConversation?.participantStatus === "deleted")
+        return;
 
       setOutbox((current) =>
         current.map((item) =>
-          item.clientMessageId === clientMessageId ? { ...item, status: 'pending' as const } : item,
+          item.clientMessageId === clientMessageId
+            ? { ...item, status: "pending" as const }
+            : item,
         ),
       );
       sendMutation.mutate({
@@ -385,7 +462,10 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
   const openBurnMessage = useCallback(
     (messageId: string) => {
       if (!activeConversation || openMutation.isPending) return;
-      openMutation.mutate({ conversationId: activeConversation.conversationId, messageId });
+      openMutation.mutate({
+        conversationId: activeConversation.conversationId,
+        messageId,
+      });
     },
     [activeConversation, openMutation],
   );
@@ -393,7 +473,7 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
   const closeNewChat = useCallback(() => {
     if (startMutation.isPending) return;
     setIsNewChatOpen(false);
-    setParticipantInput('');
+    setParticipantInput("");
     setParticipantError(null);
     startMutation.reset();
   }, [startMutation]);
@@ -401,9 +481,10 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
   return {
     activeConversation,
     burnAfterRead,
-    attachmentError: chatAttachments.error,
+    attachmentError: attachmentUploadError ?? chatAttachments.error,
     attachments: chatAttachments.attachments,
     captureAttachment: chatAttachments.captureWithCamera,
+    discardAttachments: chatAttachments.clearAttachments,
     closeConversation,
     closeNewChat,
     conversations: conversationsQuery.data ?? [],
@@ -417,10 +498,13 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
     isLoadingMessages: messagesQuery.isLoading,
     isLoadingOlderMessages: messagesQuery.isFetchingNextPage,
     isNewChatOpen,
+    isSending: sendMutation.isPending || isUploadingAttachments,
     isStartingChat: startMutation.isPending,
     isUploadingAttachments,
     messages: displayMessages,
-    messagesError: messagesQuery.error ? errorMessage(messagesQuery.error) : null,
+    messagesError: messagesQuery.error
+      ? errorMessage(messagesQuery.error)
+      : null,
     nowMs: clockMs,
     openBurnMessage,
     openConversation,
@@ -428,7 +512,8 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
     pickDocumentAttachment: chatAttachments.pickDocument,
     pickLibraryAttachment: chatAttachments.pickFromLibrary,
     participantError:
-      participantError ?? (startMutation.error ? errorMessage(startMutation.error) : null),
+      participantError ??
+      (startMutation.error ? errorMessage(startMutation.error) : null),
     participantInput,
     refreshConversations: conversationsQuery.refetch,
     refreshMessages: messagesQuery.refetch,
@@ -439,7 +524,7 @@ export function usePrivateChat(initialConversationId?: string, openRequestId?: s
     toggleBurnAfterRead: () => setBurnAfterRead((current) => !current),
     updateDraft,
     updateParticipantInput,
-    userPublicId: user?.publicId ?? '',
+    userPublicId: user?.publicId ?? "",
     loadOlderMessages: messagesQuery.fetchNextPage,
   };
 }

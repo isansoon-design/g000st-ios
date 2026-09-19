@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useConfirmModal } from "@/context/ConfirmModalContext";
+import { useEffect, useRef, useState } from "react";
 
-import type { ChatConversationSummary } from "@/features/chat/types";
 import { getChatAttachmentDownload } from "@/features/chat/api";
+import type { ChatConversationSummary } from "@/features/chat/types";
 import { usePrivateChat } from "@/features/chat/use-private-chat";
+import Image from "next/image";
 
 function shortId(publicId: string): string {
   return `${publicId.slice(0, 12)}…${publicId.slice(-6)}`;
@@ -29,6 +31,103 @@ function OnlineSignal() {
         <span key={height} className="block w-[3px] rounded-sm bg-[#9A9A9A]" style={{ height }} />
       ))}
     </span>
+  );
+}
+
+function useObjectUrl(file?: File) {
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    if (!file) return;
+    const next = URL.createObjectURL(file);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [file]);
+  return url;
+}
+
+function AttachmentThumb({ file }: Readonly<{ file: File }>) {
+  const url = useObjectUrl(file);
+  if (file.type.startsWith("image/") && url) {
+    return <Image alt="" width={200} height={200} className="h-50 w-50 object-cover" src={url} />;
+  }
+  return <span className="text-2xl">{file.type.startsWith("video/") ? "▶️" : "📄"}</span>;
+}
+
+function AttachmentPreviewModal({ chat }: Readonly<{ chat: ReturnType<typeof usePrivateChat> }>) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const safeActiveIndex = Math.min(activeIndex, Math.max(0, chat.attachments.length - 1));
+  const active = chat.attachments[safeActiveIndex];
+  const activeUrl = useObjectUrl(active);
+
+  if (!active) return null;
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/75 sm:items-center sm:p-6">
+      <div className="flex max-h-[94vh] w-full max-w-2xl flex-col rounded-t-[28px] bg-[#EFEFEF] p-4 shadow-2xl sm:rounded-[28px]">
+        <div className="mb-3 flex items-center justify-between">
+          <button className="px-3 py-2 font-bold text-[#C62828]" disabled={chat.isSending} onClick={() => chat.setAttachments([])} type="button">Cancel</button>
+          <div className="text-center"><p className="font-black">Preview</p><p className="text-[10px] font-bold text-black/45">{chat.attachments.length}/3 selected</p></div>
+          <button className="min-w-20 rounded-full bg-[#9A9A9A] px-4 py-2 font-black text-white disabled:opacity-50" disabled={chat.isSending} onClick={() => void chat.submitMessage()} type="button">{chat.isSending ? "Sending…" : "Send"}</button>
+        </div>
+        <div className="flex h-[52vh] items-center justify-center overflow-hidden rounded-[22px] bg-black">
+          {active.type.startsWith("image/") && activeUrl ? <img alt={active.name} className="h-full w-full object-contain" src={activeUrl} /> : active.type.startsWith("video/") && activeUrl ? <video className="h-full w-full object-contain" controls preload="metadata" src={activeUrl} /> : <div className="px-8 text-center text-white"><p className="text-6xl">📄</p><p className="mt-4 break-all font-black">{active.name}</p><p className="mt-2 text-xs font-bold text-white/60">{(active.size / 1024 / 1024).toFixed(1)} MB</p></div>}
+        </div>
+        {chat.sendError ? <p className="mt-2 text-center text-xs font-bold text-[#C62828]">{chat.sendError}</p> : null}
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+          {chat.attachments.map((file, index) => (
+            <button className={`relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[14px] border-2 bg-black ${index === safeActiveIndex ? "border-[#C62828]" : "border-transparent"}`} key={`${file.name}-${file.lastModified}-${index}`} onClick={() => setActiveIndex(index)} type="button">
+              <AttachmentThumb file={file} />
+              <span aria-label={`Remove ${file.name}`} className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/80 text-sm font-black text-white" onClick={(event) => { event.stopPropagation(); chat.removeAttachment(index); }}>×</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type MessageAttachmentProps = Readonly<{
+  attachment: NonNullable<import("@/features/chat/types").ChatMessage["attachments"]>[number];
+  conversationId: string;
+  messageId: string;
+}>;
+
+function MessageAttachment({ attachment, conversationId, messageId }: MessageAttachmentProps) {
+  const [url, setUrl] = useState<string>();
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      void getChatAttachmentDownload(conversationId, messageId, attachment.id)
+        .then((nextUrl) => {
+          if (!active) return;
+          setUrl(nextUrl);
+          setFailed(false);
+        })
+        .catch(() => {
+          if (active) setFailed(true);
+        });
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 4 * 60 * 1_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [attachment.id, conversationId, messageId]);
+
+  if (failed) return <span className="block rounded-xl bg-black/10 px-3 py-4 text-xs font-bold text-[#C62828]">Attachment unavailable</span>;
+  if (!url) return <span className="block h-36 w-64 animate-pulse rounded-xl bg-black/10" />;
+  if (attachment.kind === "image") {
+    return <img alt={attachment.fileName} className="max-h-72 w-full cursor-zoom-in rounded-[14px] object-cover transition duration-200 hover:brightness-95" onClick={() => window.open(url, "_blank", "noopener,noreferrer")} src={url} />;
+  }
+  if (attachment.kind === "video") {
+    return <video className="max-h-72 w-full rounded-[14px] bg-black" controls preload="metadata" src={url} />;
+  }
+  return (
+    <button className="flex w-full items-center gap-3 rounded-[14px] bg-black/10 p-3 text-left transition hover:bg-black/15" onClick={() => window.open(url, "_blank", "noopener,noreferrer")} type="button">
+      <span className="text-3xl">📄</span>
+      <span className="min-w-0"><span className="block truncate text-xs font-black">{attachment.fileName}</span><span className="mt-1 block text-[10px] font-bold opacity-50">Open document</span></span>
+    </button>
   );
 }
 
@@ -57,7 +156,7 @@ function ConversationList({
     );
   }
 
-  if (error) {
+  if (error && conversations.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center bg-[#D8D8D8] px-7">
         <p className="text-center text-sm font-bold text-[#C62828]">{error}</p>
@@ -91,6 +190,21 @@ function ConversationList({
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#D8D8D8] p-3">
+      {error ? (
+        <div
+          aria-live="polite"
+          className="sticky top-0 z-10 mb-3 flex items-center justify-between gap-3 rounded-[14px] border border-[#C62828]/20 bg-white/95 px-3 py-2 shadow-sm"
+        >
+          <p className="text-[11px] font-bold text-[#C62828]">{error}</p>
+          <button
+            className="shrink-0 rounded-full bg-[#111] px-3 py-1.5 text-[10px] font-black text-white"
+            onClick={onRefresh}
+            type="button"
+          >
+            Try again
+          </button>
+        </div>
+      ) : null}
       {conversations.map((conversation) => (
         <button
           className="mb-2 flex w-full items-center rounded-[18px] border border-white/60 bg-[#E2E2E2] p-3 text-left"
@@ -129,9 +243,37 @@ function ConversationList({
 
 export default function PrivateChatPage() {
   const chat = usePrivateChat();
+  const { confirm } = useConfirmModal();
   const bottomRef = useRef<HTMLDivElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const didScrollToUnreadRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!chat.isSending && chat.activeConversation) {
+      // Use a small timeout to ensure the DOM has updated (disabled attribute removed) before focusing
+      const timer = setTimeout(() => {
+        messageInputRef.current?.focus();
+      }, 10);
+      return () => clearTimeout(timer);
+    }
+  }, [chat.activeConversation?.conversationId, chat.isSending]);
+
+  const handleToggleBurn = async () => {
+    const isCurrentlyOn = chat.burnAfterRead;
+    const confirmed = await confirm({
+      title: isCurrentlyOn ? "Disable Burn After Read?" : "Enable Burn After Read?",
+      message: isCurrentlyOn
+        ? "Messages will no longer burn 5 seconds after they are opened."
+        : "Messages will burn 5 seconds after they are opened. Are you sure you want to enable this?",
+      confirmLabel: isCurrentlyOn ? "Disable" : "Enable",
+      isDangerous: !isCurrentlyOn,
+    });
+
+    if (confirmed) {
+      chat.toggleBurnAfterRead();
+    }
+  };
 
   useEffect(() => {
     didScrollToUnreadRef.current = null;
@@ -156,7 +298,7 @@ export default function PrivateChatPage() {
     !participantDeleted;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[#D8D8D8]">
+    <div className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden border-x border-black/10 bg-[#D8D8D8] shadow-2xl">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-black/15 bg-gradient-to-b from-[#fafafa] via-[#d8d8d8] to-[#b0b0b0] px-3 shadow-md">
         <div className="flex items-center gap-1.5">
           <Brand />
@@ -173,8 +315,8 @@ export default function PrivateChatPage() {
       </header>
 
       {chat.activeConversation ? (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex h-12 shrink-0 items-center border-b border-black/10 bg-[#D0D0D0] px-2">
+        <div className="flex min-h-0 flex-1 flex-col px-2">
+          <div className="flex h-12 gap-2 items-center border-b border-black/10 bg-[#D0D0D0] p-1">
             <button
               aria-label="Back to conversations"
               className="flex h-10 w-10 items-center justify-center rounded-full text-3xl font-black text-[#111]"
@@ -193,11 +335,11 @@ export default function PrivateChatPage() {
             </div>
           </div>
 
-          {chat.isLoadingMessages ? (
+          {chat.isLoadingMessages && chat.messages.length === 0 ? (
             <div className="flex flex-1 items-center justify-center text-xs font-semibold text-black/45">
               Loading messages…
             </div>
-          ) : chat.messagesError ? (
+          ) : chat.messagesError && chat.messages.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center px-7">
               <p className="text-center text-sm font-bold text-[#C62828]">{chat.messagesError}</p>
               <button
@@ -210,6 +352,21 @@ export default function PrivateChatPage() {
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-3">
+              {chat.messagesError ? (
+                <div
+                  aria-live="polite"
+                  className="sticky top-0 z-10 mb-3 flex items-center justify-between gap-3 rounded-[14px] border border-[#C62828]/20 bg-white/95 px-3 py-2 shadow-sm"
+                >
+                  <p className="text-[11px] font-bold text-[#C62828]">{chat.messagesError}</p>
+                  <button
+                    className="shrink-0 rounded-full bg-[#111] px-3 py-1.5 text-[10px] font-black text-white"
+                    onClick={() => void chat.refreshMessages()}
+                    type="button"
+                  >
+                    Try again
+                  </button>
+                </div>
+              ) : null}
               {chat.hasOlderMessages || chat.isLoadingOlderMessages ? (
                 <button
                   className="mb-3 h-9 w-full rounded-full bg-white/60 text-[11px] font-black text-black/50 disabled:opacity-60"
@@ -252,42 +409,31 @@ export default function PrivateChatPage() {
                           <span className="h-px flex-1 bg-[#C62828]/40" />
                         </div>
                       ) : null}
-                      <div className={`mb-2 flex ${mine ? "justify-end" : "justify-start"}`}>
-                        <button
-                          className={`max-w-[78%] px-3 py-2 text-left ${
-                            mine
-                              ? "rounded-[18px] rounded-br border border-[#9A9A9A] bg-[#E0E0E0]"
-                              : "rounded-[18px] rounded-bl border-2 border-[#9A9A9A] bg-[#A8A8A8]"
-                          }`}
-                          disabled={!message.locked}
-                          onClick={() => void chat.openBurnMessage(message.id)}
-                          type="button"
+                      <div className={`chat-message-enter mb-3 flex ${mine ? "justify-end" : "justify-start"}`}>
+                        <div
+                          className={`max-w-[78%] px-3 py-2 text-left ${mine
+                            ? "rounded-[18px] rounded-br border border-[#9A9A9A] bg-[#E0E0E0]"
+                            : "rounded-[18px] rounded-bl border-2 border-[#9A9A9A] bg-[#A8A8A8]"
+                            }`}
+                          onClick={() => message.locked && void chat.openBurnMessage(message.id)}
+                          onKeyDown={(event) => {
+                            if (!message.locked || (event.key !== "Enter" && event.key !== " ")) return;
+                            event.preventDefault();
+                            void chat.openBurnMessage(message.id);
+                          }}
+                          role={message.locked ? "button" : undefined}
+                          tabIndex={message.locked ? 0 : undefined}
                         >
-                          <p className={`whitespace-pre-wrap break-words text-sm font-bold ${mine ? "text-black" : "text-white"}`}>
-                            {message.locked ? "🔒 Click to open · burns in 5s" : message.content}
-                          </p>
+                          {message.locked || message.content ? <p className={`whitespace-pre-wrap break-words text-sm font-bold ${mine ? "text-black" : "text-white"}`}>{message.locked ? "🔒 Click to open · burns in 5s" : message.content}</p> : null}
                           {!message.locked && message.attachments?.length ? (
                             <div className="mt-2 flex flex-col gap-1">
                               {message.attachments.map((attachment) => (
                                 <span
-                                  className={`rounded-lg px-2 py-1 text-[11px] font-black ${mine ? "bg-black/10 text-black" : "bg-white/15 text-white"}`}
+                                  className="block overflow-hidden rounded-[14px]"
                                   key={attachment.id}
                                   onClick={(event) => event.stopPropagation()}
                                 >
-                                  <button
-                                    className="text-left underline"
-                                    onClick={() =>
-                                      void getChatAttachmentDownload(
-                                        message.conversationId,
-                                        message.id,
-                                        attachment.id,
-                                      ).then((url) => window.open(url, "_blank", "noopener,noreferrer"))
-                                    }
-                                    type="button"
-                                  >
-                                    {attachment.kind === "image" ? "🖼 " : attachment.kind === "video" ? "🎬 " : "📄 "}
-                                    {attachment.fileName}
-                                  </button>
+                                  <MessageAttachment attachment={attachment} conversationId={message.conversationId} messageId={message.id} />
                                 </span>
                               ))}
                             </div>
@@ -301,7 +447,7 @@ export default function PrivateChatPage() {
                             {formatTime(message.createdAtMs)}
                             {deliveryLabel ? ` · ${deliveryLabel}` : null}
                           </p>
-                        </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -325,7 +471,7 @@ export default function PrivateChatPage() {
             </div>
           ) : (
             <div className="shrink-0 border-t border-black/10 bg-[#D0D0D0] px-[10px] pb-1 pt-1.5">
-              <div className="flex items-end gap-2">
+              <div className="flex items-end gap-2 px-3">
                 <div className="flex flex-col items-center">
                   <button
                     aria-label="Attach"
@@ -349,10 +495,9 @@ export default function PrivateChatPage() {
                   <button
                     aria-checked={chat.burnAfterRead}
                     aria-label={`Burn after read ${chat.burnAfterRead ? "on" : "off"}`}
-                    className={`min-w-10 rounded-full px-1.5 py-0.5 text-[8px] font-black text-white ${
-                      chat.burnAfterRead ? "bg-[#C62828]" : "bg-black/20"
-                    }`}
-                    onClick={chat.toggleBurnAfterRead}
+                    className={`min-w-10  rounded-full px-1.5 py-0.5 text-[8px] font-black text-white ${chat.burnAfterRead ? "bg-[#C62828] p-1" : "bg-black/20"
+                      }`}
+                    onClick={handleToggleBurn}
                     role="switch"
                     type="button"
                   >
@@ -362,14 +507,18 @@ export default function PrivateChatPage() {
                 <div className="flex min-h-11 flex-1 items-center rounded-[22px] border border-black/15 bg-white px-1.5">
                   <textarea
                     aria-label="Message"
-                    className="max-h-28 min-h-11 w-full resize-none bg-transparent px-2.5 pb-1.5 pt-2.5 text-[15px] text-[#111] outline-none"
+                    autoFocus
+                    className="max-h-28 px-3 min-h-11 w-full resize-none bg-transparent  pb-1.5 pt-2.5 text-[15px] text-[#111] outline-none"
                     disabled={chat.isSending}
+                    ref={messageInputRef}
                     maxLength={4_000}
                     onChange={(event) => chat.updateDraft(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault();
-                        void chat.submitMessage();
+                        if (canSend) {
+                          void chat.submitMessage();
+                        }
                       }
                     }}
                     placeholder="Type a message"
@@ -471,6 +620,7 @@ export default function PrivateChatPage() {
           </form>
         </div>
       ) : null}
+      <AttachmentPreviewModal chat={chat} />
     </div>
   );
 }

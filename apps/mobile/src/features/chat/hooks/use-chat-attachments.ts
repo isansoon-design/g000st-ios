@@ -3,7 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useState } from 'react';
 
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
-const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENTS = 3;
 
 const supportedMimeTypes = new Set([
   'application/msword',
@@ -57,10 +57,26 @@ export function useChatAttachments() {
   const append = useCallback((incoming: readonly SelectedChatAttachment[]) => {
     setError(null);
     setAttachments((current) => {
+      const incomingHasNonImage = incoming.some(
+        (attachment) => !attachment.contentType.startsWith('image/'),
+      );
+      const currentHasNonImage = current.some(
+        (attachment) => !attachment.contentType.startsWith('image/'),
+      );
+      if (
+        (incomingHasNonImage && (incoming.length > 1 || current.length > 0)) ||
+        (currentHasNonImage && incoming.length > 0)
+      ) {
+        setError('Videos and documents must be sent one at a time.');
+        return current;
+      }
       const available = MAX_ATTACHMENTS - current.length;
       if (available <= 0) {
         setError(`You can attach up to ${MAX_ATTACHMENTS} files.`);
         return current;
+      }
+      if (incoming.length > available) {
+        setError(`You can attach up to ${MAX_ATTACHMENTS} files at once.`);
       }
       const accepted: SelectedChatAttachment[] = [];
       for (const attachment of incoming) {
@@ -125,7 +141,7 @@ export function useChatAttachments() {
   const pickDocument = useCallback(async () => {
     const result = await DocumentPicker.getDocumentAsync({
       copyToCacheDirectory: true,
-      multiple: true,
+      multiple: false,
       type: [
         'application/pdf',
         'application/msword',
@@ -150,7 +166,7 @@ export function useChatAttachments() {
     error,
     pickDocument,
     pickFromLibrary,
-    removeAttachment: (fileName: string) =>
-      setAttachments((current) => current.filter((attachment) => attachment.fileName !== fileName)),
+    removeAttachment: (localUri: string) =>
+      setAttachments((current) => current.filter((attachment) => attachment.localUri !== localUri)),
   };
 }

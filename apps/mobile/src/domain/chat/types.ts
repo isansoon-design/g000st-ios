@@ -41,7 +41,7 @@ export const chatMessageSchema = z.object({
         objectKey: z.string().min(1),
       }),
     )
-    .max(5)
+    .max(3)
     .optional(),
   burnAfterReadSeconds: z.literal(5).optional(),
   burnStartedAtMs: z.number().int().positive().optional(),
