@@ -122,7 +122,7 @@ export class SocialService {
       ...safe,
       media: await Promise.all(media.map(async ({ objectKey, ...item }) => ({
         ...item,
-        url: (await this.requireMedia().getDownloadUrl({ ...item, objectKey })).downloadUrl,
+        url: (await this.requireMedia().getDownloadUrl({ ...item, objectKey }, 30 * 60)).downloadUrl,
       }))),
     };
   }

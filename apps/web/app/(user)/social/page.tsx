@@ -2,7 +2,7 @@
 
 import { Bell, Heart, MessageCircle, Send, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
 import { createSocialComment, createSocialPost, deleteSocialPost, getSocialProfile, listSocialAlerts, listSocialComments, listSocialPosts, markSocialAlertsRead, reportSocialPost, toggleSocialCamp, toggleSocialLike, updateSocialProfile, uploadSocialMedia, type SocialAlert, type SocialComment, type SocialPost, type SocialProfile, type SocialVisibility } from '@/app/api/social';
@@ -22,19 +22,49 @@ export default function SocialPage() {
   const [busy, setBusy] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const feedScrollRef = useRef<HTMLElement>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
   const myId = sessionStorage.get()?.user.publicId;
 
   const load = useCallback(async () => {
     try {
       if (view === 'alerts') { setAlerts(await listSocialAlerts()); await markSocialAlertsRead(); }
-      else { setPosts((await listSocialPosts(undefined, view === 'mine' ? myId : undefined)).items); if (view === 'mine' && myId) setProfile(await getSocialProfile(myId)); }
+      else { const page = await listSocialPosts(undefined, view === 'mine' ? myId : undefined); setPosts(page.items); setNextCursor(page.nextCursor ?? null); if (view === 'mine' && myId) setProfile(await getSocialProfile(myId)); }
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not load Social.'); }
   }, [myId, view]);
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => void load(), 4 * 60 * 1000);
-    return () => window.clearInterval(timer);
   }, [load]);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore || view === 'alerts') return;
+    setLoadingMore(true);
+    try {
+      const page = await listSocialPosts(nextCursor, view === 'mine' ? myId : undefined);
+      setPosts((current) => {
+        const known = new Set(current.map((post) => post.id));
+        return [...current, ...page.items.filter((post) => !known.has(post.id))];
+      });
+      setNextCursor(page.nextCursor ?? null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not load more posts.');
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, myId, nextCursor, view]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || !nextCursor || view === 'alerts') return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry?.isIntersecting) void loadMore(); },
+      { root: feedScrollRef.current, rootMargin: '800px 0px' },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [loadMore, nextCursor, view]);
 
   async function publish() {
     if (!draft.trim() || busy) return;
@@ -61,7 +91,7 @@ export default function SocialPage() {
       <h1 className="text-lg font-black">g<span className="text-[#c62828]">000</span>st <span className="text-[#c62828]">S</span>ocial</h1>
       <button onClick={() => setView('alerts')} aria-label="Alerts"><Bell size={21} /></button>
     </header>
-    <main className="min-h-0 flex-1 overflow-y-auto">
+    <main ref={feedScrollRef} className="min-h-0 flex-1 overflow-y-auto">
       {view !== 'alerts' && <div className="border-b border-black/10 bg-white/80 p-4">
         <textarea className="min-h-24 w-full resize-none rounded-2xl border border-black/15 bg-white p-3 outline-none" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Share without a name…" maxLength={4000} />
         <div className="mt-2 flex items-center gap-2"><label className="flex items-center gap-2 rounded-xl border border-black/10 px-3 py-2 text-xs font-bold">📎<input className="hidden" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" onChange={(event) => { const files = [...(event.target.files ?? [])]; const videos = files.filter((file) => file.type.startsWith('video/')); if (files.some((file) => file.size > 5 * 1024 * 1024)) { toast.error('Each file must be 5 MB or smaller.'); event.target.value = ''; return; } if ((videos.length && files.length !== 1) || videos.length > 1 || (!videos.length && files.length > 2)) { toast.error('Choose up to two images or one video.'); event.target.value = ''; return; } setMediaFiles(files); }} />{mediaFiles.length ? `${mediaFiles.length} selected` : 'Media'}</label><label className="flex flex-1 items-center gap-2 text-xs font-bold"><input type="checkbox" checked={visibility === 'public'} onChange={(event) => setVisibility(event.target.checked ? 'public' : 'anonymous')} /> Show my identity</label><button disabled={busy || !draft.trim()} onClick={() => void publish()} className="rounded-xl bg-[#222] px-5 py-2 text-sm font-black text-white disabled:opacity-40">Post</button></div>
@@ -75,6 +105,8 @@ export default function SocialPage() {
           <div className="flex border-t border-black/10 p-2"><button onClick={async () => { const result = await toggleSocialLike(post.id); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, likedByViewer: result.liked, likeCount: result.likeCount } : item)); }} className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-sm font-bold ${post.likedByViewer ? 'text-[#c62828]' : ''}`}><Heart size={18} fill={post.likedByViewer ? 'currentColor' : 'none'} />{post.likeCount}</button><button onClick={() => void openComments(post)} className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-sm font-bold"><MessageCircle size={18} />{post.commentCount}</button>{post.ownerPublicId && !post.ownedByViewer && <button onClick={async () => { const result = await toggleSocialCamp(post.ownerPublicId!); setPosts((items) => items.map((item) => item.ownerPublicId === post.ownerPublicId ? { ...item, campedByViewer: result.camped } : item)); }} className="flex-1 rounded-xl py-2 text-sm font-black">{post.campedByViewer ? 'Camped' : 'Camp'}</button>}</div>
           {comments[post.id] && <Comments items={comments[post.id]} onSend={async (content) => { const created = await createSocialComment(post.id, content, visibility); setComments((value) => ({ ...value, [post.id]: [...(value[post.id] ?? []), created] })); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, commentCount: item.commentCount + 1 } : item)); }} />}
         </article>)}
+        <div ref={loadMoreRef} className="h-1" aria-hidden="true" />
+        {loadingMore && <div className="py-3 text-center text-xs font-bold text-black/45">Loading more…</div>}
       </div>}
     </main>
     <nav className="flex h-14 shrink-0 border-t border-black/15 bg-white/90"><ViewButton active={view === 'home'} onClick={() => setView('home')} label="Home" /><ViewButton active={view === 'mine'} onClick={() => setView('mine')} label="My Page" /><ViewButton active={view === 'alerts'} onClick={() => setView('alerts')} label="Alerts" /></nav>

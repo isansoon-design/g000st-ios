@@ -225,7 +225,10 @@ export class MediaService {
     );
   }
 
-  async getDownloadUrl(attachment: ChatAttachment): Promise<Readonly<{ downloadUrl: string }>> {
+  async getDownloadUrl(
+    attachment: ChatAttachment,
+    expiresInSeconds: number = DOWNLOAD_URL_TTL_SECONDS,
+  ): Promise<Readonly<{ downloadUrl: string }>> {
     const command = new GetObjectCommand({
       Bucket: this.config.bucket,
       Key: attachment.objectKey,
@@ -235,7 +238,7 @@ export class MediaService {
           : undefined,
     });
     return {
-      downloadUrl: await getSignedUrl(this.client, command, { expiresIn: DOWNLOAD_URL_TTL_SECONDS }),
+      downloadUrl: await getSignedUrl(this.client, command, { expiresIn: expiresInSeconds }),
     };
   }
 

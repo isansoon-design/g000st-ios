@@ -5,7 +5,7 @@ import axiosInstance from '@/api/axios';
 import { parseApiPayload } from '@/api/parse-api-payload';
 import { socialAlertPageSchema, socialCampResultSchema, socialCommentPageSchema, socialCommentResultSchema, socialLikeResultSchema, socialPostPageSchema, socialPostResultSchema, socialProfileResultSchema, type SocialProfile, type SocialVisibility } from '@/domain/social/types';
 
-export async function listSocialPosts(ownerId?: string) { const response = await axiosInstance.get('/social/posts', { params: { limit: 30, ownerId } }); return parseApiPayload(socialPostPageSchema, response.data).items; }
+export async function listSocialPosts(ownerId?: string, cursor?: string) { const response = await axiosInstance.get('/social/posts', { params: { cursor, limit: 10, ownerId } }); return parseApiPayload(socialPostPageSchema, response.data); }
 const pendingSocialMediaSchema = z.object({ byteSize: z.number().int().positive(), contentType: z.string(), fileName: z.string(), id: z.uuid(), objectKey: z.string() });
 const socialUploadSchema = z.object({ upload: z.object({ media: pendingSocialMediaSchema, headers: z.record(z.string(), z.string()), uploadUrl: z.url() }) });
 export type PendingSocialMedia = z.infer<typeof pendingSocialMediaSchema>;

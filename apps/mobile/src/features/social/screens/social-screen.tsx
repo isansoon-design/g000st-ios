@@ -3,8 +3,8 @@ import { randomUUID } from 'expo-crypto';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { cssInterop } from 'nativewind';
 
 import { createSocialComment, createSocialPost, deleteSocialPost, getSocialProfile, listSocialAlerts, listSocialComments, listSocialPosts, markSocialAlertsRead, reportSocialPost, toggleSocialCamp, toggleSocialLike, updateSocialProfile, uploadSocialMedia } from '@/api/social';
@@ -28,13 +28,18 @@ export function SocialScreen() {
   const [posting, setPosting] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<readonly ImagePicker.ImagePickerAsset[]>([]);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false);
   const userPublicId = user?.publicId;
 
   const load = useCallback(async () => {
     try {
       if (view === 'alerts') { setAlerts(await listSocialAlerts()); await markSocialAlertsRead(); }
       else {
-        setPosts(await listSocialPosts(view === 'mine' ? userPublicId : undefined));
+        const page = await listSocialPosts(view === 'mine' ? userPublicId : undefined);
+        setPosts(page.items);
+        setNextCursor(page.nextCursor ?? null);
         if (view === 'mine' && userPublicId) setProfile(await getSocialProfile(userPublicId));
       }
     } catch (error) { Alert.alert('Social', error instanceof Error ? error.message : 'Could not load Social.'); }
@@ -42,9 +47,26 @@ export function SocialScreen() {
   }, [userPublicId, view]);
   useEffect(() => {
     void Promise.resolve().then(load);
-    const timer = setInterval(() => void load(), 4 * 60 * 1000);
-    return () => clearInterval(timer);
   }, [load]);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMoreRef.current || view === 'alerts') return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const page = await listSocialPosts(view === 'mine' ? userPublicId : undefined, nextCursor);
+      setPosts((current) => {
+        const known = new Set(current.map((post) => post.id));
+        return [...current, ...page.items.filter((post) => !known.has(post.id))];
+      });
+      setNextCursor(page.nextCursor ?? null);
+    } catch (error) {
+      Alert.alert('Social', error instanceof Error ? error.message : 'Could not load more posts.');
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [nextCursor, userPublicId, view]);
 
   async function publish() {
     const content = draft.trim(); if (!content || posting) return;
@@ -63,10 +85,7 @@ export function SocialScreen() {
   return <View className="flex-1 bg-[#E7E7E9]">
     <View className="h-14 flex-row items-center justify-between border-b border-black/10 bg-[#D2D2D4] px-4"><Text className="text-lg font-black text-[#1A1A1A]">g<Text className="text-[#C62828]">000</Text>st <Text className="text-[#C62828]">S</Text>ocial</Text><Pressable onPress={() => setView('alerts')}><Text className="text-xl">🔔</Text></Pressable></View>
     {view !== 'alerts' && <View className="border-b border-black/10 bg-white/80 p-3"><TextInput multiline maxLength={4000} value={draft} onChangeText={setDraft} placeholder="Share without a name…" className="min-h-24 rounded-2xl border border-black/15 bg-white p-3 text-[15px]" textAlignVertical="top" /><View className="mt-2 flex-row items-center"><Pressable onPress={async () => { const permission = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (!permission.granted) return Alert.alert('Media', 'Photo library permission is required.'); const result = await ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: true, mediaTypes: ['images', 'videos'], quality: 0.9, selectionLimit: 2 }); if (result.canceled) return; const videos = result.assets.filter((item) => item.type === 'video'); if (result.assets.some((item) => !item.fileSize || !item.mimeType || item.fileSize > 5 * 1024 * 1024)) return Alert.alert('Media', 'Each file must be 5 MB or smaller.'); if ((videos.length && result.assets.length !== 1) || videos.length > 1 || (!videos.length && result.assets.length > 2)) return Alert.alert('Media', 'Choose up to two images or one video.'); setSelectedMedia(result.assets); }} className="mr-2 rounded-xl border border-black/10 px-3 py-3"><Text className="text-xs font-black">{selectedMedia.length ? `✓ ${selectedMedia.length}` : '📎 Media'}</Text></Pressable><Switch value={visibility === 'public'} onValueChange={(value) => setVisibility(value ? 'public' : 'anonymous')} /><Text className="ml-2 flex-1 text-xs font-bold">Show identity</Text><Pressable disabled={!draft.trim() || posting} onPress={() => void publish()} className="rounded-xl bg-[#222] px-5 py-3 disabled:opacity-40"><Text className="font-black text-white">{posting ? 'Posting…' : 'Post'}</Text></Pressable></View></View>}
-    {loading ? <View className="flex-1 items-center justify-center"><ActivityIndicator /></View> : <ScrollView className="flex-1" contentContainerClassName="gap-3 p-3" refreshControl={<RefreshControl refreshing={false} onRefresh={() => void load()} />}>
-      {view === 'mine' && profile && <ProfileEditor profile={profile} onSave={async (value) => setProfile(await updateSocialProfile(value))} />}
-      {view === 'alerts' ? <AlertList alerts={alerts} /> : posts.length ? posts.map((post) => <PostCard key={post.id} post={post} comments={comments[post.id]} onChat={openChat} onDelete={async () => { await deleteSocialPost(post.id); setPosts((items) => items.filter((item) => item.id !== post.id)); }} onReport={() => reportSocialPost(post.id)} onLike={async () => { const result = await toggleSocialLike(post.id); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, ...result, likedByViewer: result.liked } : item)); }} onCamp={async () => { if (!post.ownerPublicId) return; const result = await toggleSocialCamp(post.ownerPublicId); setPosts((items) => items.map((item) => item.ownerPublicId === post.ownerPublicId ? { ...item, campedByViewer: result.camped } : item)); }} onComments={async () => { if (comments[post.id]) { setComments((value) => { const next = { ...value }; delete next[post.id]; return next; }); } else setComments((value) => ({ ...value, [post.id]: [] })); if (!comments[post.id]) { const loaded = await listSocialComments(post.id); setComments((value) => ({ ...value, [post.id]: loaded })); } }} onComment={async (content) => { const comment = await createSocialComment(post.id, content, visibility); setComments((value) => ({ ...value, [post.id]: [...(value[post.id] ?? []), comment] })); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, commentCount: item.commentCount + 1 } : item)); }} />) : <Text className="py-20 text-center font-bold text-black/40">No posts yet.</Text>}
-    </ScrollView>}
+    {loading ? <View className="flex-1 items-center justify-center"><ActivityIndicator /></View> : view === 'alerts' ? <ScrollView className="flex-1" contentContainerClassName="gap-3 p-3" refreshControl={<RefreshControl refreshing={false} onRefresh={() => void load()} />}><AlertList alerts={alerts} /></ScrollView> : <FlatList data={posts} keyExtractor={(post) => post.id} className="flex-1" contentContainerClassName="gap-3 p-3" onEndReached={() => void loadMore()} onEndReachedThreshold={1.5} refreshControl={<RefreshControl refreshing={false} onRefresh={() => void load()} />} ListHeaderComponent={view === 'mine' && profile ? <ProfileEditor profile={profile} onSave={async (value) => setProfile(await updateSocialProfile(value))} /> : null} ListEmptyComponent={<Text className="py-20 text-center font-bold text-black/40">No posts yet.</Text>} ListFooterComponent={loadingMore ? <ActivityIndicator className="py-3" /> : null} renderItem={({ item: post }) => <PostCard post={post} comments={comments[post.id]} onChat={openChat} onDelete={async () => { await deleteSocialPost(post.id); setPosts((items) => items.filter((item) => item.id !== post.id)); }} onReport={() => reportSocialPost(post.id)} onLike={async () => { const result = await toggleSocialLike(post.id); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, ...result, likedByViewer: result.liked } : item)); }} onCamp={async () => { if (!post.ownerPublicId) return; const result = await toggleSocialCamp(post.ownerPublicId); setPosts((items) => items.map((item) => item.ownerPublicId === post.ownerPublicId ? { ...item, campedByViewer: result.camped } : item)); }} onComments={async () => { if (comments[post.id]) { setComments((value) => { const next = { ...value }; delete next[post.id]; return next; }); } else { const loaded = await listSocialComments(post.id); setComments((value) => ({ ...value, [post.id]: loaded })); } }} onComment={async (content) => { const comment = await createSocialComment(post.id, content, visibility); setComments((value) => ({ ...value, [post.id]: [...(value[post.id] ?? []), comment] })); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, commentCount: item.commentCount + 1 } : item)); }} />} />}
     <View className="h-14 flex-row border-t border-black/15 bg-white"><ViewButton label="Home" active={view === 'home'} onPress={() => setView('home')} /><ViewButton label="My Page" active={view === 'mine'} onPress={() => setView('mine')} /><ViewButton label="Alerts" active={view === 'alerts'} onPress={() => setView('alerts')} /></View>
   </View>;
 }
