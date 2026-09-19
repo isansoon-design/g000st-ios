@@ -15,16 +15,7 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 
 type ViewName = 'home' | 'mine' | 'alerts';
 cssInterop(VideoView, { className: 'style' });
-function OnlineSignal() {
-  return (
-    <View className="ml-1 h-3 flex-row items-end gap-0.5" accessibilityLabel="Online">
-      <View className="h-1 w-[3px] rounded-sm bg-g000st-silver" />
-      <View className="h-1.5 w-[3px] rounded-sm bg-g000st-silver" />
-      <View className="h-[9px] w-[3px] rounded-sm bg-g000st-silver" />
-      <View className="h-3 w-[3px] rounded-sm bg-g000st-silver" />
-    </View>
-  );
-}
+
 export function SocialScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -156,7 +147,20 @@ export function SocialScreen() {
             ListHeaderComponent={view === 'mine' && profile ? <ProfileEditor profile={profile} onSave={async (value) => setProfile(await updateSocialProfile(value))} /> : null}
             ListEmptyComponent={<Text className="py-20 text-center font-bold text-black/40">No posts yet.</Text>}
             ListFooterComponent={loadingMore ? <ActivityIndicator className="py-3" /> : null}
-            renderItem={({ item: post }) => <PostCard post={post} comments={comments[post.id]} onChat={openChat} onDelete={async () => { await deleteSocialPost(post.id); setPosts((items) => items.filter((item) => item.id !== post.id)); }} onReport={() => reportSocialPost(post.id)} onLike={async () => { const result = await toggleSocialLike(post.id); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, ...result, likedByViewer: result.liked } : item)); }} onCamp={async () => { if (!post.ownerPublicId) return; const result = await toggleSocialCamp(post.ownerPublicId); setPosts((items) => items.map((item) => item.ownerPublicId === post.ownerPublicId ? { ...item, campedByViewer: result.camped } : item)); }} onComments={async () => { if (comments[post.id]) { setComments((value) => { const next = { ...value }; delete next[post.id]; return next; }); } else { const loaded = await listSocialComments(post.id); setComments((value) => ({ ...value, [post.id]: loaded })); } }} onComment={async (content) => { const comment = await createSocialComment(post.id, content, visibility); setComments((value) => ({ ...value, [post.id]: [...(value[post.id] ?? []), comment] })); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, commentCount: item.commentCount + 1 } : item)); }} />} />}
+            renderItem={({ item: post }) =>
+              <PostCard
+                post={post}
+                comments={comments[post.id]}
+                onChat={openChat}
+                onDelete={async () => { await deleteSocialPost(post.id); setPosts((items) => items.filter((item) => item.id !== post.id)); }}
+                onReport={() => reportSocialPost(post.id)} onLike={async () => { const result = await toggleSocialLike(post.id); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, ...result, likedByViewer: result.liked } : item)); }}
+                onCamp={async () => { if (!post.ownerPublicId) return; const result = await toggleSocialCamp(post.ownerPublicId); setPosts((items) => items.map((item) => item.ownerPublicId === post.ownerPublicId ? { ...item, campedByViewer: result.camped } : item)); }}
+                onComments={async () => { if (comments[post.id]) { setComments((value) => { const next = { ...value }; delete next[post.id]; return next; }); } else { const loaded = await listSocialComments(post.id); setComments((value) => ({ ...value, [post.id]: loaded })); } }}
+                onComment={async (content) => { const comment = await createSocialComment(post.id, content, visibility); setComments((value) => ({ ...value, [post.id]: [...(value[post.id] ?? []), comment] })); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, commentCount: item.commentCount + 1 } : item)); }}
+              />
+            }
+          />
+        }
         <View className="h-14 flex-row border-t border-black/15 bg-white"><ViewButton label="Home" active={view === 'home'} onPress={() => setView('home')} /><ViewButton label="My Page" active={view === 'mine'} onPress={() => setView('mine')} /><ViewButton label="Alerts" active={view === 'alerts'} onPress={() => setView('alerts')} /></View>
       </View>
     </FeatureScreen>
@@ -166,7 +170,24 @@ export function SocialScreen() {
 type PostCardProps = { post: SocialPost; comments?: SocialComment[]; onChat: (id?: string) => Promise<void>; onDelete: () => Promise<void>; onReport: () => Promise<void>; onLike: () => Promise<void>; onCamp: () => Promise<void>; onComments: () => Promise<void>; onComment: (content: string) => Promise<void> };
 function PostCard({ post, comments, onChat, onDelete, onReport, onLike, onCamp, onComments, onComment }: PostCardProps) {
   const [comment, setComment] = useState('');
-  return <View className="overflow-hidden rounded-2xl border border-black/10 bg-white"><View className="flex-row items-center gap-3 p-4"><View className="h-10 w-10 items-center justify-center rounded-full bg-[#DDD]"><Text>◎</Text></View><Pressable className="flex-1" onPress={() => void onChat(post.ownerPublicId)}><Text className="font-black">{post.author.displayName}</Text><Text className="text-[10px] text-black/45">{new Date(post.createdAtMs).toLocaleString()}{post.editedAtMs ? ' · edited' : ''}</Text></Pressable><Pressable onPress={() => Alert.alert(post.ownedByViewer ? 'Delete post?' : 'Report post?', undefined, [{ text: 'Cancel', style: 'cancel' }, { text: post.ownedByViewer ? 'Delete' : 'Report', style: 'destructive', onPress: () => void (post.ownedByViewer ? onDelete() : onReport()) }])}><Text className="text-xs font-black">{post.ownedByViewer ? 'Delete' : 'Report'}</Text></Pressable></View><Text className="px-4 pb-4 text-[15px] leading-6">{post.content}</Text>{post.media?.map((item) => item.kind === 'video' ? <SocialVideo key={item.id} uri={item.url} /> : <Image key={item.id} source={{ uri: item.url }} contentFit="cover" className={`w-full ${post.media?.length === 2 ? 'h-56' : 'h-80'}`} />)}<View className="flex-row border-t border-black/10 p-2"><Action label={`♥ ${post.likeCount}`} active={post.likedByViewer} onPress={onLike} /><Action label={`💬 ${post.commentCount}`} onPress={onComments} />{post.ownerPublicId && !post.ownedByViewer && <Action label={post.campedByViewer ? 'Camped' : 'Camp'} onPress={onCamp} />}</View>{comments && <View className="border-t border-black/10 bg-black/[.025] p-3">{comments.map((item) => <Text key={item.id} className="mb-2 text-sm"><Text className="font-black">{item.author.displayName} </Text>{item.content}</Text>)}<View className="flex-row gap-2"><TextInput value={comment} onChangeText={setComment} maxLength={1000} placeholder="Write a comment…" className="min-w-0 flex-1 rounded-xl border border-black/15 bg-white px-3 py-2" /><Pressable onPress={() => { const value = comment.trim(); if (value) void onComment(value).then(() => setComment('')); }} className="rounded-xl bg-[#222] px-4 py-2"><Text className="text-white">➤</Text></Pressable></View></View>}</View>;
+  return (<View className="overflow-hidden rounded-2xl border border-black/10 bg-white"><View className="flex-row items-center gap-3 p-4"><View className="h-10 w-10 items-center justify-center rounded-full bg-[#DDD]"><Text>◎</Text></View><Pressable className="flex-1" onPress={() => void onChat(post.ownerPublicId)}><Text className="font-black">{post.author.displayName}</Text><Text className="text-[10px] text-black/45">{new Date(post.createdAtMs).toLocaleString()}{post.editedAtMs ? ' · edited' : ''}</Text></Pressable><Pressable onPress={() => Alert.alert(post.ownedByViewer ? 'Delete post?' : 'Report post?', undefined, [{ text: 'Cancel', style: 'cancel' }, { text: post.ownedByViewer ? 'Delete' : 'Report', style: 'destructive', onPress: () => void (post.ownedByViewer ? onDelete() : onReport()) }])}><Text className="text-xs font-black">{post.ownedByViewer ? 'Delete' : 'Report'}</Text></Pressable></View><Text className="px-4 pb-4 text-[15px] leading-6">{post.content}</Text>{post.media?.map((item) => item.kind === 'video' ? <SocialVideo key={item.id} uri={item.url} /> : <Image key={item.id} source={{ uri: item.url }} contentFit="cover" className={`w-full ${post.media?.length === 2 ? 'h-56' : 'h-80'}`} />)}<View className="flex-row border-t border-black/10 p-2"><Action label={`♥ ${post.likeCount}`} active={post.likedByViewer} onPress={onLike} /><Action label={`💬 ${post.commentCount}`} onPress={onComments} />{post.ownerPublicId && !post.ownedByViewer && <Action label={post.campedByViewer ? 'Camped' : 'Camp'} onPress={onCamp} />}</View>{comments && <View className="border-t border-black/10 bg-black/[.025] p-3">{comments.map((item) => <Text key={item.id} className="mb-2 text-sm"><Text className="font-black">{item.author.displayName} </Text>{item.content}</Text>)}
+    <View className="flex-row gap-2">
+      <TextInput
+        value={comment}
+        onChangeText={setComment}
+        maxLength={1000}
+        placeholder="Write a comment…"
+        className="min-w-0 flex-1 rounded-xl border border-black/15 bg-white px-3 py-2" />
+      <Pressable
+        onPress={() => { const value = comment.trim(); if (value) void onComment(value).then(() => setComment('')); }}
+        className="rounded-xl bg-[#222] px-4 py-2">
+        <Text className="text-white">➤</Text>
+      </Pressable>
+    </View>
+  </View>
+  }
+  </View>
+  );
 }
 function SocialVideo({ uri }: { uri: string }) { const player = useVideoPlayer(uri); return <VideoView className="h-80 w-full bg-black" contentFit="contain" fullscreenOptions={{ enable: true }} nativeControls player={player} />; }
 function ProfileEditor({ profile, onSave }: { profile: SocialProfile; onSave: (profile: Partial<SocialProfile>) => Promise<void> }) {
@@ -175,9 +196,73 @@ function ProfileEditor({ profile, onSave }: { profile: SocialProfile; onSave: (p
   const [country, setCountry] = useState(profile.country ?? '');
   const [hobby, setHobby] = useState(profile.hobby ?? '');
   const [bio, setBio] = useState(profile.bio ?? '');
-  if (!editing) return <Pressable onPress={() => setEditing(true)} className="rounded-2xl bg-white p-4"><Text className="text-base font-black">{profile.displayName || 'My social profile'}</Text><Text className="mt-1 text-xs text-black/45">{profile.country || profile.hobby || 'Tap to complete your optional profile'}</Text></Pressable>;
-  return <View className="gap-2 rounded-2xl bg-white p-4"><Text className="text-base font-black">Edit social profile</Text><TextInput value={displayName} onChangeText={setDisplayName} placeholder="Display name" className="rounded-xl border border-black/15 px-3 py-2" /><TextInput value={country} onChangeText={setCountry} placeholder="Country" className="rounded-xl border border-black/15 px-3 py-2" /><TextInput value={hobby} onChangeText={setHobby} placeholder="Hobby" className="rounded-xl border border-black/15 px-3 py-2" /><TextInput value={bio} onChangeText={setBio} placeholder="About me" multiline className="min-h-20 rounded-xl border border-black/15 px-3 py-2" textAlignVertical="top" /><View className="flex-row gap-2"><Pressable onPress={() => setEditing(false)} className="flex-1 rounded-xl bg-[#DDD] p-3"><Text className="text-center font-black">Cancel</Text></Pressable><Pressable onPress={() => void onSave({ displayName: displayName.trim() || undefined, country: country.trim() || undefined, hobby: hobby.trim() || undefined, bio: bio.trim() || undefined }).then(() => setEditing(false))} className="flex-1 rounded-xl bg-[#222] p-3"><Text className="text-center font-black text-white">Save</Text></Pressable></View></View>;
+  if (!editing) return (
+    <Pressable
+      onPress={() => setEditing(true)}
+      className="rounded-2xl bg-white p-4"
+    >
+      <Text className="text-base font-black">{profile.displayName || 'My social profile'}</Text>
+      <Text className="mt-1 text-xs text-black/45">{profile.country || profile.hobby || 'Tap to complete your optional profile'}</Text>
+    </Pressable>
+  );
+  return (
+    <View className="gap-2 rounded-2xl bg-white p-4">
+      <Text className="text-base font-black">Edit social profile</Text>
+      <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Display name" className="rounded-xl border border-black/15 px-3 py-2" />
+      <TextInput value={country} onChangeText={setCountry} placeholder="Country" className="rounded-xl border border-black/15 px-3 py-2" />
+      <TextInput value={hobby} onChangeText={setHobby} placeholder="Hobby" className="rounded-xl border border-black/15 px-3 py-2" />
+      <TextInput value={bio} onChangeText={setBio} placeholder="About me" multiline className="min-h-20 rounded-xl border border-black/15 px-3 py-2" textAlignVertical="top" />
+      <View className="flex-row gap-2">
+        <Pressable onPress={() => setEditing(false)} className="flex-1 rounded-xl bg-[#DDD] p-3">
+          <Text className="text-center font-black">Cancel</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => void onSave({ displayName: displayName.trim() || undefined, country: country.trim() || undefined, hobby: hobby.trim() || undefined, bio: bio.trim() || undefined }).then(() => setEditing(false))}
+          className="flex-1 rounded-xl bg-[#222] p-3">
+          <Text className="text-center font-black text-white">Save</Text>
+        </Pressable>
+      </View>
+    </View>);
 }
-function AlertList({ alerts }: { alerts: SocialAlert[] }) { if (!alerts.length) return <Text className="py-20 text-center font-bold text-black/40">No alerts yet.</Text>; return <>{alerts.map((item) => <View key={item.id} className="rounded-2xl bg-white p-4"><Text><Text className="font-black">{item.actor.displayName} </Text>{item.kind === 'like' ? 'liked your post.' : item.kind === 'comment' ? 'commented on your post.' : 'camped your profile.'}</Text><Text className="mt-1 text-[10px] text-black/40">{new Date(item.createdAtMs).toLocaleString()}</Text></View>)}</>; }
-function Action({ label, active, onPress }: { label: string; active?: boolean; onPress: () => Promise<void> }) { return <Pressable onPress={() => void onPress()} className="flex-1 items-center rounded-xl py-2"><Text className={`text-sm font-black ${active ? 'text-[#C62828]' : 'text-black/60'}`}>{label}</Text></Pressable>; }
-function ViewButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) { return <Pressable onPress={onPress} className={`flex-1 items-center justify-center ${active ? 'border-t-2 border-[#C62828]' : ''}`}><Text className={`text-xs font-black ${active ? 'text-black' : 'text-black/40'}`}>{label}</Text></Pressable>; }
+function AlertList({ alerts }: { alerts: SocialAlert[] }) {
+  if (!alerts.length)
+    return (
+      <Text className="py-20 text-center font-bold text-black/40">No alerts yet.</Text>
+    );
+  return (
+    <>
+      {alerts.map((item) => (
+        <View key={item.id} className="rounded-2xl bg-white p-4">
+          <Text>
+            <Text className="font-black">{item.actor.displayName} </Text>
+            {item.kind === 'like'
+              ? 'liked your post.'
+              : item.kind === 'comment'
+                ? 'commented on your post.'
+                : 'camped your profile.'}
+          </Text>
+          <Text className="mt-1 text-[10px] text-black/40">
+            {new Date(item.createdAtMs).toLocaleString()}
+          </Text>
+        </View>
+      ))}
+    </>
+  );
+}
+function Action({ label, active, onPress }: { label: string; active?: boolean; onPress: () => Promise<void> }) {
+  return (
+    <Pressable
+      onPress={() => void onPress()}
+      className="flex-1 items-center rounded-xl py-2">
+      <Text className={`text-sm font-black ${active ? 'text-[#C62828]' : 'text-black/60'}`}>{label}</Text>
+    </Pressable>
+  );
+}
+function ViewButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className={`flex-1 items-center justify-center ${active ? 'border-t-2 border-[#C62828]' : ''}`}>
+      <Text className={`text-xs font-black ${active ? 'text-black' : 'text-black/40'}`}>{label}</Text>
+    </Pressable>);
+}

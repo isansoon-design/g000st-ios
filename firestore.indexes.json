@@ -1,7 +1,7 @@
 {
   "indexes": [
     {
-      "collectionGroup": "social_posts",
+      "collectionGroup": "staging_v1_social_posts",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "ownerPublicId", "order": "ASCENDING" },
