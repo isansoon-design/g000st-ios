@@ -41,8 +41,8 @@ export function createApp({
       },
     }),
   );
-  app.use('/api/v1/social', createSocialRouter(authService, socialService));
   app.use(express.json({ limit: '32kb' }));
+  app.use('/api/v1/social', createSocialRouter(authService, socialService));
 
   app.get('/api/v1/health', (_request, response) => {
     response.status(200).json({ ok: true });
