@@ -5,13 +5,15 @@ import { useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { cssInterop } from 'nativewind';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
-
+import { ActivityIndicator, FlatList, Modal, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import Toast from 'react-native-toast-message';
+ 
 import { startChatConversation } from '@/api/chat';
 import { createSocialComment, createSocialPost, deleteSocialPost, getSocialProfile, listSocialAlerts, listSocialComments, listSocialPosts, markSocialAlertsRead, reportSocialPost, toggleSocialCamp, toggleSocialLike, updateSocialProfile, uploadSocialMedia } from '@/api/social';
 import { FeatureScreen } from '@/components/layout/feature-screen';
 import type { SocialAlert, SocialComment, SocialPost, SocialProfile, SocialVisibility } from '@/domain/social/types';
 import { useAuth } from '@/features/auth/hooks/use-auth';
+import { useConfirmModal } from '@/providers/confirm-modal-provider';
 
 type ViewName = 'home' | 'mine' | 'alerts';
 cssInterop(VideoView, { className: 'style' });
@@ -28,6 +30,7 @@ export function SocialScreen() {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<readonly ImagePicker.ImagePickerAsset[]>([]);
+  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -43,7 +46,7 @@ export function SocialScreen() {
         setNextCursor(page.nextCursor ?? null);
         if (view === 'mine' && userPublicId) setProfile(await getSocialProfile(userPublicId));
       }
-    } catch (error) { Alert.alert('Social', error instanceof Error ? error.message : 'Could not load Social.'); }
+    } catch (error) { Toast.show({ type: 'error', text1: 'Social', text2: error instanceof Error ? error.message : 'Could not load Social.' }); }
     finally { setLoading(false); }
   }, [userPublicId, view]);
   useEffect(() => {
@@ -62,25 +65,65 @@ export function SocialScreen() {
       });
       setNextCursor(page.nextCursor ?? null);
     } catch (error) {
-      Alert.alert('Social', error instanceof Error ? error.message : 'Could not load more posts.');
+      Toast.show({ type: 'error', text1: 'Social', text2: error instanceof Error ? error.message : 'Could not load more posts.' });
     } finally {
       loadingMoreRef.current = false;
       setLoadingMore(false);
     }
   }, [nextCursor, userPublicId, view]);
 
+  const onPickLibraryAttachment = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Toast.show({ type: 'error', text1: 'Media', text2: 'Photo library permission is required.' });
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: true, mediaTypes: ['images', 'videos'], quality: 0.9, selectionLimit: 2
+    });
+    if (result.canceled) return;
+    const videos = result.assets.filter((item) => item.type === 'video');
+    if (result.assets.some((item) => !item.fileSize || !item.mimeType || item.fileSize > 5 * 1024 * 1024))
+      return Toast.show({ type: 'error', text1: 'Media', text2: 'Each file must be 5 MB or smaller.' });
+    if ((videos.length && result.assets.length !== 1) || videos.length > 1 || (!videos.length && result.assets.length > 2))
+      return Toast.show({ type: 'error', text1: 'Media', text2: 'Choose up to two images or one video.' });
+    setSelectedMedia(result.assets);
+  };
+
+  const onCaptureAttachment = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Toast.show({ type: 'error', text1: 'Media', text2: 'Camera permission is required.' });
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images', 'videos'], quality: 0.9,
+    });
+    if (result.canceled) return;
+    if (result.assets.some((item) => !item.fileSize || !item.mimeType || item.fileSize > 5 * 1024 * 1024))
+      return Toast.show({ type: 'error', text1: 'Media', text2: 'Each file must be 5 MB or smaller.' });
+    setSelectedMedia((prev) => {
+      const next = [...prev, ...result.assets];
+      const nextVideos = next.filter((item) => item.type === 'video');
+      if ((nextVideos.length && next.length !== 1) || nextVideos.length > 1 || (!nextVideos.length && next.length > 2)) {
+         return result.assets;
+      }
+      return next;
+    });
+  };
+
   async function publish() {
     const content = draft.trim(); if (!content || posting) return;
     setPosting(true);
     try { const clientPostId = randomUUID(); const media = selectedMedia.length ? await Promise.all(selectedMedia.map((item) => uploadSocialMedia({ byteSize: item.fileSize!, clientPostId, contentType: item.mimeType!, fileName: item.fileName || 'social-media', uri: item.uri }))) : undefined; const post = await createSocialPost(clientPostId, content, visibility, media); setPosts((items) => [post, ...items]); setDraft(''); setSelectedMedia([]); }
-    catch (error) { Alert.alert('Could not post', error instanceof Error ? error.message : 'Try again.'); }
+    catch (error) { Toast.show({ type: 'error', text1: 'Could not post', text2: error instanceof Error ? error.message : 'Try again.' }); }
     finally { setPosting(false); }
   }
 
   async function openChat(publicId?: string) {
-    if (!publicId) return Alert.alert('Anonymous post', 'This author chose not to show their identity.');
+    if (!publicId) return Toast.show({ type: 'info', text1: 'Anonymous post', text2: 'This author chose not to show their identity.' });
     try { const conversation = await startChatConversation(publicId); router.navigate({ pathname: '/(app)/(tabs)/chat', params: { conversationId: conversation.id } }); }
-    catch (error) { Alert.alert('Chat', error instanceof Error ? error.message : 'Could not open chat.'); }
+    catch (error) { Toast.show({ type: 'error', text1: 'Chat', text2: error instanceof Error ? error.message : 'Could not open chat.' }); }
   }
 
   return (
@@ -112,13 +155,50 @@ export function SocialScreen() {
     >
       <View className="flex-1 bg-[#E7E7E9]">
 
-        {view !== 'alerts' && <View className="border-b border-black/10 bg-white/80 p-3"><TextInput multiline maxLength={4000} value={draft} onChangeText={setDraft} placeholder="Share without a name…" className="min-h-24 rounded-2xl border border-black/15 bg-white p-3 text-[15px]" textAlignVertical="top" /><View className="mt-2 flex-row items-center"><Pressable onPress={async () => { const permission = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (!permission.granted) return Alert.alert('Media', 'Photo library permission is required.'); const result = await ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: true, mediaTypes: ['images', 'videos'], quality: 0.9, selectionLimit: 2 }); if (result.canceled) return; const videos = result.assets.filter((item) => item.type === 'video'); if (result.assets.some((item) => !item.fileSize || !item.mimeType || item.fileSize > 5 * 1024 * 1024)) return Alert.alert('Media', 'Each file must be 5 MB or smaller.'); if ((videos.length && result.assets.length !== 1) || videos.length > 1 || (!videos.length && result.assets.length > 2)) return Alert.alert('Media', 'Choose up to two images or one video.'); setSelectedMedia(result.assets); }} className="mr-2 rounded-xl border border-black/10 px-3 py-3"><Text className="text-xs font-black">{selectedMedia.length ? `✓ ${selectedMedia.length}` : '📎 Media'}</Text></Pressable><Switch value={visibility === 'public'} onValueChange={(value) => setVisibility(value ? 'public' : 'anonymous')} />
-          <Text className="ml-2 flex-1 text-xs font-bold">Show identity</Text>
-          <Pressable disabled={!draft.trim() || posting} onPress={() => void publish()} className="rounded-xl bg-[#222] px-5 py-3 disabled:opacity-40">
-            <Text className="font-black text-white">{posting ? 'Posting…' : 'Post'}</Text>
-          </Pressable>
-        </View>
-        </View>
+        {view !== 'alerts' &&
+          <View className="border-b border-black/10 bg-white/80 p-3">
+            <TextInput multiline maxLength={4000} value={draft} onChangeText={setDraft}
+              placeholder="Share without a name…"
+              className="min-h-24 rounded-2xl border border-black/15 bg-white p-3 text-[15px]"
+              textAlignVertical="top" />
+
+            {selectedMedia.length > 0 && (
+              <View className="mt-3 flex-row gap-3">
+                {selectedMedia.map((media, index) => (
+                  <View key={index} className="relative">
+                    <Image source={{ uri: media.uri }} className="h-16 w-16 rounded-xl bg-black/5" contentFit="cover" />
+                    {media.type === 'video' && (
+                      <View className="absolute inset-0 items-center justify-center rounded-xl bg-black/20">
+                        <Text className="text-xs font-black text-white">▶</Text>
+                      </View>
+                    )}
+                    <Pressable
+                      onPress={() => setSelectedMedia((prev) => prev.filter((_, i) => i !== index))}
+                      className="absolute -right-2 -top-2 h-6 w-6 items-center justify-center rounded-full bg-black/50"
+                    >
+                      <Text className="text-xs font-bold text-white">✕</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <View className="mt-2 flex-row items-center">
+              <Pressable onPress={() => setIsAttachmentMenuOpen(true)}
+                className="mr-2 rounded-xl border border-black/10 px-3 py-3"
+              >
+                <Text className="text-xs font-black">{selectedMedia.length ? `✓ ${selectedMedia.length}` : '📎 Media'}</Text>
+              </Pressable>
+              <Switch
+                value={visibility === 'public'}
+                onValueChange={(value) => setVisibility(value ? 'public' : 'anonymous')}
+              />
+              <Text className="ml-2 flex-1 text-xs font-bold">Show identity</Text>
+              <Pressable disabled={!draft.trim() || posting} onPress={() => void publish()} className="rounded-xl bg-[#222] px-5 py-3 disabled:opacity-40">
+                <Text className="font-black text-white">{posting ? 'Posting…' : 'Post'}</Text>
+              </Pressable>
+            </View>
+          </View>
         }
         {loading ? <View className="flex-1 items-center justify-center">
           <ActivityIndicator />
@@ -163,6 +243,21 @@ export function SocialScreen() {
         }
         <View className="h-14 flex-row border-t border-black/15 bg-white"><ViewButton label="Home" active={view === 'home'} onPress={() => setView('home')} /><ViewButton label="My Page" active={view === 'mine'} onPress={() => setView('mine')} /><ViewButton label="Alerts" active={view === 'alerts'} onPress={() => setView('alerts')} /></View>
       </View>
+
+      <Modal animationType="fade" transparent visible={isAttachmentMenuOpen} onRequestClose={() => setIsAttachmentMenuOpen(false)}>
+        <Pressable className="flex-1 items-center justify-end bg-black/45 p-5" onPress={() => setIsAttachmentMenuOpen(false)}>
+          <View className="mb-10 w-full rounded-[24px] bg-white p-4">
+            {[
+              ['Photo or video library', onPickLibraryAttachment],
+              ['Camera', onCaptureAttachment],
+            ].map(([label, action], index, arr) => (
+              <Pressable key={label as string} className={`py-4 ${index < arr.length - 1 ? 'border-b border-black/10' : ''}`} onPress={() => { setIsAttachmentMenuOpen(false); void (action as () => Promise<void>)(); }}>
+                <Text className="text-center font-bold text-[#1A1A1A]">{label as string}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </FeatureScreen>
   );
 }
@@ -170,7 +265,8 @@ export function SocialScreen() {
 type PostCardProps = { post: SocialPost; comments?: SocialComment[]; onChat: (id?: string) => Promise<void>; onDelete: () => Promise<void>; onReport: () => Promise<void>; onLike: () => Promise<void>; onCamp: () => Promise<void>; onComments: () => Promise<void>; onComment: (content: string) => Promise<void> };
 function PostCard({ post, comments, onChat, onDelete, onReport, onLike, onCamp, onComments, onComment }: PostCardProps) {
   const [comment, setComment] = useState('');
-  return (<View className="overflow-hidden rounded-2xl border border-black/10 bg-white"><View className="flex-row items-center gap-3 p-4"><View className="h-10 w-10 items-center justify-center rounded-full bg-[#DDD]"><Text>◎</Text></View><Pressable className="flex-1" onPress={() => void onChat(post.ownerPublicId)}><Text className="font-black">{post.author.displayName}</Text><Text className="text-[10px] text-black/45">{new Date(post.createdAtMs).toLocaleString()}{post.editedAtMs ? ' · edited' : ''}</Text></Pressable><Pressable onPress={() => Alert.alert(post.ownedByViewer ? 'Delete post?' : 'Report post?', undefined, [{ text: 'Cancel', style: 'cancel' }, { text: post.ownedByViewer ? 'Delete' : 'Report', style: 'destructive', onPress: () => void (post.ownedByViewer ? onDelete() : onReport()) }])}><Text className="text-xs font-black">{post.ownedByViewer ? 'Delete' : 'Report'}</Text></Pressable></View><Text className="px-4 pb-4 text-[15px] leading-6">{post.content}</Text>{post.media?.map((item) => item.kind === 'video' ? <SocialVideo key={item.id} uri={item.url} /> : <Image key={item.id} source={{ uri: item.url }} contentFit="cover" className={`w-full ${post.media?.length === 2 ? 'h-56' : 'h-80'}`} />)}<View className="flex-row border-t border-black/10 p-2"><Action label={`♥ ${post.likeCount}`} active={post.likedByViewer} onPress={onLike} /><Action label={`💬 ${post.commentCount}`} onPress={onComments} />{post.ownerPublicId && !post.ownedByViewer && <Action label={post.campedByViewer ? 'Camped' : 'Camp'} onPress={onCamp} />}</View>{comments && <View className="border-t border-black/10 bg-black/[.025] p-3">{comments.map((item) => <Text key={item.id} className="mb-2 text-sm"><Text className="font-black">{item.author.displayName} </Text>{item.content}</Text>)}
+  const { confirm } = useConfirmModal();
+  return (<View className="overflow-hidden rounded-2xl border border-black/10 bg-white"><View className="flex-row items-center gap-3 p-4"><View className="h-10 w-10 items-center justify-center rounded-full bg-[#DDD]"><Text>◎</Text></View><Pressable className="flex-1" onPress={() => void onChat(post.ownerPublicId)}><Text className="font-black">{post.author.displayName}</Text><Text className="text-[10px] text-black/45">{new Date(post.createdAtMs).toLocaleString()}{post.editedAtMs ? ' · edited' : ''}</Text></Pressable><Pressable onPress={async () => { const confirmed = await confirm({ title: post.ownedByViewer ? 'Delete post?' : 'Report post?', message: post.ownedByViewer ? 'Are you sure you want to delete this post?' : 'Are you sure you want to report this post?', confirmLabel: post.ownedByViewer ? 'Delete' : 'Report', isDangerous: true }); if (confirmed) { void (post.ownedByViewer ? onDelete() : onReport()); } }}><Text className="text-xs font-black">{post.ownedByViewer ? 'Delete' : 'Report'}</Text></Pressable></View><Text className="px-4 pb-4 text-[15px] leading-6">{post.content}</Text>{post.media?.map((item) => item.kind === 'video' ? <SocialVideo key={item.id} uri={item.url} /> : <Image key={item.id} source={{ uri: item.url }} contentFit="cover" className={`w-full ${post.media?.length === 2 ? 'h-56' : 'h-80'}`} />)}<View className="flex-row border-t border-black/10 p-2"><Action label={`♥ ${post.likeCount}`} active={post.likedByViewer} onPress={onLike} /><Action label={`💬 ${post.commentCount}`} onPress={onComments} />{post.ownerPublicId && !post.ownedByViewer && <Action label={post.campedByViewer ? 'Camped' : 'Camp'} onPress={onCamp} />}</View>{comments && <View className="border-t border-black/10 bg-black/[.025] p-3">{comments.map((item) => <Text key={item.id} className="mb-2 text-sm"><Text className="font-black">{item.author.displayName} </Text>{item.content}</Text>)}
     <View className="flex-row gap-2">
       <TextInput
         value={comment}

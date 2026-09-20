@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { Search, Trash2, UserCheck, UserX } from "lucide-react";
+import { useState } from "react";
 import toast from "react-hot-toast";
 
 interface User {
@@ -57,6 +58,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const { confirm } = useConfirmModal();
 
   const filteredUsers = users.filter(
     (u) =>
@@ -85,8 +87,14 @@ export default function UsersPage() {
     toast.success("User status updated");
   };
 
-  const handleDelete = (userId: string) => {
-    if (confirm("Are you sure you want to delete this user?")) {
+  const handleDelete = async (userId: string) => {
+    const confirmed = await confirm({
+      title: "Delete user?",
+      message: "Are you sure you want to delete this user? This action cannot be undone.",
+      confirmLabel: "Delete",
+      isDangerous: true,
+    });
+    if (confirmed) {
       setUsers(users.filter((u) => u.id !== userId));
       toast.success("User deleted");
     }
@@ -204,7 +212,7 @@ export default function UsersPage() {
                       )}
                     </button>
                     <button
-                      onClick={() => handleDelete(user.id)}
+                      onClick={() => void handleDelete(user.id)}
                       className="p-1 hover:bg-gray-100 rounded text-red-600"
                       title="Delete"
                     >

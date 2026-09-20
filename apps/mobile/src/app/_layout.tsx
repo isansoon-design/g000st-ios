@@ -13,6 +13,7 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { ConfirmModalProvider } from '@/providers/confirm-modal-provider';
 import { QueryProvider } from '@/providers/query-provider';
 import { NotificationsBootstrap } from '@/services/notifications/notifications-bootstrap';
+import Toast from 'react-native-toast-message';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -30,19 +31,22 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-        <KeyboardProvider>
-          <QueryProvider>
-            <AuthProvider>
-              <ConfirmModalProvider>
-                <NotificationsBootstrap />
-                <RootNavigator />
-              </ConfirmModalProvider>
-            </AuthProvider>
-          </QueryProvider>
-        </KeyboardProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+          <KeyboardProvider>
+            <QueryProvider>
+              <AuthProvider>
+                <ConfirmModalProvider>
+                  <NotificationsBootstrap />
+                  <RootNavigator />
+                </ConfirmModalProvider>
+              </AuthProvider>
+            </QueryProvider>
+          </KeyboardProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+      <Toast />
+    </>
   );
 }
