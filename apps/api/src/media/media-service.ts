@@ -14,6 +14,7 @@ import { ApiError } from '../http/api-error.js';
 import type { ChatAttachment, ChatAttachmentKind } from '../chat/chat-types.js';
 
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+const MAX_AVATAR_BYTES = 3 * 1024 * 1024;
 const UPLOAD_URL_TTL_SECONDS = 10 * 60;
 const DOWNLOAD_URL_TTL_SECONDS = 5 * 60;
 const MAX_ATTACHMENTS_PER_MESSAGE = 3;
@@ -51,6 +52,13 @@ type CreateUploadInput = Readonly<{
 type CreateSocialUploadInput = Readonly<{
   byteSize: number;
   clientPostId: string;
+  contentType: string;
+  fileName: string;
+  publicId: string;
+}>;
+
+type CreateAvatarUploadInput = Readonly<{
+  byteSize: number;
   contentType: string;
   fileName: string;
   publicId: string;
@@ -142,6 +150,56 @@ export class MediaService {
       headers: { 'Content-Type': input.contentType },
       uploadUrl: await getSignedUrl(this.client, command, { expiresIn: UPLOAD_URL_TTL_SECONDS }),
     };
+  }
+
+  async createAvatarUpload(input: CreateAvatarUploadInput): Promise<Readonly<{
+    media: PendingAttachmentInput;
+    headers: Readonly<{ 'Content-Type': string }>;
+    uploadUrl: string;
+  }>> {
+    const kind = this.validateFile(input);
+    if (kind !== 'image') throw new ApiError(400, 'UNSUPPORTED_AVATAR', 'Profile photos must be an image.');
+    if (input.byteSize > MAX_AVATAR_BYTES) {
+      throw new ApiError(400, 'UNSUPPORTED_AVATAR', 'Profile photo must be 3 MB or smaller.');
+    }
+    const mediaId = randomUUID();
+    const objectKey = `pending-avatar/${input.publicId}/${mediaId}`;
+    const command = new PutObjectCommand({
+      Bucket: this.config.bucket,
+      ContentLength: input.byteSize,
+      ContentType: input.contentType,
+      Key: objectKey,
+      Metadata: {
+        'g000st-byte-size': String(input.byteSize),
+        'g000st-owner-id': input.publicId,
+        'g000st-kind': kind,
+      },
+    });
+    return {
+      media: { byteSize: input.byteSize, contentType: input.contentType, fileName: this.safeFileName(input.fileName), id: mediaId, objectKey },
+      headers: { 'Content-Type': input.contentType },
+      uploadUrl: await getSignedUrl(this.client, command, { expiresIn: UPLOAD_URL_TTL_SECONDS }),
+    };
+  }
+
+  async promoteAvatar(input: Readonly<{ media: PendingAttachmentInput; publicId: string; previousObjectKey?: string }>): Promise<Readonly<{ objectKey: string }>> {
+    const kind = this.validateFile(input.media);
+    if (kind !== 'image') throw new ApiError(400, 'UNSUPPORTED_AVATAR', 'Profile photos must be an image.');
+    const expected = `pending-avatar/${input.publicId}/${input.media.id}`;
+    if (input.media.objectKey !== expected) {
+      throw new ApiError(400, 'INVALID_AVATAR', 'This photo does not belong to your account.');
+    }
+    const finalKey = `avatars/${input.publicId}/${input.media.id}`;
+    const object = await this.client.send(new HeadObjectCommand({ Bucket: this.config.bucket, Key: expected })).catch(() => null);
+    if (!object || object.ContentLength !== input.media.byteSize || object.ContentType !== input.media.contentType || object.Metadata?.['g000st-owner-id'] !== input.publicId) {
+      throw new ApiError(400, 'UPLOAD_NOT_FOUND', 'Upload is missing or does not match the selected photo.');
+    }
+    await this.client.send(new CopyObjectCommand({ Bucket: this.config.bucket, CopySource: `/${this.config.bucket}/${encodeURIComponent(expected).replaceAll('%2F', '/')}`, Key: finalKey, MetadataDirective: 'COPY' }));
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.config.bucket, Key: expected }));
+    if (input.previousObjectKey && input.previousObjectKey !== finalKey) {
+      await this.client.send(new DeleteObjectCommand({ Bucket: this.config.bucket, Key: input.previousObjectKey })).catch(() => undefined);
+    }
+    return { objectKey: finalKey };
   }
 
   async promoteSocialMedia(input: Readonly<{ media: PendingAttachmentInput; postId: string; publicId: string }>): Promise<PendingAttachmentInput & { kind: 'image' | 'video' }> {

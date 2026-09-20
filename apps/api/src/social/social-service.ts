@@ -10,6 +10,7 @@ import type {
   CreateSocialReportInput,
   SocialMediaView,
   SocialPost,
+  SocialProfile,
   UpdateSocialProfileInput,
 } from './social-types.js';
 
@@ -91,11 +92,33 @@ export class SocialService {
 
   async getProfile(viewerId: string, publicId: string) {
     if (!(await this.authStore.isUserActive(publicId))) throw new ApiError(404, 'USER_NOT_FOUND', 'User not found.');
-    return (await this.store.getProfile(viewerId, publicId)) ?? { publicId, updatedAtMs: 0, campedByViewer: false };
+    const profile = (await this.store.getProfile(viewerId, publicId)) ?? { publicId, updatedAtMs: 0, campedByViewer: false };
+    return this.withProfileAvatar(profile);
   }
 
-  updateProfile(publicId: string, input: UpdateSocialProfileInput) {
-    return this.store.updateProfile(publicId, input, this.now());
+  async updateProfile(publicId: string, input: UpdateSocialProfileInput) {
+    const { avatarMedia, ...fields } = input;
+    let avatarObjectKey: string | undefined;
+    if (avatarMedia) {
+      const current = await this.store.getProfile(publicId, publicId);
+      avatarObjectKey = (
+        await this.requireMedia().promoteAvatar({
+          media: avatarMedia,
+          previousObjectKey: current?.avatarObjectKey,
+          publicId,
+        })
+      ).objectKey;
+    }
+    const profile = await this.store.updateProfile(
+      publicId,
+      { ...fields, ...(avatarObjectKey ? { avatarObjectKey } : {}) },
+      this.now(),
+    );
+    return this.withProfileAvatar(profile);
+  }
+
+  createAvatarUpload(publicId: string, input: Readonly<{ byteSize: number; contentType: string; fileName: string }>) {
+    return this.requireMedia().createAvatarUpload({ ...input, publicId });
   }
 
   listAlerts(publicId: string, limit: number, cursor?: string) {
@@ -125,6 +148,18 @@ export class SocialService {
         url: (await this.requireMedia().getDownloadUrl({ ...item, objectKey }, 30 * 60)).downloadUrl,
       }))),
     };
+  }
+
+  private async withProfileAvatar<T extends Partial<Pick<SocialProfile, 'avatarObjectKey'>>>(
+    profile: T,
+  ): Promise<Omit<T, 'avatarObjectKey'> & Readonly<{ avatarUrl?: string }>> {
+    const { avatarObjectKey, ...safe } = profile;
+    if (!avatarObjectKey || !this.mediaService) return safe;
+    const { downloadUrl } = await this.mediaService.getDownloadUrl(
+      { byteSize: 0, contentType: 'image/*', fileName: 'avatar', id: 'avatar', kind: 'image', objectKey: avatarObjectKey },
+      30 * 60,
+    );
+    return { ...safe, avatarUrl: downloadUrl };
   }
 
   private requireMedia(): MediaService {

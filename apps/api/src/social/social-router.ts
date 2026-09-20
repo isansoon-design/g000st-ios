@@ -6,7 +6,7 @@ import { AuthService } from '../auth/auth-service.js';
 import { G000ST_ID_LENGTH } from '../core/identity.js';
 import { asyncRoute } from '../http/async-route.js';
 import { SocialService } from './social-service.js';
-import { MAX_SOCIAL_IMAGES, MAX_SOCIAL_MEDIA_BYTES } from './social-policy.js';
+import { MAX_AVATAR_BYTES, MAX_SOCIAL_IMAGES, MAX_SOCIAL_MEDIA_BYTES } from './social-policy.js';
 
 const uuid = z.string().uuid();
 const publicId = z.string().length(G000ST_ID_LENGTH).regex(/^[A-Za-z0-9]+$/);
@@ -21,7 +21,10 @@ const createPostBody = z.object({ clientPostId: uuid, content: z.string().trim()
 const uploadBody = z.object({ byteSize: z.number().int().positive().max(MAX_SOCIAL_MEDIA_BYTES), clientPostId: uuid, contentType: socialContentType, fileName: z.string().min(1).max(255) }).strict();
 const updatePostBody = z.object({ content: z.string().trim().min(1).max(4_000) }).strict();
 const createCommentBody = z.object({ content: z.string().trim().min(1).max(1_000), visibility: visibility.default('anonymous') }).strict();
-const profileBody = z.object({ displayName: z.string().trim().min(1).max(60).optional(), avatarUrl: z.url().max(2_000).optional(), country: z.string().trim().min(1).max(80).optional(), age: z.number().int().min(13).max(120).optional(), sex: z.enum(['male', 'female']).optional(), hobby: z.string().trim().min(1).max(100).optional(), bio: z.string().trim().min(1).max(500).optional() }).strict();
+const avatarContentType = z.enum(['image/gif', 'image/jpeg', 'image/png', 'image/webp']);
+const avatarUploadBody = z.object({ byteSize: z.number().int().positive().max(MAX_AVATAR_BYTES), contentType: avatarContentType, fileName: z.string().min(1).max(255) }).strict();
+const pendingAvatarMedia = z.object({ byteSize: z.number().int().positive().max(MAX_AVATAR_BYTES), contentType: avatarContentType, fileName: z.string().min(1).max(255), id: uuid, objectKey: z.string().min(1).max(600) }).strict();
+const profileBody = z.object({ displayName: z.string().trim().min(1).max(60).optional(), avatarMedia: pendingAvatarMedia.optional(), country: z.string().trim().min(1).max(80).optional(), age: z.number().int().min(13).max(120).optional(), sex: z.enum(['male', 'female']).optional(), hobby: z.string().trim().min(1).max(100).optional(), bio: z.string().trim().min(1).max(500).optional() }).strict();
 const reportBody = z.object({ postId: uuid, commentId: uuid.optional(), reason: z.enum(['spam', 'harassment', 'violence', 'sexual', 'privacy', 'other']), details: z.string().trim().max(1_000).optional() }).strict();
 
 function bearerToken(request: Request): string {
@@ -59,6 +62,7 @@ export function createSocialRouter(authService: AuthService, service: SocialServ
   router.post('/profiles/:publicId/camp', limiter(60), asyncRoute(async (request, response) => { response.json(await service.toggleCamp(request.authenticatedPublicId, publicId.parse(request.params.publicId))); }));
   router.get('/profiles/:publicId', asyncRoute(async (request, response) => { response.json({ profile: await service.getProfile(request.authenticatedPublicId, publicId.parse(request.params.publicId)) }); }));
   router.put('/profile', limiter(20), asyncRoute(async (request, response) => { response.json({ profile: await service.updateProfile(request.authenticatedPublicId, profileBody.parse(request.body)) }); }));
+  router.post('/avatar-uploads', limiter(20), asyncRoute(async (request, response) => { response.status(201).json({ upload: await service.createAvatarUpload(request.authenticatedPublicId, avatarUploadBody.parse(request.body)) }); }));
   router.get('/alerts', asyncRoute(async (request, response) => { const query = cursorQuery.parse(request.query); response.json(await service.listAlerts(request.authenticatedPublicId, query.limit, query.cursor)); }));
   router.post('/alerts/read', limiter(30), asyncRoute(async (request, response) => { await service.markAlertsRead(request.authenticatedPublicId); response.status(204).send(); }));
   router.post('/reports', limiter(10), asyncRoute(async (request, response) => { await service.report(request.authenticatedPublicId, reportBody.parse(request.body)); response.status(201).json({ ok: true }); }));

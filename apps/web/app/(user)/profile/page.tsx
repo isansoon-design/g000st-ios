@@ -1,304 +1,307 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import { sessionStorage } from "@/app/api/session-storage";
+import { logout } from "@/app/api/auth";
+import {
+  getSocialProfile,
+  updateSocialProfile,
+  uploadAvatarMedia,
+  type SocialProfile,
+} from "@/app/api/social";
+import { useConfirmModal } from "@/context/ConfirmModalContext";
+import { useRouter } from "next/navigation";
 
-const RINGTONES = [
-  { value: "g000st", label: "g000st Default" },
-  { value: "soft", label: "Soft Chime" },
-  { value: "pulse", label: "Pulse" },
-  { value: "classic", label: "Classic Ring" },
-  { value: "silent", label: "Silent" },
-];
+type ProfileFields = {
+  displayName: string;
+  country: string;
+  age: string;
+  sex: "male" | "female" | "";
+  hobby: string;
+  bio: string;
+};
+
+const EMPTY_FIELDS: ProfileFields = { age: "", bio: "", country: "", displayName: "", hobby: "", sex: "" };
+
+function toFields(profile: SocialProfile | null): ProfileFields {
+  if (!profile) return EMPTY_FIELDS;
+  return {
+    age: profile.age ? String(profile.age) : "",
+    bio: profile.bio ?? "",
+    country: profile.country ?? "",
+    displayName: profile.displayName ?? "",
+    hobby: profile.hobby ?? "",
+    sex: profile.sex ?? "",
+  };
+}
+
+const cardClass = "rounded-[18px] border border-white/60 bg-[#D0D0D0] p-4";
+const labelClass = "mb-1 text-[10px] font-black uppercase tracking-[1px] text-black/45";
+const fieldClass =
+  "h-11 w-full rounded-[12px] border border-black/10 bg-white px-3 text-[13px] font-bold text-[#111] outline-none focus:border-[#9A9A9A]";
 
 export default function ProfilePage() {
-  const [userId, setUserId] = useState("—");
-  const [profile, setProfile] = useState({ name: "", sex: "", age: "", country: "", hobby: "", interested: "" });
-  const [ringtone, setRingtone] = useState("g000st");
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [supportMsg, setSupportMsg] = useState("");
-  const [sendingSupport, setSendingSupport] = useState(false);
+  const router = useRouter();
+  const { confirm } = useConfirmModal();
+  const publicId = sessionStorage.get()?.user.publicId ?? "";
+  const [profile, setProfile] = useState<SocialProfile | null>(null);
+  const [fields, setFields] = useState<ProfileFields>(EMPTY_FIELDS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const id = sessionStorage.get()?.user.publicId || "—";
-    setUserId(id);
-    try {
-      const saved = JSON.parse(localStorage.getItem("g000st_profile") || "{}");
-      if (saved) setProfile((p) => ({ ...p, ...saved }));
-    } catch {}
+    if (!publicId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const loaded = await getSocialProfile(publicId);
+        if (cancelled) return;
+        setProfile(loaded);
+        setFields(toFields(loaded));
+      } catch (error) {
+        if (!cancelled) toast.error(error instanceof Error ? error.message : "Could not load your profile.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [publicId]);
+
+  const setField = useCallback(<K extends keyof ProfileFields>(key: K, value: ProfileFields[K]) => {
+    setFields((current) => ({ ...current, [key]: value }));
   }, []);
 
   const copyId = () => {
-    navigator.clipboard?.writeText(userId).then(() => toast.success("ID copied!")).catch(() => {
-      const el = document.createElement("textarea");
-      el.value = userId;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
-      toast.success("ID copied!");
-    });
+    navigator.clipboard
+      ?.writeText(publicId)
+      .then(() => toast.success("Public ID copied."))
+      .catch(() => toast.error("Could not copy ID."));
   };
 
   const shareId = () => {
-    if (navigator.share) {
-      navigator.share({ title: "My g000st ID", text: userId });
-    } else {
-      copyId();
+    if (navigator.share) navigator.share({ title: "My g000st Public ID", text: publicId }).catch(() => {});
+    else copyId();
+  };
+
+  const onPhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast.error("Choose an image file.");
+    if (file.size > 3 * 1024 * 1024) return toast.error("Photo must be 3 MB or smaller.");
+    setUploadingPhoto(true);
+    try {
+      const media = await uploadAvatarMedia(file);
+      const saved = await updateSocialProfile({ avatarMedia: media });
+      setProfile(saved);
+      toast.success("Profile photo updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update your photo.");
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
-  const saveProfile = () => {
-    localStorage.setItem("g000st_profile", JSON.stringify(profile));
-    toast.success("Profile saved!");
+  const saveProfile = async () => {
+    setSaving(true);
+    try {
+      const age = fields.age.trim() ? Number(fields.age.trim()) : undefined;
+      const saved = await updateSocialProfile({
+        age,
+        bio: fields.bio.trim() || undefined,
+        country: fields.country.trim() || undefined,
+        displayName: fields.displayName.trim() || undefined,
+        hobby: fields.hobby.trim() || undefined,
+        sex: fields.sex || undefined,
+      });
+      setProfile(saved);
+      setFields(toFields(saved));
+      toast.success("Profile saved!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save your profile.");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const onPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setPhotoUrl(ev.target?.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const sendSupport = async () => {
-    if (!supportMsg.trim()) { toast.error("Write a message first"); return; }
-    setSendingSupport(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setSendingSupport(false);
-    setSupportMsg("");
-    toast.success("Message sent to support!");
-  };
-
-  const cardStyle: React.CSSProperties = {
-    background: "linear-gradient(160deg,#ffffff 0%,#e6e6e6 42%,#b8b8b8 78%,#d8d8d8 100%)",
-    border: "1px solid rgba(255,255,255,.55)",
-    borderBottom: "1px solid rgba(0,0,0,.18)",
-    borderRight: "1px solid rgba(0,0,0,.12)",
-    boxShadow: "inset 0 2px 0 rgba(255,255,255,.85),inset 0 -2px 4px rgba(0,0,0,.12),0 10px 24px rgba(0,0,0,.22)",
-    borderRadius: 16,
-    padding: "14px",
-    marginBottom: 12,
-  };
-
-  const fieldStyle: React.CSSProperties = {
-    display: "block", width: "100%", height: 40, borderRadius: 12,
-    border: "1.5px solid rgba(150,150,150,.35)", background: "#fff",
-    padding: "0 12px", fontSize: 13, fontWeight: 700, color: "#111",
-    marginTop: 6, marginBottom: 12, boxSizing: "border-box",
-    outline: "none",
-  };
-
-  const btnStyle: React.CSSProperties = {
-    height: 36, padding: "0 14px", borderRadius: 12,
-    border: "1.5px solid #9A9A9A", background: "linear-gradient(180deg,#E8E8E8,#D0D0D0)",
-    color: "#111", fontWeight: 800, fontSize: 12, cursor: "pointer",
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 900, color: "rgba(0,0,0,.45)", letterSpacing: "0.04em",
+  const signOut = async () => {
+    const confirmed = await confirm({
+      cancelLabel: "Cancel",
+      confirmLabel: "Sign out",
+      isDangerous: true,
+      message: "You will need your Recovery ID to sign back in on this device.",
+      title: "Sign out from this device?",
+    });
+    if (!confirmed) return;
+    logout();
+    router.push("/login");
   };
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#D8DCE3", overflow: "hidden" }}>
-      {/* Header */}
-      <div style={{
-        flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "10px 14px",
-        background: "linear-gradient(180deg,#fafafa 0%,#d8d8d8 45%,#b0b0b0 100%)",
-        boxShadow: "inset 0 2px 0 rgba(255,255,255,.9),0 6px 16px rgba(0,0,0,.12)",
-        borderBottom: "1px solid rgba(0,0,0,.12)",
-      }}>
-        <span style={{ fontWeight: 900, fontSize: 16 }}>Profile</span>
-        <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(0,0,0,.35)", cursor: "pointer" }}>OPTIONAL</span>
+      <div
+        style={{
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 14px",
+          background: "linear-gradient(180deg,#fafafa 0%,#d8d8d8 45%,#b0b0b0 100%)",
+          boxShadow: "inset 0 2px 0 rgba(255,255,255,.9),0 6px 16px rgba(0,0,0,.12)",
+          borderBottom: "1px solid rgba(0,0,0,.12)",
+        }}
+      >
+        <span style={{ fontWeight: 900, fontSize: 16 }}>ID &amp; Profile</span>
+        <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(0,0,0,.35)" }}>OPTIONAL</span>
       </div>
 
-      {/* Scrollable Content */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px 28px", WebkitOverflowScrolling: "touch" as any }}>
+      <div className="flex-1 overflow-y-auto p-4" style={{ WebkitOverflowScrolling: "touch" }}>
+        <div className="mx-auto flex max-w-md flex-col items-center">
+          {loading ? (
+            <div className="py-20 text-sm font-bold text-black/40">Loading…</div>
+          ) : (
+            <>
+              {/* Photo */}
+              <button
+                aria-label="Change profile photo"
+                onClick={() => photoInputRef.current?.click()}
+                className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#C8C8C8] shadow-md transition hover:opacity-80"
+              >
+                {uploadingPhoto ? (
+                  <span className="text-xs font-bold text-black/40">…</span>
+                ) : profile?.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-3xl opacity-40">◎</span>
+                )}
+              </button>
+              <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={onPhotoChange} />
+              <button onClick={() => photoInputRef.current?.click()} className="mb-4 mt-2 text-xs font-black text-[#C62828]">
+                {profile?.avatarUrl ? "Change photo" : "Add photo"}
+              </button>
 
-        {/* ID Card */}
-        <div style={cardStyle}>
-          <div style={{ fontSize: 11, fontWeight: 900, color: "rgba(0,0,0,.45)", letterSpacing: "0.04em", marginBottom: 6 }}>
-            Copy ur ID
-          </div>
-          <div style={{
-            width: "100%", fontSize: 13, wordBreak: "break-all", lineHeight: 1.45,
-            fontFamily: "ui-monospace, Menlo, monospace", fontWeight: 900, color: "#C62828",
-            margin: "4px 0 10px",
-          }}>
-            {userId}
-          </div>
-          <div style={{
-            display: "flex", width: "100%", height: 44, borderRadius: 14,
-            overflow: "hidden", border: "1.5px solid #111", background: "#D0D0D0",
-          }}>
-            <button onClick={copyId} style={{
-              flex: 1, height: 44, border: 0, borderRight: "1px solid #111",
-              background: "linear-gradient(180deg,#E8E8E8,#C4C4C4)",
-              fontSize: 13, fontWeight: 900, color: "#111", cursor: "pointer",
-            }}>
-              Copy ur ID
-            </button>
-            <button onClick={shareId} style={{
-              flex: 1, height: 44, border: 0,
-              background: "linear-gradient(180deg,#E8E8E8,#C4C4C4)",
-              fontSize: 13, fontWeight: 900, color: "#111", cursor: "pointer",
-              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
-            }}>
-              Share
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M4 12v7a1 1 0 001 1h7M20 4l-9.5 9.5M14 4h6v6" stroke="#C62828" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-          </div>
-          <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(0,0,0,.35)", marginTop: 8, lineHeight: 1.35 }}>
-            Tap the arrow to share your ID with friends.
-          </p>
-        </div>
+              {/* Name */}
+              <input
+                className="mb-4 w-full bg-transparent text-center text-lg font-black text-[#111] outline-none placeholder:text-black/35"
+                maxLength={60}
+                onChange={(event) => setField("displayName", event.target.value)}
+                placeholder="Add your name"
+                value={fields.displayName}
+              />
 
-        {/* Sounds & Ringtones */}
-        <div style={{ ...cardStyle, background: "linear-gradient(160deg,#F2F2F2,#E0E0E0)", border: "1.5px solid rgba(150,150,150,.3)" }}>
-          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.06em", color: "rgba(0,0,0,.45)", marginBottom: 8 }}>
-            SOUNDS · RINGTONES
-          </div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#111", marginBottom: 8 }}>Call ringtone</div>
-          <select
-            value={ringtone}
-            onChange={(e) => setRingtone(e.target.value)}
-            style={{
-              width: "100%", height: 40, borderRadius: 12,
-              border: "1.5px solid rgba(150,150,150,.35)", background: "#fff",
-              padding: "0 10px", fontSize: 13, fontWeight: 700, color: "#111", marginBottom: 8,
-            }}
-          >
-            {RINGTONES.map((r) => (
-              <option key={r.value} value={r.value}>{r.label}</option>
-            ))}
-          </select>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
-            <button style={btnStyle} onClick={() => toast("Playing preview…")}>▶ Preview</button>
-            <button style={btnStyle}>Stop</button>
-          </div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(0,0,0,.4)", marginTop: 8 }}>
-            {RINGTONES.find((r) => r.value === ringtone)?.label}
-          </div>
-        </div>
+              {/* Public ID */}
+              <div className={`mb-3 w-full ${cardClass}`}>
+                <div className={labelClass}>Your Public ID</div>
+                <div className="mb-3 break-all font-mono text-[13px] font-black leading-[19px] text-[#C62828]">
+                  {publicId}
+                </div>
+                <div className="flex h-11 w-full overflow-hidden rounded-[12px] border border-[#111] bg-white">
+                  <button onClick={copyId} className="flex-1 border-r border-[#111] text-[13px] font-black text-[#111] hover:bg-black/5">
+                    Copy
+                  </button>
+                  <button onClick={shareId} className="flex-1 text-[13px] font-black text-[#111] hover:bg-black/5">
+                    Share
+                  </button>
+                </div>
+                <p className="mt-2 text-[11px] font-semibold leading-[16px] text-black/45">
+                  Safe to share. People use it to find and message you.
+                </p>
+              </div>
 
-        {/* Profile Photo */}
-        <div style={{ ...cardStyle, textAlign: "center" as const }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: "50%", margin: "0 auto 8px",
-            background: "linear-gradient(145deg,#E8E8E8,#c8c8c8)",
-            border: "2px solid #8E8E8E", overflow: "hidden",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            {photoUrl
-              ? <img src={photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              : <span style={{ fontSize: 24, opacity: 0.35 }}>📷</span>
-            }
-          </div>
-          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onPhotoChange} />
-          <button style={{ ...btnStyle, width: "100%", maxWidth: 260 }} onClick={() => photoInputRef.current?.click()}>
-            Add photo
-          </button>
-          {photoUrl && (
-            <button style={{ ...btnStyle, marginTop: 8, width: "100%", maxWidth: 260 }} onClick={() => setPhotoUrl(null)}>
-              Remove
-            </button>
+              {/* Recovery ID */}
+              <div className={`mb-3 w-full ${cardClass}`}>
+                <div className={labelClass}>Recovery ID</div>
+                <p className="text-[13px] font-bold leading-[18px] text-black/60">
+                  Shown only once, when your account was created. It is your login credential — we
+                  never store or display it again. If you lost it, this device stays signed in, but
+                  you cannot sign in again elsewhere without it.
+                </p>
+              </div>
+
+              {/* Optional profile */}
+              <div className={`mb-3 w-full ${cardClass}`}>
+                <div className={labelClass}>Optional profile</div>
+
+                <div className="mb-1 mt-2 text-[11px] font-bold text-black/45">Country</div>
+                <input
+                  className={`mb-3 ${fieldClass}`}
+                  onChange={(event) => setField("country", event.target.value)}
+                  placeholder="Country"
+                  value={fields.country}
+                />
+
+                <div className="mb-1 text-[11px] font-bold text-black/45">Age</div>
+                <input
+                  className={`mb-3 ${fieldClass}`}
+                  inputMode="numeric"
+                  maxLength={3}
+                  onChange={(event) => setField("age", event.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="Age"
+                  value={fields.age}
+                />
+
+                <div className="mb-1 text-[11px] font-bold text-black/45">Sex</div>
+                <div className="mb-3 flex gap-2">
+                  {(["male", "female"] as const).map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => setField("sex", fields.sex === option ? "" : option)}
+                      className={`h-11 flex-1 rounded-[12px] border text-[13px] font-black ${
+                        fields.sex === option ? "border-[#111] bg-[#111] text-white" : "border-black/15 bg-white text-[#111]"
+                      }`}
+                    >
+                      {option === "male" ? "Male" : "Female"}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mb-1 text-[11px] font-bold text-black/45">Hobby</div>
+                <input
+                  className={`mb-3 ${fieldClass}`}
+                  onChange={(event) => setField("hobby", event.target.value)}
+                  placeholder="e.g. hiking, football…"
+                  value={fields.hobby}
+                />
+
+                <div className="mb-1 text-[11px] font-bold text-black/45">Bio</div>
+                <textarea
+                  className="h-24 w-full resize-none rounded-[12px] border border-black/10 bg-white p-3 text-[13px] font-bold text-[#111] outline-none focus:border-[#9A9A9A]"
+                  onChange={(event) => setField("bio", event.target.value)}
+                  placeholder="A short bio (optional)"
+                  value={fields.bio}
+                />
+
+                <p className="mt-2 text-[11px] font-semibold text-black/40">
+                  Nothing here is required. Fill in only what you want.
+                </p>
+              </div>
+
+              {/* Save */}
+              <button
+                disabled={saving}
+                onClick={() => void saveProfile()}
+                className="mb-3 h-12 w-full rounded-[14px] bg-[#C62828] text-sm font-black text-white shadow-md transition hover:opacity-90 disabled:opacity-60"
+              >
+                {saving ? "Saving…" : "Save profile"}
+              </button>
+
+              {/* Sign out */}
+              <button
+                onClick={() => void signOut()}
+                className="mb-6 h-11 w-full rounded-full border border-black/15 bg-white text-sm font-bold text-[#C62828] transition hover:bg-black/5"
+              >
+                Sign out from this device
+              </button>
+            </>
           )}
-          <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,.4)", marginTop: 8, lineHeight: 1.3 }}>
-            Nothing is required. Fill only what you want.
-          </p>
         </div>
-
-        {/* Profile Fields */}
-        <div style={cardStyle}>
-          <label style={labelStyle}>NAME</label>
-          <input style={fieldStyle} placeholder="Your name (optional)" value={profile.name}
-            onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} />
-
-          <label style={labelStyle}>SEX</label>
-          <div style={{ display: "flex", gap: 8, marginTop: 6, marginBottom: 12 }}>
-            {["Male", "Female"].map((s) => (
-              <button key={s} onClick={() => setProfile((p) => ({ ...p, sex: s.toLowerCase() }))} style={{
-                flex: 1, height: 40, borderRadius: 12, fontSize: 13, fontWeight: 800, cursor: "pointer",
-                border: "1.5px solid #9A9A9A",
-                background: profile.sex === s.toLowerCase()
-                  ? "linear-gradient(180deg,#B8B8B8 0%,#9A9A9A 100%)"
-                  : "linear-gradient(180deg,#E8E8E8,#D0D0D0)",
-                color: profile.sex === s.toLowerCase() ? "#fff" : "#111",
-              }}>{s}</button>
-            ))}
-          </div>
-
-          <label style={labelStyle}>AGE</label>
-          <input style={fieldStyle} type="number" placeholder="Age (optional)" min="13" max="120"
-            value={profile.age} onChange={(e) => setProfile((p) => ({ ...p, age: e.target.value }))} />
-
-          <label style={labelStyle}>COUNTRY</label>
-          <input style={fieldStyle} placeholder="Country (optional)" value={profile.country}
-            onChange={(e) => setProfile((p) => ({ ...p, country: e.target.value }))} />
-
-          <label style={labelStyle}>HOBBY</label>
-          <input style={fieldStyle} placeholder="e.g. hiking, football…" value={profile.hobby}
-            onChange={(e) => setProfile((p) => ({ ...p, hobby: e.target.value }))} />
-
-          <label style={labelStyle}>INTERESTED IN</label>
-          <input style={{ ...fieldStyle, marginBottom: 4 }} placeholder="What you are into (optional)"
-            value={profile.interested} onChange={(e) => setProfile((p) => ({ ...p, interested: e.target.value }))} />
-        </div>
-
-        {/* Save Button */}
-        <button onClick={saveProfile} style={{
-          width: "100%", height: 48, borderRadius: 14, border: "1px solid #9A9A9A", marginBottom: 10,
-          background: "linear-gradient(180deg,#B8B8B8 0%,#9A9A9A 48%,#9A9A9A 100%)",
-          boxShadow: "inset 0 2px 0 rgba(255,255,255,.35),0 8px 18px rgba(150,150,150,.4)",
-          color: "#fff", fontWeight: 900, fontSize: 15, cursor: "pointer",
-        }}>
-          Save profile
-        </button>
-
-        {/* Contact Us / Support */}
-        <div style={{ ...cardStyle, background: "linear-gradient(160deg,#FFF8E7,#E8E8E8)", border: "1.5px solid #C0C0C0" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 900, color: "#1a1a1a" }}>Contact us / Support</div>
-            <div style={{ fontSize: 12, letterSpacing: 1, color: "#9A9A9A" }}>★★★★★</div>
-          </div>
-          <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,.45)", marginBottom: 10, lineHeight: 1.35 }}>
-            Send a message. You can attach a photo or video.
-          </p>
-          <textarea
-            value={supportMsg}
-            onChange={(e) => setSupportMsg(e.target.value)}
-            placeholder="Your message…"
-            rows={4}
-            style={{
-              width: "100%", minHeight: 88, borderRadius: 12, border: "1.5px solid rgba(150,150,150,.35)",
-              background: "#fff", padding: 10, fontSize: 13, fontWeight: 600, color: "#111",
-              resize: "vertical" as const, marginBottom: 10, boxSizing: "border-box" as const, outline: "none",
-            }}
-          />
-          <button onClick={sendSupport} disabled={sendingSupport} style={{
-            width: "100%", height: 46, borderRadius: 14, border: 0,
-            background: sendingSupport ? "#aaa" : "linear-gradient(180deg,#B8B8B8,#9A9A9A)",
-            color: "#fff", fontWeight: 900, fontSize: 14, cursor: sendingSupport ? "not-allowed" : "pointer",
-          }}>
-            {sendingSupport ? "Sending…" : "Send to Support"}
-          </button>
-        </div>
-
-        {/* Legal */}
-        <div style={{ ...cardStyle, textAlign: "center" as const, marginBottom: 20 }}>
-          <p style={{ fontSize: 12, fontWeight: 800, color: "rgba(0,0,0,.45)", marginBottom: 10 }}>Legal</p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const, justifyContent: "center" }}>
-            <button style={btnStyle} onClick={() => toast("Privacy Policy")}>Privacy Policy</button>
-            <button style={btnStyle} onClick={() => toast("Terms & Conditions")}>Terms &amp; Conditions</button>
-          </div>
-        </div>
-
       </div>
     </div>
   );

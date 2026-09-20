@@ -9,7 +9,6 @@ import type {
   SocialPost,
   SocialProfile,
   SocialMedia,
-  UpdateSocialProfileInput,
 } from './social-types.js';
 
 export interface SocialStore {
@@ -24,7 +23,7 @@ export interface SocialStore {
   deleteComment(viewerId: string, postId: string, commentId: string): Promise<boolean>;
   toggleCamp(viewerId: string, targetId: string, nowMs: number): Promise<{ camped: boolean }>;
   getProfile(viewerId: string, publicId: string): Promise<(SocialProfile & { campedByViewer: boolean }) | null>;
-  updateProfile(publicId: string, input: UpdateSocialProfileInput, nowMs: number): Promise<SocialProfile>;
+  updateProfile(publicId: string, input: Partial<Omit<SocialProfile, 'publicId' | 'updatedAtMs'>>, nowMs: number): Promise<SocialProfile>;
   listAlerts(publicId: string, limit: number, cursor?: SocialCursor): Promise<SocialPage<SocialAlert>>;
   markAlertsRead(publicId: string, nowMs: number): Promise<void>;
   createReport(reporterId: string, input: CreateSocialReportInput, nowMs: number): Promise<void>;

@@ -14,13 +14,23 @@ export type SocialMediaView = Omit<SocialMedia, 'objectKey'> & Readonly<{ url: s
 export type SocialProfile = Readonly<{
   publicId: string;
   displayName?: string;
-  avatarUrl?: string;
+  avatarObjectKey?: string;
   country?: string;
   age?: number;
   sex?: 'male' | 'female';
   hobby?: string;
   bio?: string;
   updatedAtMs: number;
+}>;
+
+export type SocialProfileView = Omit<SocialProfile, 'avatarObjectKey'> & Readonly<{ avatarUrl?: string }>;
+
+export type PendingAvatarMedia = Readonly<{
+  byteSize: number;
+  contentType: string;
+  fileName: string;
+  id: string;
+  objectKey: string;
 }>;
 
 export type SocialAuthor = Readonly<{
@@ -86,7 +96,7 @@ export type CreateSocialCommentInput = Readonly<{
 
 export type UpdateSocialProfileInput = Readonly<{
   displayName?: string;
-  avatarUrl?: string;
+  avatarMedia?: PendingAvatarMedia;
   country?: string;
   age?: number;
   sex?: 'male' | 'female';
