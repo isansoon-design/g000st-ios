@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { memo } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { FeatureScreen } from '@/components/layout/feature-screen';
 import type { IdentityProfileFields } from '@/features/identity/hooks/use-identity-screen';
@@ -21,7 +22,7 @@ type IdentityScreenContentProps = Readonly<{
 
 const CARD = 'rounded-[22px] border border-white/60 bg-[#D0D0D0] p-4';
 const LABEL = 'mb-1 text-[10px] font-black uppercase tracking-[1px] text-black/45';
-const FIELD_INPUT = 'h-11 rounded-field border border-black/10 bg-white px-3 text-[13px] font-bold text-g000st-black';
+const FIELD_INPUT = 'h-12 pb-2 rounded-field border border-black/10 bg-white px-3 text-[13px] font-bold text-g000st-black';
 
 function IdentityScreenContentComponent({
   avatarUrl,
@@ -48,7 +49,12 @@ function IdentityScreenContentComponent({
 
   return (
     <FeatureScreen title="ID & Profile">
-      <ScrollView className="flex-1" contentContainerClassName="items-center p-4">
+      <KeyboardAwareScrollView
+        className="flex-1"
+        contentContainerClassName="items-center p-4"
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={20}
+      >
         {/* Photo */}
         <Pressable
           accessibilityLabel="Change profile photo"
@@ -114,7 +120,7 @@ function IdentityScreenContentComponent({
 
           <Text className="mb-1 mt-2 text-[11px] font-bold text-black/45">Country</Text>
           <TextInput
-            className={`mb-3 ${FIELD_INPUT}`}
+            className={`mb-3   ${FIELD_INPUT}`}
             onChangeText={(value) => onSetField('country', value)}
             placeholder="Country"
             value={fields.country}
@@ -189,7 +195,7 @@ function IdentityScreenContentComponent({
         >
           <Text className="text-sm font-bold text-g000st-red">Sign out from this device</Text>
         </Pressable>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </FeatureScreen>
   );
 }

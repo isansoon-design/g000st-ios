@@ -14,8 +14,8 @@ import {
 import {
   firstValidationMessage,
   normalizeId,
-  type IdGateErrors,
   validateRecoveryId,
+  type IdGateErrors,
 } from "@/features/auth/validation";
 
 export type BusyAction = "create" | "restore" | null;
@@ -33,7 +33,9 @@ export function useIdGate() {
   const [busyAction, setBusyAction] = useState<BusyAction>(null);
   const [registrationModalStage, setRegistrationModalStage] =
     useState<RegistrationModalStage>("closed");
-  const [createdRecoveryId, setCreatedRecoveryId] = useState<string | null>(null);
+  const [createdRecoveryId, setCreatedRecoveryId] = useState<string | null>(
+    null,
+  );
 
   const changeRecoveryId = useCallback((value: string) => {
     setRecoveryId(value);
@@ -75,10 +77,12 @@ export function useIdGate() {
 
     setBusyAction("restore");
     try {
-      const response = await restoreAccount({ recoveryId: normalizeId(recoveryId) });
+      const response = await restoreAccount({
+        recoveryId: normalizeId(recoveryId),
+      });
       const result = parseAuthenticationResult(response.data);
       sessionStorage.save({ tokens: result.session, user: result.user });
-      router.replace("/chat");
+      router.replace("/social");
     } catch (error) {
       toast.error(toApiError(error).message);
     } finally {

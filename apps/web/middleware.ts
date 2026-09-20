@@ -1,10 +1,17 @@
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 // This cookie is only a routing hint. API authorization still relies on the access token.
 const SESSION_HINT_COOKIE = "g000st_session_hint";
 
-const protectedRoutes = ["/chat", "/social", "/social-chat", "/contacts", "/profile", "/mobile"];
+const protectedRoutes = [
+  "/chat",
+  "/social",
+  "/social-chat",
+  "/contacts",
+  "/profile",
+  "/mobile",
+];
 const adminRoutes = ["/dashboard", "/users", "/settings"];
 
 // Routes for unauthenticated users only
@@ -14,9 +21,11 @@ function redirectTo(request: NextRequest, pathname: string) {
   const forwardedHost = request.headers.get("x-forwarded-host");
   const host = forwardedHost || request.headers.get("host");
   const forwardedProto = request.headers.get("x-forwarded-proto");
-  const protocol = forwardedProto || request.nextUrl.protocol.replace(":", "") || "https";
+  const protocol =
+    forwardedProto || request.nextUrl.protocol.replace(":", "") || "https";
 
-  if (host) return NextResponse.redirect(new URL(pathname, `${protocol}://${host}`));
+  if (host)
+    return NextResponse.redirect(new URL(pathname, `${protocol}://${host}`));
   return NextResponse.redirect(new URL(pathname, request.url));
 }
 
@@ -27,7 +36,7 @@ export function middleware(request: NextRequest) {
   const hasAuth = sessionHint?.value === "1";
 
   if (pathname === "/") {
-    return redirectTo(request, hasAuth ? "/chat" : "/login");
+    return redirectTo(request, hasAuth ? "/social" : "/login");
   }
 
   // Protected routes - require authentication
@@ -40,7 +49,10 @@ export function middleware(request: NextRequest) {
   }
 
   // Admin routes - require admin role
-  if (adminRoutes.some((route) => pathname.startsWith(route)) && userRole?.value !== "admin") {
+  if (
+    adminRoutes.some((route) => pathname.startsWith(route)) &&
+    userRole?.value !== "admin"
+  ) {
     return redirectTo(request, "/chat");
   }
 

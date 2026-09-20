@@ -1,40 +1,44 @@
-import * as ImagePicker from 'expo-image-picker';
-import { useCallback, useEffect, useState } from 'react';
-import Toast from 'react-native-toast-message';
+import * as ImagePicker from "expo-image-picker";
+import { useCallback, useEffect, useState } from "react";
+import Toast from "react-native-toast-message";
 
-import { getSocialProfile, updateSocialProfile, uploadAvatarMedia } from '@/api/social';
-import type { SocialProfile } from '@/domain/social/types';
-import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useConfirmModal } from '@/providers/confirm-modal-provider';
-import { copyText } from '@/services/device/clipboard';
+import {
+  getSocialProfile,
+  updateSocialProfile,
+  uploadAvatarMedia,
+} from "@/api/social";
+import type { SocialProfile } from "@/domain/social/types";
+import { useAuth } from "@/features/auth/hooks/use-auth";
+import { useConfirmModal } from "@/providers/confirm-modal-provider";
+import { copyText } from "@/services/device/clipboard";
 
 export type IdentityProfileFields = Readonly<{
   displayName: string;
   country: string;
   age: string;
-  sex: 'male' | 'female' | '';
+  sex: "male" | "female" | "";
   hobby: string;
   bio: string;
 }>;
 
 const EMPTY_FIELDS: IdentityProfileFields = {
-  age: '',
-  bio: '',
-  country: '',
-  displayName: '',
-  hobby: '',
-  sex: '',
+  age: "",
+  bio: "",
+  country: "",
+  displayName: "",
+  hobby: "",
+  sex: "",
 };
 
 function toFields(profile: SocialProfile | null): IdentityProfileFields {
   if (!profile) return EMPTY_FIELDS;
   return {
-    age: profile.age ? String(profile.age) : '',
-    bio: profile.bio ?? '',
-    country: profile.country ?? '',
-    displayName: profile.displayName ?? '',
-    hobby: profile.hobby ?? '',
-    sex: profile.sex ?? '',
+    age: profile.age ? String(profile.age) : "",
+    bio: profile.bio ?? "",
+    country: profile.country ?? "",
+    displayName: profile.displayName ?? "",
+    hobby: profile.hobby ?? "",
+    sex: profile.sex ?? "",
   };
 }
 
@@ -58,46 +62,97 @@ export function useIdentityScreen() {
         setFields(toFields(loaded));
       } catch (error) {
         if (!cancelled) {
-          Toast.show({ text1: 'Profile', text2: error instanceof Error ? error.message : 'Could not load your profile.', type: 'error' });
+          Toast.show({
+            text1: "Profile",
+            text2:
+              error instanceof Error
+                ? error.message
+                : "Could not load your profile.",
+            type: "error",
+          });
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user?.publicId]);
 
-  const setField = useCallback(<K extends keyof IdentityProfileFields>(key: K, value: IdentityProfileFields[K]) => {
-    setFields((current) => ({ ...current, [key]: value }));
-  }, []);
+  const setField = useCallback(
+    <K extends keyof IdentityProfileFields>(
+      key: K,
+      value: IdentityProfileFields[K],
+    ) => {
+      setFields((current) => ({ ...current, [key]: value }));
+    },
+    [],
+  );
 
   const copyPublicId = useCallback(async () => {
     if (!user?.publicId) return;
     await copyText(user.publicId);
-    Toast.show({ text1: 'Copied', text2: 'Public ID copied.', type: 'success' });
+    Toast.show({
+      text1: "Copied",
+      text2: "Public ID copied.",
+      type: "success",
+    });
   }, [user]);
 
   const changePhoto = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Toast.show({ text1: 'Photo', text2: 'Photo library permission is required.', type: 'error' });
+      Toast.show({
+        text1: "Photo",
+        text2: "Photo library permission is required.",
+        type: "error",
+      });
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 });
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.85,
+    });
     if (result.canceled || !result.assets[0]) return;
     const asset = result.assets[0];
-    if (!asset.fileSize || !asset.mimeType || asset.fileSize > 3 * 1024 * 1024) {
-      Toast.show({ text1: 'Photo', text2: 'Photo must be 3 MB or smaller.', type: 'error' });
+    if (
+      !asset.fileSize ||
+      !asset.mimeType ||
+      asset.fileSize > 3 * 1024 * 1024
+    ) {
+      Toast.show({
+        text1: "Photo",
+        text2: "Photo must be 3 MB or smaller.",
+        type: "error",
+      });
       return;
     }
     setUploadingPhoto(true);
     try {
-      const media = await uploadAvatarMedia({ byteSize: asset.fileSize, contentType: asset.mimeType, fileName: asset.fileName || 'avatar', uri: asset.uri });
+      const media = await uploadAvatarMedia({
+        byteSize: asset.fileSize,
+        contentType: asset.mimeType,
+        fileName: asset.fileName || "avatar",
+        uri: asset.uri,
+      });
       const saved = await updateSocialProfile({ avatarMedia: media });
       setProfile(saved);
-      Toast.show({ text1: 'Photo', text2: 'Profile photo updated.', type: 'success' });
-    } catch (error) {
-      Toast.show({ text1: 'Photo', text2: error instanceof Error ? error.message : 'Could not update your photo.', type: 'error' });
+      Toast.show({
+        text1: "Photo",
+        text2: "Profile photo updated.",
+        type: "success",
+      });
+    } catch (error: any) {
+      console.log(error);
+      Toast.show({
+        text1: "Photo",
+        text2:
+          error instanceof Error
+            ? error.message
+            : "Could not update your photo.",
+        type: "error",
+      });
     } finally {
       setUploadingPhoto(false);
     }
@@ -117,9 +172,20 @@ export function useIdentityScreen() {
       });
       setProfile(saved);
       setFields(toFields(saved));
-      Toast.show({ text1: 'Profile', text2: 'Profile saved.', type: 'success' });
+      Toast.show({
+        text1: "Profile",
+        text2: "Profile saved.",
+        type: "success",
+      });
     } catch (error) {
-      Toast.show({ text1: 'Profile', text2: error instanceof Error ? error.message : 'Could not save your profile.', type: 'error' });
+      Toast.show({
+        text1: "Profile",
+        text2:
+          error instanceof Error
+            ? error.message
+            : "Could not save your profile.",
+        type: "error",
+      });
     } finally {
       setSaving(false);
     }
@@ -127,11 +193,11 @@ export function useIdentityScreen() {
 
   const requestSignOut = useCallback(async () => {
     const confirmed = await confirm({
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Sign out',
+      cancelLabel: "Cancel",
+      confirmLabel: "Sign out",
       isDangerous: true,
-      message: 'You will need your Recovery ID to sign back in on this device.',
-      title: 'Sign out from this device?',
+      message: "You will need your Recovery ID to sign back in on this device.",
+      title: "Sign out from this device?",
     });
     if (confirmed) await signOut();
   }, [confirm, signOut]);
@@ -142,7 +208,7 @@ export function useIdentityScreen() {
     copyPublicId,
     fields,
     loading,
-    publicId: user?.publicId ?? '',
+    publicId: user?.publicId ?? "",
     requestSignOut,
     save,
     saving,

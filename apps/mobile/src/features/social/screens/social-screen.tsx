@@ -6,6 +6,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { cssInterop } from 'nativewind';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
  
 import { startChatConversation } from '@/api/chat';
@@ -355,10 +356,25 @@ function Action({ label, active, onPress }: { label: string; active?: boolean; o
   );
 }
 function ViewButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const scale = useSharedValue(active ? 1.08 : 1);
+  const translateY = useSharedValue(active ? -2 : 0);
+
+  useEffect(() => {
+    scale.value = withSpring(active ? 1.08 : 1, { damping: 14, stiffness: 180 });
+    translateY.value = withSpring(active ? -2 : 0, { damping: 14, stiffness: 180 });
+  }, [active, scale, translateY]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }, { translateY: translateY.value }],
+  }));
+
   return (
-    <Pressable
-      onPress={onPress}
-      className={`flex-1 items-center justify-center ${active ? 'border-t-2 border-[#C62828]' : ''}`}>
-      <Text className={`text-xs font-black ${active ? 'text-black' : 'text-black/40'}`}>{label}</Text>
-    </Pressable>);
+    <Pressable onPress={onPress} className="flex-1 items-center justify-center">
+      <Animated.View style={animatedStyle} className="items-center justify-center">
+        {active && <View className="mb-1 h-[3px] w-8 rounded-full bg-[#C62828]" />}
+        <Text className={`text-xs font-black ${active ? 'text-black' : 'text-black/40'}`}>{label}</Text>
+      </Animated.View>
+    </Pressable>
+  );
 }
+

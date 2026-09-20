@@ -84,6 +84,9 @@ export class MediaService {
       endpoint: config.endpoint,
       forcePathStyle: true,
       region: config.region,
+      // Default 'WHEN_SUPPORTED' signs an empty-body checksum into presigned PUT URLs
+      // (no body exists yet at presign time), which MinIO rejects once the real bytes arrive.
+      requestChecksumCalculation: 'WHEN_REQUIRED',
     });
   }
 
