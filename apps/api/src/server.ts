@@ -7,11 +7,15 @@ import { ChatExpirationWorker } from './chat/chat-expiration-worker.js';
 import { ChatService } from './chat/chat-service.js';
 import { FirestoreChatStore } from './chat/firestore-chat-store.js';
 import { readEnvironment } from './config/env.js';
+import { ContactsService } from './contacts/contacts-service.js';
+import { FirestoreContactsStore } from './contacts/firestore-contacts-store.js';
 import { createFirestore } from './firebase/create-firestore.js';
 import { ExpoPushGateway } from './notifications/expo-push-gateway.js';
 import { FirestoreNotificationStore } from './notifications/firestore-notification-store.js';
 import { NotificationService } from './notifications/notification-service.js';
 import { MediaService } from './media/media-service.js';
+import { FirestorePresenceStore } from './presence/firestore-presence-store.js';
+import { PresenceService } from './presence/presence-service.js';
 import { FirestoreSocialStore } from './social/firestore-social-store.js';
 import { SocialService } from './social/social-service.js';
 
@@ -38,17 +42,28 @@ async function main(): Promise<void> {
     mediaService,
   );
   const socialService = new SocialService(
-    new FirestoreSocialStore(firestore, environment.collectionPrefix),
+    new FirestoreSocialStore(firestore, environment.collectionPrefix, mediaService),
     store,
     Date.now,
     mediaService,
+  );
+  const presenceService = new PresenceService(
+    new FirestorePresenceStore(firestore, environment.collectionPrefix),
+  );
+  const contactsService = new ContactsService(
+    new FirestoreContactsStore(firestore, environment.collectionPrefix),
+    store,
+    socialService,
+    presenceService,
   );
   const expirationWorker = new ChatExpirationWorker(chatStore, Date.now, mediaService);
   const app = createApp({
     allowedOrigins: environment.allowedOrigins,
     authService,
     chatService,
+    contactsService,
     notificationService,
+    presenceService,
     socialService,
   });
   const server = app.listen(environment.port, environment.host, () => {

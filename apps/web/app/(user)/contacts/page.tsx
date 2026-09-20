@@ -1,171 +1,264 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
-interface Contact {
-  id: string;
-  name: string;
-  g000stId: string;
-  status: "online" | "offline" | "away";
-  favorite?: boolean;
+import { addContact, listContacts, removeContact, type Contact } from "@/app/api/contacts";
+import { sessionStorage } from "@/app/api/session-storage";
+import { useConfirmModal } from "@/context/ConfirmModalContext";
+import { startChatConversation } from "@/features/chat/api";
+
+const PUBLIC_ID_LENGTH = 50;
+
+type Tab = "all" | "online";
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Something went wrong. Please try again.";
 }
-
-const mockContacts: Contact[] = [
-  { id: "1", name: "John Doe",    g000stId: "xK9mN2pQ...", status: "online",  favorite: true  },
-  { id: "2", name: "Jane Smith",  g000stId: "aB3cD4eF...", status: "online"                   },
-  { id: "3", name: "Bob Wilson",  g000stId: "rT7uV8wX...", status: "away"                     },
-  { id: "4", name: "Alice Brown", g000stId: "yZ1a2B3c...", status: "offline", favorite: true  },
-];
-
-type Filter = "all" | "online" | "favorites";
 
 export default function ContactsPage() {
   const router = useRouter();
-  const [contacts] = useState<Contact[]>(mockContacts);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
+  const { confirm } = useConfirmModal();
+  const myId = sessionStorage.get()?.user.publicId;
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<Tab>("all");
+  const [query, setQuery] = useState("");
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [addValue, setAddValue] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
 
-  const filtered = contacts.filter((c) => {
-    const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-                        c.g000stId.toLowerCase().includes(search.toLowerCase());
-    if (filter === "online")    return matchSearch && c.status === "online";
-    if (filter === "favorites") return matchSearch && c.favorite;
-    return matchSearch;
-  });
+  const load = useCallback(async () => {
+    try {
+      setContacts(await listContacts());
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const statusColor = (s: Contact["status"]) =>
-    s === "online" ? "#34C759" : s === "away" ? "#FF9500" : "#8A8A8E";
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const hdrStyle: React.CSSProperties = {
-    background: "linear-gradient(180deg,#fafafa 0%,#d8d8d8 45%,#b0b0b0 100%)",
-    boxShadow: "inset 0 2px 0 rgba(255,255,255,.9),0 6px 16px rgba(0,0,0,.12)",
-    borderBottom: "1px solid rgba(0,0,0,.12)",
-    padding: "10px 14px",
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    gap: 8, flexShrink: 0,
+  const visibleContacts = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return contacts.filter((contact) => {
+      if (tab === "online" && !contact.online) return false;
+      if (!normalizedQuery) return true;
+      return (
+        contact.displayName?.toLowerCase().includes(normalizedQuery) ||
+        contact.publicId.toLowerCase().includes(normalizedQuery)
+      );
+    });
+  }, [contacts, query, tab]);
+
+  const submitAdd = async () => {
+    const publicId = addValue.replace(/\s+/g, "");
+    if (publicId.length !== PUBLIC_ID_LENGTH || !/^[A-Za-z0-9]+$/.test(publicId)) {
+      setAddError(`Public ID must be exactly ${PUBLIC_ID_LENGTH} letters or numbers.`);
+      return;
+    }
+    if (publicId === myId) {
+      setAddError("You cannot add yourself.");
+      return;
+    }
+    if (contacts.some((contact) => contact.publicId === publicId)) {
+      setAddError("This contact is already in your list.");
+      return;
+    }
+
+    setIsAdding(true);
+    try {
+      await addContact(publicId);
+      setIsAddOpen(false);
+      setAddValue("");
+      await load();
+      toast.success("Contact added.");
+    } catch (error) {
+      setAddError(errorMessage(error));
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const onRemove = async (contact: Contact) => {
+    const confirmed = await confirm({
+      title: "Remove contact?",
+      message: `Remove ${contact.displayName || "this contact"} from your contacts?`,
+      confirmLabel: "Remove",
+      isDangerous: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      await removeContact(contact.publicId);
+      setContacts((current) => current.filter((item) => item.publicId !== contact.publicId));
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  };
+
+  const onOpenChat = async (publicId: string) => {
+    try {
+      const conversation = await startChatConversation(publicId);
+      router.push(`/chat?conversationId=${conversation.id}`);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
   };
 
   const btnSmStyle: React.CSSProperties = {
-    height: 32, padding: "0 12px", borderRadius: 10,
-    border: "1.5px solid #9A9A9A",
-    background: "linear-gradient(180deg,#E8E8E8,#D0D0D0)",
-    color: "#111", fontWeight: 800, fontSize: 12, cursor: "pointer",
-    whiteSpace: "nowrap" as const,
+    height: 32,
+    padding: "0 12px",
+    borderRadius: 10,
+    border: "1px solid #C0C0C0",
+    background: "#fff",
+    fontSize: 11,
+    fontWeight: 800,
+    cursor: "pointer",
   };
-
-  const chipStyle = (on: boolean): React.CSSProperties => ({
-    height: 30, padding: "0 14px", borderRadius: 999,
-    border: on ? "1.5px solid #9A9A9A" : "1px solid rgba(0,0,0,.15)",
-    background: on ? "linear-gradient(180deg,#B8B8B8,#9A9A9A)" : "rgba(255,255,255,.5)",
-    color: on ? "#fff" : "#444", fontWeight: 800, fontSize: 12, cursor: "pointer",
-  });
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#D8DCE3", overflow: "hidden" }}>
-      {/* Header */}
-      <div style={hdrStyle}>
+      <div style={{
+        flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "10px 14px",
+        background: "linear-gradient(180deg,#fafafa 0%,#d8d8d8 45%,#b0b0b0 100%)",
+        boxShadow: "inset 0 2px 0 rgba(255,255,255,.9),0 6px 16px rgba(0,0,0,.12)",
+        borderBottom: "1px solid rgba(0,0,0,.12)",
+      }}>
         <span style={{ fontWeight: 900, fontSize: 16 }}>Contacts</span>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button style={btnSmStyle} onClick={() => toast("New group")}>New group</button>
-          <button style={{ ...btnSmStyle, color: "#9A9A9A", border: "1.5px solid #9A9A9A", background: "#fff" }}
-            onClick={() => toast("My QR code")}>My QR</button>
-          <button style={{ ...btnSmStyle, background: "linear-gradient(180deg,#B8B8B8,#9A9A9A)", color: "#fff", border: "1px solid #9A9A9A" }}
-            onClick={() => toast("Add contact")}>+ Add</button>
+        <button style={{ ...btnSmStyle, background: "linear-gradient(180deg,#B8B8B8,#9A9A9A)", color: "#fff", border: "1px solid #9A9A9A" }}
+          onClick={() => { setAddValue(""); setAddError(null); setIsAddOpen(true); }}>+ Add</button>
+      </div>
+
+      <div style={{ padding: "10px 14px 0" }}>
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search name or g000st..."
+          style={{
+            width: "100%", height: 40, borderRadius: 20, border: "1px solid rgba(0,0,0,.15)",
+            background: "#fff", padding: "0 14px", fontSize: 13, outline: "none",
+          }}
+        />
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          {(["all", "online"] as const).map((option) => (
+            <button
+              key={option}
+              onClick={() => setTab(option)}
+              style={{
+                height: 28, padding: "0 12px", borderRadius: 14, fontSize: 11, fontWeight: 800,
+                border: tab === option ? "1px solid #9A9A9A" : "1px solid rgba(0,0,0,.1)",
+                background: tab === option ? "#9A9A9A" : "rgba(255,255,255,.8)",
+                color: tab === option ? "#fff" : "rgba(0,0,0,.6)",
+                cursor: "pointer",
+              }}
+            >
+              {option === "all" ? "All" : "Online"}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Search */}
-      <div style={{ padding: "8px 12px", background: "#D8DCE3", flexShrink: 0 }}>
-        <div style={{ position: "relative" }}>
-          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", opacity: 0.4, fontSize: 16 }}>🔍</span>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name or g000st..."
-            style={{
-              width: "100%", height: 38, borderRadius: 12, border: "1px solid rgba(0,0,0,.12)",
-              background: "rgba(255,255,255,.7)", paddingLeft: 34, paddingRight: 12,
-              fontSize: 14, fontWeight: 600, color: "#111", outline: "none", boxSizing: "border-box" as const,
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div style={{ display: "flex", gap: 8, padding: "4px 12px 8px", flexShrink: 0 }}>
-        {(["all", "online", "favorites"] as Filter[]).map((f) => (
-          <button key={f} style={chipStyle(filter === f)} onClick={() => setFilter(f)}>
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Contact List */}
-      <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" as any }}>
-        {filtered.length === 0 && (
-          <div style={{ textAlign: "center", padding: "40px 20px", color: "rgba(0,0,0,.4)", fontSize: 14, fontWeight: 700 }}>
-            No contacts found
-          </div>
-        )}
-        {filtered.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => router.push("/chat")}
-            style={{
-              display: "flex", alignItems: "center", gap: 10, width: "100%",
-              padding: "12px 14px", textAlign: "left", border: "none",
-              background: "rgba(255,255,255,.35)", cursor: "pointer",
-              borderBottom: "1px solid rgba(0,0,0,.06)",
-            }}
-          >
-            {/* Avatar */}
-            <div style={{ position: "relative", flexShrink: 0 }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "10px 10px 20px" }}>
+        {loading ? (
+          <p style={{ textAlign: "center", fontSize: 13, fontWeight: 600, color: "rgba(0,0,0,.45)", marginTop: 40 }}>
+            Loading…
+          </p>
+        ) : visibleContacts.length === 0 ? (
+          <p style={{ textAlign: "center", fontSize: 13, fontWeight: 600, color: "rgba(0,0,0,.45)", marginTop: 40 }}>
+            {tab === "online" ? "No contacts online right now." : "No contacts yet. Add someone by their Public ID."}
+          </p>
+        ) : (
+          visibleContacts.map((contact) => (
+            <div
+              key={contact.publicId}
+              onClick={() => void onOpenChat(contact.publicId)}
+              style={{
+                display: "flex", alignItems: "center", gap: 12, padding: 12, marginBottom: 8,
+                borderRadius: 16, border: "1px solid rgba(0,0,0,.08)", background: "#fff", cursor: "pointer",
+              }}
+            >
               <div style={{
-                width: 46, height: 46, borderRadius: "50%",
-                background: "linear-gradient(145deg,#A8A8A8,#9A9A9A)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 18, fontWeight: 900, color: "#fff",
-                border: "2px solid rgba(255,255,255,.6)",
+                width: 44, height: 44, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
+                background: "#DDD", display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                {c.name.charAt(0)}
+                {contact.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={contact.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <span style={{ opacity: 0.4 }}>◎</span>
+                )}
               </div>
-              <div style={{
-                position: "absolute", bottom: 1, right: 1,
-                width: 11, height: 11, borderRadius: "50%",
-                background: statusColor(c.status), border: "2px solid #D8DCE3",
-              }} />
-            </div>
-
-            {/* Info */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: 14, color: "#111" }}>{c.name}</div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,.45)", fontFamily: "ui-monospace,monospace", marginTop: 2 }}>
-                {c.g000stId}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {contact.online ? (
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4CAF50", flexShrink: 0 }} />
+                  ) : null}
+                  <span style={{ fontWeight: 900, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {contact.displayName || contact.publicId.slice(0, 12)}
+                  </span>
+                </div>
+                <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: "rgba(0,0,0,.4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {contact.publicId}
+                </div>
               </div>
+              <button
+                aria-label="Remove contact"
+                onClick={(event) => { event.stopPropagation(); void onRemove(contact); }}
+                style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "transparent", color: "rgba(0,0,0,.3)", fontSize: 18, fontWeight: 900, cursor: "pointer" }}
+              >
+                ×
+              </button>
             </div>
-
-            {/* Call buttons */}
-            <div style={{ display: "flex", flexDirection: "column" as const, gap: 6, flexShrink: 0 }}>
-              <button onClick={(e) => { e.stopPropagation(); toast("Calling…"); }} style={{
-                width: 38, height: 38, borderRadius: "50%",
-                border: "1.5px solid #9A9A9A",
-                background: "linear-gradient(145deg,#f5f5f5,#c8c8c8)",
-                color: "#9A9A9A", fontSize: 16, display: "flex", alignItems: "center",
-                justifyContent: "center", cursor: "pointer",
-              }}>📞</button>
-              <button onClick={(e) => { e.stopPropagation(); toast("Video call…"); }} style={{
-                width: 38, height: 38, borderRadius: "50%",
-                border: "1.5px solid #1565C0",
-                background: "linear-gradient(145deg,#f5f5f5,#c8c8c8)",
-                color: "#1565C0", fontSize: 16, display: "flex", alignItems: "center",
-                justifyContent: "center", cursor: "pointer",
-              }}>🎥</button>
-            </div>
-          </button>
-        ))}
+          ))
+        )}
       </div>
+
+      {isAddOpen ? (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 }}>
+          <div style={{ width: "100%", maxWidth: 400, borderRadius: 22, border: "1px solid rgba(255,255,255,.7)", background: "#F2F2F2", padding: 20 }}>
+            <p style={{ textAlign: "center", fontSize: 18, fontWeight: 900 }}>Add contact</p>
+            <p style={{ textAlign: "center", fontSize: 12, fontWeight: 600, color: "rgba(0,0,0,.5)", margin: "8px 0 16px" }}>
+              Paste their Public ID to add them to your contacts.
+            </p>
+            <input
+              value={addValue}
+              onChange={(event) => setAddValue(event.target.value)}
+              placeholder="Public ID"
+              style={{
+                width: "100%", height: 48, borderRadius: 14, border: "2px solid rgba(0,0,0,.1)",
+                background: "#fff", padding: "0 12px", fontFamily: "ui-monospace, Menlo, monospace",
+                fontSize: 12, fontWeight: 800, outline: "none", boxSizing: "border-box",
+              }}
+            />
+            {addError ? (
+              <p style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "#C62828" }}>{addError}</p>
+            ) : null}
+            <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+              <button
+                disabled={isAdding}
+                onClick={() => setIsAddOpen(false)}
+                style={{ flex: 1, height: 48, borderRadius: 14, border: "2px solid #111", background: "transparent", fontWeight: 900, cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+              <button
+                disabled={isAdding}
+                onClick={() => void submitAdd()}
+                style={{ flex: 1, height: 48, borderRadius: 14, border: "none", background: "#C62828", color: "#fff", fontWeight: 900, cursor: "pointer" }}
+              >
+                {isAdding ? "Adding…" : "Add"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

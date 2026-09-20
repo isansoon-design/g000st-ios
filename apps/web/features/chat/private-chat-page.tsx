@@ -1,6 +1,7 @@
 "use client";
 
 import { useConfirmModal } from "@/context/ConfirmModalContext";
+import { UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { getChatAttachmentDownload } from "@/features/chat/api";
@@ -325,7 +326,15 @@ export default function PrivateChatPage() {
             >
               ‹
             </button>
-            <div className="ml-1 min-w-0 flex-1">
+            <div className="ml-1 grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[#DDD]">
+              {!participantDeleted && chat.participantAvatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={chat.participantAvatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <UserRound size={16} />
+              )}
+            </div>
+            <div className="ml-2 min-w-0 flex-1">
               <p className="text-[10px] font-bold text-black/45">PRIVATE CHAT</p>
               <p className="truncate font-mono text-[12px] font-black text-[#111]">
                 {participantDeleted

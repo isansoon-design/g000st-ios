@@ -13,6 +13,7 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { ConfirmModalProvider } from '@/providers/confirm-modal-provider';
 import { QueryProvider } from '@/providers/query-provider';
 import { NotificationsBootstrap } from '@/services/notifications/notifications-bootstrap';
+import { PresenceHeartbeat } from '@/services/presence/presence-heartbeat';
 import Toast from 'react-native-toast-message';
 
 void SplashScreen.preventAutoHideAsync();
@@ -39,6 +40,7 @@ export default function RootLayout() {
               <AuthProvider>
                 <ConfirmModalProvider>
                   <NotificationsBootstrap />
+                  <PresenceHeartbeat />
                   <RootNavigator />
                 </ConfirmModalProvider>
               </AuthProvider>

@@ -6,10 +6,14 @@ import { createAuthRouter } from './auth/auth-router.js';
 import { AuthService } from './auth/auth-service.js';
 import { createChatRouter } from './chat/chat-router.js';
 import { ChatService } from './chat/chat-service.js';
+import { createContactsRouter } from './contacts/contacts-router.js';
+import { ContactsService } from './contacts/contacts-service.js';
 import { ApiError } from './http/api-error.js';
 import { createMediaRouter } from './media/media-router.js';
 import { createNotificationRouter } from './notifications/notification-router.js';
 import { NotificationService } from './notifications/notification-service.js';
+import { createPresenceRouter } from './presence/presence-router.js';
+import { PresenceService } from './presence/presence-service.js';
 import { createSocialRouter } from './social/social-router.js';
 import { SocialService } from './social/social-service.js';
 
@@ -17,7 +21,9 @@ type CreateAppOptions = Readonly<{
   allowedOrigins: readonly string[];
   authService: AuthService;
   chatService: ChatService;
+  contactsService: ContactsService;
   notificationService: NotificationService;
+  presenceService: PresenceService;
   socialService: SocialService;
 }>;
 
@@ -25,7 +31,9 @@ export function createApp({
   allowedOrigins,
   authService,
   chatService,
+  contactsService,
   notificationService,
+  presenceService,
   socialService,
 }: CreateAppOptions): Express {
   const app = express();
@@ -43,6 +51,8 @@ export function createApp({
   );
   app.use(express.json({ limit: '32kb' }));
   app.use('/api/v1/social', createSocialRouter(authService, socialService));
+  app.use('/api/v1/contacts', createContactsRouter(authService, contactsService));
+  app.use('/api/v1/presence', createPresenceRouter(authService, presenceService));
 
   app.get('/api/v1/health', (_request, response) => {
     response.status(200).json({ ok: true });

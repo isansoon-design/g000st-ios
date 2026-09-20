@@ -60,6 +60,7 @@ function PrivateChatScreenContentComponent({
           onRemoveAttachment={chat.removeAttachment}
           onSend={chat.submitMessage}
           onToggleBurn={chat.toggleBurnAfterRead}
+          participantAvatarUrl={chat.participantAvatarUrl}
           participantPublicId={chat.activeConversation.participantPublicId}
           userPublicId={chat.userPublicId}
         />

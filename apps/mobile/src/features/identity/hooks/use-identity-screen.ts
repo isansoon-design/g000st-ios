@@ -1,3 +1,4 @@
+import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useState } from "react";
 import Toast from "react-native-toast-message";
@@ -116,11 +117,11 @@ export function useIdentityScreen() {
     });
     if (result.canceled || !result.assets[0]) return;
     const asset = result.assets[0];
-    if (
-      !asset.fileSize ||
-      !asset.mimeType ||
-      asset.fileSize > 3 * 1024 * 1024
-    ) {
+    // asset.fileSize (from the picker) can differ from the bytes actually on disk once
+    // the OS finishes writing the picked/compressed file, which breaks the presigned PUT's
+    // signature (it requires an exact Content-Length). Read the real size right before upload.
+    const byteSize = new File(asset.uri).size ?? undefined;
+    if (!byteSize || !asset.mimeType || byteSize > 3 * 1024 * 1024) {
       Toast.show({
         text1: "Photo",
         text2: "Photo must be 3 MB or smaller.",
@@ -131,7 +132,7 @@ export function useIdentityScreen() {
     setUploadingPhoto(true);
     try {
       const media = await uploadAvatarMedia({
-        byteSize: asset.fileSize,
+        byteSize,
         contentType: asset.mimeType,
         fileName: asset.fileName || "avatar",
         uri: asset.uri,

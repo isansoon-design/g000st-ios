@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
- 
+
 import { startChatConversation } from '@/api/chat';
 import { createSocialComment, createSocialPost, deleteSocialPost, getSocialProfile, listSocialAlerts, listSocialComments, listSocialPosts, markSocialAlertsRead, reportSocialPost, toggleSocialCamp, toggleSocialLike, updateSocialProfile, uploadSocialMedia } from '@/api/social';
 import { FeatureScreen } from '@/components/layout/feature-screen';
@@ -107,7 +107,7 @@ export function SocialScreen() {
       const next = [...prev, ...result.assets];
       const nextVideos = next.filter((item) => item.type === 'video');
       if ((nextVideos.length && next.length !== 1) || nextVideos.length > 1 || (!nextVideos.length && next.length > 2)) {
-         return result.assets;
+        return result.assets;
       }
       return next;
     });
@@ -130,13 +130,8 @@ export function SocialScreen() {
   return (
     <FeatureScreen
       rightAction={
-        <Pressable
-          accessibilityLabel="Start a new private chat"
-          accessibilityRole="button"
-          className="h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white/70"
-        // onPress={chat.openNewChat}
-        >
-          <Text className="text-2xl font-black text-g000st-black">+</Text>
+        <Pressable onPress={() => setView('alerts')}>
+          <Text className="text-xl">🔔</Text>
         </Pressable>
       }
       title={
@@ -148,9 +143,7 @@ export function SocialScreen() {
             <Text className="text-[#C62828]">S</Text>
             ocial
           </Text>
-          <Pressable onPress={() => setView('alerts')}>
-            <Text className="text-xl">🔔</Text>
-          </Pressable>
+
         </View>
       }
     >
@@ -267,7 +260,7 @@ type PostCardProps = { post: SocialPost; comments?: SocialComment[]; onChat: (id
 function PostCard({ post, comments, onChat, onDelete, onReport, onLike, onCamp, onComments, onComment }: PostCardProps) {
   const [comment, setComment] = useState('');
   const { confirm } = useConfirmModal();
-  return (<View className="overflow-hidden rounded-2xl border border-black/10 bg-white"><View className="flex-row items-center gap-3 p-4"><View className="h-10 w-10 items-center justify-center rounded-full bg-[#DDD]"><Text>◎</Text></View><Pressable className="flex-1" onPress={() => void onChat(post.ownerPublicId)}><Text className="font-black">{post.author.displayName}</Text><Text className="text-[10px] text-black/45">{new Date(post.createdAtMs).toLocaleString()}{post.editedAtMs ? ' · edited' : ''}</Text></Pressable><Pressable onPress={async () => { const confirmed = await confirm({ title: post.ownedByViewer ? 'Delete post?' : 'Report post?', message: post.ownedByViewer ? 'Are you sure you want to delete this post?' : 'Are you sure you want to report this post?', confirmLabel: post.ownedByViewer ? 'Delete' : 'Report', isDangerous: true }); if (confirmed) { void (post.ownedByViewer ? onDelete() : onReport()); } }}><Text className="text-xs font-black">{post.ownedByViewer ? 'Delete' : 'Report'}</Text></Pressable></View><Text className="px-4 pb-4 text-[15px] leading-6">{post.content}</Text>{post.media?.map((item) => item.kind === 'video' ? <SocialVideo key={item.id} uri={item.url} /> : <Image key={item.id} source={{ uri: item.url }} contentFit="cover" className={`w-full ${post.media?.length === 2 ? 'h-56' : 'h-80'}`} />)}<View className="flex-row border-t border-black/10 p-2"><Action label={`♥ ${post.likeCount}`} active={post.likedByViewer} onPress={onLike} /><Action label={`💬 ${post.commentCount}`} onPress={onComments} />{post.ownerPublicId && !post.ownedByViewer && <Action label={post.campedByViewer ? 'Camped' : 'Camp'} onPress={onCamp} />}</View>{comments && <View className="border-t border-black/10 bg-black/[.025] p-3">{comments.map((item) => <Text key={item.id} className="mb-2 text-sm"><Text className="font-black">{item.author.displayName} </Text>{item.content}</Text>)}
+  return (<View className="overflow-hidden rounded-2xl border border-black/10 bg-white"><View className="flex-row items-center gap-3 p-4"><View className="h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#DDD]">{post.author.avatarUrl ? <Image source={{ uri: post.author.avatarUrl }} contentFit="cover" style={{ height: '100%', width: '100%' }} /> : <Text>◎</Text>}</View><Pressable className="flex-1" onPress={() => void onChat(post.ownerPublicId)}><Text className="font-black">{post.author.displayName}</Text><Text className="text-[10px] text-black/45">{new Date(post.createdAtMs).toLocaleString()}{post.editedAtMs ? ' · edited' : ''}</Text></Pressable><Pressable onPress={async () => { const confirmed = await confirm({ title: post.ownedByViewer ? 'Delete post?' : 'Report post?', message: post.ownedByViewer ? 'Are you sure you want to delete this post?' : 'Are you sure you want to report this post?', confirmLabel: post.ownedByViewer ? 'Delete' : 'Report', isDangerous: true }); if (confirmed) { void (post.ownedByViewer ? onDelete() : onReport()); } }}><Text className="text-xs font-black">{post.ownedByViewer ? 'Delete' : 'Report'}</Text></Pressable></View><Text className="px-4 pb-4 text-[15px] leading-6">{post.content}</Text>{post.media?.map((item) => item.kind === 'video' ? <SocialVideo key={item.id} uri={item.url} /> : <Image key={item.id} source={{ uri: item.url }} contentFit="cover" className={`w-full ${post.media?.length === 2 ? 'h-56' : 'h-80'}`} />)}<View className="flex-row border-t border-black/10 p-2"><Action label={`♥ ${post.likeCount}`} active={post.likedByViewer} onPress={onLike} /><Action label={`💬 ${post.commentCount}`} onPress={onComments} />{post.ownerPublicId && !post.ownedByViewer && <Action label={post.campedByViewer ? 'Camped' : 'Camp'} onPress={onCamp} />}</View>{comments && <View className="border-t border-black/10 bg-black/[.025] p-3">{comments.map((item) => <Text key={item.id} className="mb-2 text-sm"><Text className="font-black">{item.author.displayName} </Text>{item.content}</Text>)}
     <View className="flex-row gap-2">
       <TextInput
         value={comment}

@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -47,6 +48,7 @@ type ChatThreadProps = Readonly<{
   onRemoveAttachment: (fileName: string) => void;
   onSend: () => void;
   onToggleBurn: () => void;
+  participantAvatarUrl?: string;
   participantPublicId: string;
   userPublicId: string;
   attachments: readonly Readonly<{ fileName: string }> [];
@@ -198,6 +200,7 @@ function ChatThreadComponent({
   onRemoveAttachment,
   onSend,
   onToggleBurn,
+  participantAvatarUrl,
   participantPublicId,
   userPublicId,
   attachments,
@@ -324,7 +327,14 @@ function ChatThreadComponent({
         >
           <Text className="text-2xl font-black text-g000st-black">‹</Text>
         </Pressable>
-        <View className="ml-1 min-w-0 flex-1">
+        <View className="ml-1 h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#DDD]">
+          {!isParticipantDeleted && participantAvatarUrl ? (
+            <Image contentFit="cover" source={{ uri: participantAvatarUrl }} style={{ height: '100%', width: '100%' }} />
+          ) : (
+            <Text>◎</Text>
+          )}
+        </View>
+        <View className="ml-2 min-w-0 flex-1">
           <Text className="text-[11px] font-bold text-black/45">PRIVATE CHAT</Text>
           <Text className="font-mono text-[12px] font-black text-g000st-black" numberOfLines={1}>
             {isParticipantDeleted ? 'Deleted account' : shortId(participantPublicId)}

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { FieldPath, FieldValue, type DocumentData, type Firestore } from 'firebase-admin/firestore';
 
+import type { MediaService } from '../media/media-service.js';
 import { encodeSocialCursor, type SocialCursor } from './social-cursor.js';
 import type { SocialStore } from './social-store.js';
 import type {
@@ -38,7 +39,11 @@ type StoredComment = Readonly<{
 }>;
 
 export class FirestoreSocialStore implements SocialStore {
-  constructor(private readonly db: Firestore, private readonly prefix: string) {}
+  constructor(
+    private readonly db: Firestore,
+    private readonly prefix: string,
+    private readonly mediaService?: MediaService,
+  ) {}
 
   async listPosts(viewerId: string, limit: number, cursor?: SocialCursor, ownerId?: string): Promise<SocialPage<SocialPost>> {
     let query = this.posts().orderBy('createdAtMs', 'desc').orderBy(FieldPath.documentId(), 'desc');
@@ -219,7 +224,22 @@ export class FirestoreSocialStore implements SocialStore {
     if (!visible) return { displayName: 'Anonymous' };
     const profile = await this.profiles().doc(publicId).get();
     const data = profile.data();
-    return { publicId, displayName: (data?.displayName as string | undefined) || publicId.slice(0, 12), ...(data?.avatarUrl ? { avatarUrl: data.avatarUrl as string } : {}) };
+    const avatarObjectKey = data?.avatarObjectKey as string | undefined;
+    const avatarUrl = avatarObjectKey ? await this.avatarUrl(avatarObjectKey) : undefined;
+    return {
+      publicId,
+      displayName: (data?.displayName as string | undefined) || publicId.slice(0, 12),
+      ...(avatarUrl ? { avatarUrl } : {}),
+    };
+  }
+
+  private async avatarUrl(objectKey: string): Promise<string | undefined> {
+    if (!this.mediaService) return undefined;
+    const { downloadUrl } = await this.mediaService.getDownloadUrl(
+      { byteSize: 0, contentType: 'image/*', fileName: 'avatar', id: 'avatar', kind: 'image', objectKey },
+      30 * 60,
+    );
+    return downloadUrl;
   }
 
   private collection(name: string) { return this.db.collection(`${this.prefix}_${name}`); }

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { PresenceHeartbeat } from "@/features/presence/presence-heartbeat";
+
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
@@ -16,6 +18,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="h-[100dvh] overflow-hidden bg-[#C8CDD5]">
+      <PresenceHeartbeat />
       <div className="mx-auto flex h-full w-full max-w-5xl flex-col bg-[#D8DCE3] shadow-[0_0_55px_rgba(0,0,0,0.18)]">
         <main className="relative min-h-0 flex-1 overflow-hidden">
           {children}

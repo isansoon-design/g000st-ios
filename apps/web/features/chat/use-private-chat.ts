@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { sessionStorage } from "@/app/api/session-storage";
+import { getSocialProfile } from "@/app/api/social";
 import {
   listChatConversations,
   listChatMessages,
@@ -48,6 +49,7 @@ export function usePrivateChat() {
   const [clockMs, setClockMs] = useState(Date.now);
   const [conversations, setConversations] = useState<readonly ChatConversationSummary[]>([]);
   const [conversationsError, setConversationsError] = useState<string | null>(null);
+  const [participantAvatarUrl, setParticipantAvatarUrl] = useState<string | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
@@ -151,6 +153,19 @@ export function usePrivateChat() {
     const interval = window.setInterval(() => setClockMs(Date.now()), 1_000);
     return () => window.clearInterval(interval);
   }, [activeConversation]);
+
+  useEffect(() => {
+    const participantPublicId = activeConversation?.participantPublicId;
+    if (!participantPublicId || activeConversation?.participantStatus === "deleted") {
+      setParticipantAvatarUrl(undefined);
+      return;
+    }
+    let cancelled = false;
+    getSocialProfile(participantPublicId)
+      .then((profile) => { if (!cancelled) setParticipantAvatarUrl(profile.avatarUrl); })
+      .catch(() => { if (!cancelled) setParticipantAvatarUrl(undefined); });
+    return () => { cancelled = true; };
+  }, [activeConversation?.participantPublicId, activeConversation?.participantStatus]);
 
   const visibleMessages = useMemo(
     () => messages.filter((message) => message.expiresAtMs > clockMs),
@@ -362,6 +377,7 @@ export function usePrivateChat() {
     openBurnMessage,
     openConversation,
     openNewChat: () => setIsNewChatOpen(true),
+    participantAvatarUrl,
     participantError,
     participantInput,
     refreshConversations: () => loadConversations(true),

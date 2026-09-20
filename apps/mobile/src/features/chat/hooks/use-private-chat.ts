@@ -18,6 +18,7 @@ import {
   startChatConversation,
 } from "@/api/chat";
 import { createChatAttachmentUpload, uploadChatAttachment } from "@/api/media";
+import { getSocialProfile } from "@/api/social";
 import type {
   ChatConversationSummary,
   ChatMessage,
@@ -135,6 +136,14 @@ export function usePrivateChat(
     const timer = setInterval(() => setClockMs(Date.now()), 1_000);
     return () => clearInterval(timer);
   }, [activeConversation]);
+
+  const participantPublicId = activeConversation?.participantPublicId;
+  const participantProfileQuery = useQuery({
+    enabled: !!participantPublicId && activeConversation?.participantStatus !== "deleted",
+    queryFn: () => getSocialProfile(participantPublicId!),
+    queryKey: ["social-profile", participantPublicId],
+    staleTime: 5 * 60 * 1_000,
+  });
 
   const startMutation = useMutation({
     mutationFn: startChatConversation,
@@ -528,6 +537,7 @@ export function usePrivateChat(
     nowMs: clockMs,
     openBurnMessage,
     openConversation,
+    participantAvatarUrl: participantProfileQuery.data?.avatarUrl,
     openNewChat: () => setIsNewChatOpen(true),
     pickDocumentAttachment: chatAttachments.pickDocument,
     pickLibraryAttachment: chatAttachments.pickFromLibrary,
