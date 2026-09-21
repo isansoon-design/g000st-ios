@@ -60,7 +60,7 @@ export class AuthService {
         return {
           recoveryId,
           session: issued.tokens,
-          user: { publicId },
+          user: { publicId, role: 'user' },
         };
       }
 
@@ -90,10 +90,11 @@ export class AuthService {
 
     const issued = this.issueSession();
     await this.store.createSession(credential.publicId, issued.material, this.now());
+    const role = await this.store.getAccountRole(credential.publicId);
 
     return {
       session: issued.tokens,
-      user: { publicId: credential.publicId },
+      user: { publicId: credential.publicId, role },
     };
   }
 
@@ -119,16 +120,16 @@ export class AuthService {
   async getUser(accessToken: string): Promise<AuthenticationResult['user']> {
     if (!accessToken) throw new ApiError(401, 'UNAUTHENTICATED', 'Authentication is required.');
 
-    const publicId = await this.store.findActivePublicIdByAccessHash(
+    const account = await this.store.findActivePublicIdByAccessHash(
       hashOpaqueToken(accessToken),
       this.now(),
     );
 
-    if (!publicId) {
+    if (!account) {
       throw new ApiError(401, 'SESSION_EXPIRED', 'Your session has expired.');
     }
 
-    return { publicId };
+    return account;
   }
 
   private generateDistinctRecoveryId(publicId: string): string {

@@ -16,7 +16,9 @@
       "package": "com.g000st.app",
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.MANAGE_OWN_CALLS"
       ]
     },
     "web": {
@@ -49,7 +51,14 @@
           "photosPermission": "Allow g000st to select photos and videos for private chat."
         }
       ],
-      "expo-video"
+      "expo-video",
+      [
+        "expo-callkit-telecom",
+        {
+          "microphonePermission": "Allow g000st to use the microphone for calls.",
+          "cameraPermission": "Allow g000st to use the camera for video calls."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

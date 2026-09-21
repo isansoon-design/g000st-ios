@@ -4,6 +4,12 @@ import { z } from 'zod';
 
 import { createAuthRouter } from './auth/auth-router.js';
 import { AuthService } from './auth/auth-service.js';
+import { createBillingRouter } from './billing/billing-router.js';
+import { createBillingStripeWebhookRouter } from './billing/billing-stripe-webhook-router.js';
+import type { BillingService } from './billing/billing-service.js';
+import type { StripeCheckoutClient } from './billing/stripe-client.js';
+import { createCallingRouter } from './calling/calling-router.js';
+import type { CallingService } from './calling/calling-service.js';
 import { createChatRouter } from './chat/chat-router.js';
 import { ChatService } from './chat/chat-service.js';
 import { createContactsRouter } from './contacts/contacts-router.js';
@@ -17,9 +23,23 @@ import { PresenceService } from './presence/presence-service.js';
 import { createSocialRouter } from './social/social-router.js';
 import { SocialService } from './social/social-service.js';
 
+declare global {
+  namespace Express {
+    interface Request {
+      rawBody?: Buffer;
+    }
+  }
+}
+
 type CreateAppOptions = Readonly<{
   allowedOrigins: readonly string[];
   authService: AuthService;
+  billing?: Readonly<{
+    service: BillingService;
+    stripeClient: StripeCheckoutClient;
+    stripeWebhookSecret: string;
+  }>;
+  callingService: CallingService;
   chatService: ChatService;
   contactsService: ContactsService;
   notificationService: NotificationService;
@@ -30,6 +50,8 @@ type CreateAppOptions = Readonly<{
 export function createApp({
   allowedOrigins,
   authService,
+  billing,
+  callingService,
   chatService,
   contactsService,
   notificationService,
@@ -49,7 +71,22 @@ export function createApp({
       },
     }),
   );
-  app.use(express.json({ limit: '32kb' }));
+  app.use(
+    express.json({
+      limit: '32kb',
+      verify: (request, _response, buffer) => {
+        (request as express.Request).rawBody = Buffer.from(buffer);
+      },
+    }),
+  );
+  if (billing) {
+    app.use(
+      '/api/v1/billing/webhooks/stripe',
+      createBillingStripeWebhookRouter(billing.stripeClient, billing.stripeWebhookSecret, billing.service),
+    );
+    app.use('/api/v1/billing', createBillingRouter(authService, billing.service));
+  }
+  app.use('/api/v1/calling', createCallingRouter(authService, callingService));
   app.use('/api/v1/social', createSocialRouter(authService, socialService));
   app.use('/api/v1/contacts', createContactsRouter(authService, contactsService));
   app.use('/api/v1/presence', createPresenceRouter(authService, presenceService));

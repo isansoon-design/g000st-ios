@@ -4,12 +4,16 @@ import type { Firestore, Transaction, WriteBatch } from 'firebase-admin/firestor
 
 import type {
   AccountReservation,
+  AccountRole,
+  ActiveAccount,
   AuthStore,
   RecoveryCredentialRecord,
   ReserveAccountResult,
   RotateRefreshResult,
   SessionMaterial,
 } from './auth-store.js';
+
+const DEFAULT_ROLE: AccountRole = 'user';
 
 type StoredAccessSession = Readonly<{
   accessExpiresAtMs: number;
@@ -57,6 +61,7 @@ export class FirestoreAuthStore implements AuthStore {
       transaction.create(userRef, {
         createdAtMs: reservation.createdAtMs,
         publicId: reservation.publicId,
+        role: DEFAULT_ROLE,
         status: 'active',
       });
       transaction.create(recoveryRef, {
@@ -90,7 +95,7 @@ export class FirestoreAuthStore implements AuthStore {
   async findActivePublicIdByAccessHash(
     accessHash: string,
     nowMs: number,
-  ): Promise<string | null> {
+  ): Promise<ActiveAccount | null> {
     const access = await this.collection('access_sessions').doc(accessHash).get();
     if (!access.exists) return null;
 
@@ -106,7 +111,15 @@ export class FirestoreAuthStore implements AuthStore {
     if (!family.exists || familyData?.revokedAtMs) return null;
     if (!user.exists || user.data()?.status !== 'active') return null;
 
-    return data.publicId;
+    return {
+      publicId: data.publicId,
+      role: (user.data()?.role as AccountRole | undefined) ?? DEFAULT_ROLE,
+    };
+  }
+
+  async getAccountRole(publicId: string): Promise<AccountRole> {
+    const user = await this.collection('users').doc(publicId).get();
+    return (user.data()?.role as AccountRole | undefined) ?? DEFAULT_ROLE;
   }
 
   async findRecoveryCredential(lookupHash: string): Promise<RecoveryCredentialRecord | null> {

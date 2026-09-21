@@ -19,6 +19,8 @@ type ContactsScreenContentProps = Readonly<{
   onCloseAdd: () => void;
   onOpenAdd: () => void;
   onOpenChat: (publicId: string) => void;
+  onCallAudio: (contact: Contact) => void;
+  onCallVideo: (contact: Contact) => void;
   onRemove: (contact: Contact) => void;
   onSubmitAdd: () => void;
   query: string;
@@ -48,10 +50,14 @@ function TabChip({
 function ContactRow({
   contact,
   onOpenChat,
+  onCallAudio,
+  onCallVideo,
   onRemove,
 }: Readonly<{
   contact: Contact;
   onOpenChat: (publicId: string) => void;
+  onCallAudio: (contact: Contact) => void;
+  onCallVideo: (contact: Contact) => void;
   onRemove: (contact: Contact) => void;
 }>) {
   return (
@@ -78,6 +84,22 @@ function ContactRow({
         </Text>
       </View>
       <Pressable
+        accessibilityLabel="Call"
+        accessibilityRole="button"
+        className="h-8 w-8 items-center justify-center rounded-full active:bg-black/5"
+        onPress={() => onCallAudio(contact)}
+      >
+        <Text className="text-base">📞</Text>
+      </Pressable>
+      <Pressable
+        accessibilityLabel="Video call"
+        accessibilityRole="button"
+        className="h-8 w-8 items-center justify-center rounded-full active:bg-black/5"
+        onPress={() => onCallVideo(contact)}
+      >
+        <Text className="text-base">🎥</Text>
+      </Pressable>
+      <Pressable
         accessibilityLabel="Remove contact"
         accessibilityRole="button"
         className="h-8 w-8 items-center justify-center rounded-full"
@@ -102,6 +124,8 @@ function ContactsScreenContentComponent({
   onCloseAdd,
   onOpenAdd,
   onOpenChat,
+  onCallAudio,
+  onCallVideo,
   onRemove,
   onSubmitAdd,
   query,
@@ -151,7 +175,13 @@ function ContactsScreenContentComponent({
           data={contacts}
           keyExtractor={(item) => item.publicId}
           renderItem={({ item }) => (
-            <ContactRow contact={item} onOpenChat={onOpenChat} onRemove={onRemove} />
+            <ContactRow
+              contact={item}
+              onCallAudio={onCallAudio}
+              onCallVideo={onCallVideo}
+              onOpenChat={onOpenChat}
+              onRemove={onRemove}
+            />
           )}
         />
       )}

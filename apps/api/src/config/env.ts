@@ -14,10 +14,38 @@ const envSchema = z.object({
   MEDIA_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3100),
+  STRIPE_CHECKOUT_CANCEL_URL_MOBILE: z.string().min(1).optional(),
+  STRIPE_CHECKOUT_CANCEL_URL_WEB: z.url().optional(),
+  STRIPE_CHECKOUT_SUCCESS_URL_MOBILE: z.string().min(1).optional(),
+  STRIPE_CHECKOUT_SUCCESS_URL_WEB: z.url().optional(),
+  APNS_VOIP_BUNDLE_ID: z.string().min(1).optional(),
+  APNS_VOIP_KEY_ID: z.string().min(1).optional(),
+  APNS_VOIP_PRIVATE_KEY: z.string().min(1).optional(),
+  APNS_VOIP_PRODUCTION: z.enum(['true', 'false']).optional(),
+  APNS_VOIP_TEAM_ID: z.string().min(1).optional(),
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  TURN_SHARED_SECRET: z.string().min(1).optional(),
+  TURN_URLS: z.string().min(1).optional(),
 });
 
 export type ApiEnvironment = Readonly<{
   allowedOrigins: readonly string[];
+  apnsVoip?: Readonly<{
+    bundleId: string;
+    keyId: string;
+    privateKeyPem: string;
+    production: boolean;
+    teamId: string;
+  }>;
+  billing?: Readonly<{
+    checkoutUrls: Readonly<{
+      mobile: Readonly<{ successUrl: string; cancelUrl: string }>;
+      web: Readonly<{ successUrl: string; cancelUrl: string }>;
+    }>;
+    stripeSecretKey: string;
+    stripeWebhookSecret: string;
+  }>;
   collectionPrefix: string;
   expoPushAccessToken?: string;
   firebaseServiceAccountPath: string;
@@ -32,6 +60,7 @@ export type ApiEnvironment = Readonly<{
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
   recoveryPepper: string;
+  turn?: Readonly<{ sharedSecret: string; urls: readonly string[] }>;
 }>;
 
 export function readEnvironment(source: NodeJS.ProcessEnv = process.env): ApiEnvironment {
@@ -54,10 +83,73 @@ export function readEnvironment(source: NodeJS.ProcessEnv = process.env): ApiEnv
     throw new Error('Invalid API environment fields: incomplete media storage configuration');
   }
 
+  const billingValues = [
+    result.data.STRIPE_SECRET_KEY,
+    result.data.STRIPE_WEBHOOK_SECRET,
+    result.data.STRIPE_CHECKOUT_SUCCESS_URL_MOBILE,
+    result.data.STRIPE_CHECKOUT_CANCEL_URL_MOBILE,
+    result.data.STRIPE_CHECKOUT_SUCCESS_URL_WEB,
+    result.data.STRIPE_CHECKOUT_CANCEL_URL_WEB,
+  ];
+  const hasAnyBillingValue = billingValues.some(Boolean);
+  const hasCompleteBillingConfig = billingValues.every(Boolean);
+  if (hasAnyBillingValue && !hasCompleteBillingConfig) {
+    throw new Error('Invalid API environment fields: incomplete billing/Stripe configuration');
+  }
+
+  const turnValues = [result.data.TURN_SHARED_SECRET, result.data.TURN_URLS];
+  const hasAnyTurnValue = turnValues.some(Boolean);
+  const hasCompleteTurnConfig = turnValues.every(Boolean);
+  if (hasAnyTurnValue && !hasCompleteTurnConfig) {
+    throw new Error('Invalid API environment fields: incomplete TURN configuration');
+  }
+
+  const apnsVoipValues = [
+    result.data.APNS_VOIP_KEY_ID,
+    result.data.APNS_VOIP_TEAM_ID,
+    result.data.APNS_VOIP_PRIVATE_KEY,
+    result.data.APNS_VOIP_BUNDLE_ID,
+  ];
+  const hasAnyApnsVoipValue = apnsVoipValues.some(Boolean);
+  const hasCompleteApnsVoipConfig = apnsVoipValues.every(Boolean);
+  if (hasAnyApnsVoipValue && !hasCompleteApnsVoipConfig) {
+    throw new Error('Invalid API environment fields: incomplete APNs VoIP configuration');
+  }
+
   return {
     allowedOrigins: result.data.CORS_ALLOWED_ORIGINS.split(',')
       .map((origin) => origin.trim())
       .filter(Boolean),
+    ...(hasCompleteApnsVoipConfig
+      ? {
+          apnsVoip: {
+            bundleId: result.data.APNS_VOIP_BUNDLE_ID!,
+            keyId: result.data.APNS_VOIP_KEY_ID!,
+            // .env files commonly store a multi-line PEM with literal "\n" escapes.
+            privateKeyPem: result.data.APNS_VOIP_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+            production: result.data.APNS_VOIP_PRODUCTION === 'true',
+            teamId: result.data.APNS_VOIP_TEAM_ID!,
+          },
+        }
+      : {}),
+    ...(hasCompleteBillingConfig
+      ? {
+          billing: {
+            checkoutUrls: {
+              mobile: {
+                successUrl: result.data.STRIPE_CHECKOUT_SUCCESS_URL_MOBILE!,
+                cancelUrl: result.data.STRIPE_CHECKOUT_CANCEL_URL_MOBILE!,
+              },
+              web: {
+                successUrl: result.data.STRIPE_CHECKOUT_SUCCESS_URL_WEB!,
+                cancelUrl: result.data.STRIPE_CHECKOUT_CANCEL_URL_WEB!,
+              },
+            },
+            stripeSecretKey: result.data.STRIPE_SECRET_KEY!,
+            stripeWebhookSecret: result.data.STRIPE_WEBHOOK_SECRET!,
+          },
+        }
+      : {}),
     collectionPrefix: result.data.AUTH_COLLECTION_PREFIX,
     ...(result.data.EXPO_PUSH_ACCESS_TOKEN
       ? { expoPushAccessToken: result.data.EXPO_PUSH_ACCESS_TOKEN }
@@ -78,5 +170,13 @@ export function readEnvironment(source: NodeJS.ProcessEnv = process.env): ApiEnv
     nodeEnv: result.data.NODE_ENV,
     port: result.data.PORT,
     recoveryPepper: result.data.AUTH_RECOVERY_PEPPER,
+    ...(hasCompleteTurnConfig
+      ? {
+          turn: {
+            sharedSecret: result.data.TURN_SHARED_SECRET!,
+            urls: result.data.TURN_URLS!.split(',').map((url) => url.trim()).filter(Boolean),
+          },
+        }
+      : {}),
   };
 }

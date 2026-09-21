@@ -124,3 +124,54 @@ uploaded directly to configured S3-compatible storage with a short-lived signed 
 only when the post is created, and returned through short-lived signed download URLs. A post accepts
 up to two images or exactly one video, never a mixed batch; every file is limited to 5 MB in both
 the route validation and media service.
+
+## Mobile API
+
+The Mobile feature is three independent concerns with different trust boundaries, so it is split
+across three route roots: `/api/v1/billing` (money), `/api/v1/telephony` (Telnyx-mediated external
+calls/SMS), and `/api/v1/calling` (free in-app audio/video calling, built independently of Telnyx).
+All routes below require `Authorization: Bearer <accessToken>` and enforce ownership via the
+authenticated caller's own Public ID, except the two provider webhook routes (verified by the
+provider's own request signature instead of a bearer token) and the `/billing/admin/*` routes
+(bearer token **plus** an `admin` account role).
+
+There is exactly **one** phone number for the whole platform (client-owned, configured server-side),
+used as the caller ID / sender ID for every user's outbound external call and SMS. There is no
+per-user number. External calls and SMS are **outbound-only** — the platform never receives a call
+or message from the public phone network, so there is no inbound-routing concept to design around a
+shared caller ID. In-app calling (a g000st user calling another g000st user, audio or video) is a
+completely separate, always-free capability that never touches billing.
+
+### Billing
+
+- `GET /billing/skus` → `{ skus: [{ id, kind: "sms" | "voice_minutes", quantity, priceCents, currency, label }] }`. A small fixed catalog of prepaid bundles (fresh ids such as `sms-5`, `voice-10m`, `voice-30m` — never reuse legacy plan names).
+- `POST /billing/checkout-sessions` — body `{ skuId, returnTo: "mobile" | "web" }` → `201 { checkoutUrl, checkoutSessionId }`. `returnTo` selects the success/cancel URL from a server-side allow-list; the client never supplies a raw redirect URL. Errors: `400 UNKNOWN_SKU`, `429 RATE_LIMITED`, `503 BILLING_UNAVAILABLE`. This only creates a Stripe Checkout session — no balance changes here.
+- `POST /billing/webhooks/stripe` — Stripe → server, no bearer token, raw-body signature verification via the `stripe` SDK. Always `200 { received: true }` once verified (processing is idempotent per Stripe event); `400 INVALID_SIGNATURE` and **no ledger write** when verification fails.
+- `GET /billing/balance` → `{ balance: { voiceSecondsRemaining, smsRemaining, updatedAtMs } }`. Tracked in seconds so partial minutes bill exactly.
+- `GET /billing/ledger?limit=20&cursor=...` → cursor-paginated ledger entries, `kind` one of `purchase | call_consumption | sms_consumption | admin_adjustment`. Same cursor convention as `GET /social/posts`.
+- `GET /billing/admin/users/:publicId` (admin) → `{ balance }`.
+- `GET /billing/admin/users/:publicId/ledger?cursor&limit` (admin) → same ledger entry shape as above — never call or message content, only counts/durations/references.
+- `POST /billing/admin/users/:publicId/adjust` (admin) — body `{ voiceSecondsDelta, smsDelta, reason }` → appends an `admin_adjustment` ledger entry tagged with the acting admin's own Public ID.
+
+### Telephony (Telnyx — external calls and SMS only)
+
+- `POST /telephony/webrtc-credential` → `{ credential: { sipUsername, sipPassword, loginToken, expiresAtMs } }`. Short-lived, per-user Telnyx WebRTC login credential for placing external calls; the raw Telnyx API key never reaches a client.
+- `POST /telephony/calls` — body `{ toE164 }` → `201 { call: { callControlId, status: "dialing" } }`. Checked against the caller's voice-seconds balance before Telnyx is asked to dial. Errors: `402 INSUFFICIENT_BALANCE`, `502 PROVIDER_ERROR`.
+- `POST /telephony/webhooks/calls` — Telnyx Call Control webhook for calls this backend placed (`call.answered`, `call.hangup`), Ed25519-signature-verified. Debits the ledger on hangup using the answered→hangup duration; idempotent per `call_control_id`.
+- `GET /telephony/calls?limit=20&cursor=...` → cursor-paginated external call history.
+- `POST /telephony/sms` — body `{ toE164, body }` → `201 { message: { id, toE164, body, status, createdAtMs } }`. Checked against the SMS balance before sending. Errors: `402 INSUFFICIENT_BALANCE`, `502 PROVIDER_ERROR`.
+- `POST /telephony/webhooks/sms` — Telnyx outbound delivery-status webhook only, Ed25519-signature-verified. There is no inbound-message webhook; none is needed since SMS is outbound-only.
+- `GET /telephony/sms?limit=20&cursor=...` → cursor-paginated outbound SMS history.
+
+### Calling (in-app, custom-built, audio + video, always free)
+
+- `POST /calling/turn-credential` → `{ credential: { urls, username, credential, expiresAtMs } }`. Short-lived TURN relay credentials from the managed TURN provider, used only when a direct peer-to-peer connection fails. Public STUN needs no credential.
+- `wss://.../api/v1/calling/socket?token=<accessToken>` — a signaling relay, not a REST endpoint. The server authenticates the connection the same way any bearer-token route does, then relays small JSON control messages (`call-invite`, `call-offer`, `call-answer`, `ice-candidate`, `call-reject`, `call-end`) to the addressed Public ID's open socket. The sender's own Public ID is always taken from the authenticated connection, never from client-supplied message content. If the target has no open socket, the server falls back to a push notification carrying just enough data to raise a native incoming-call UI. No media and no call content passes through this server.
+- `GET /calling/history?limit=20&cursor=...` → cursor-paginated, unbilled call log (peer, duration, audio/video, missed/answered) for the caller's own history — this never interacts with the billing ledger.
+
+### Cross-cutting rules
+
+- Balance, consumption, and entitlements are computed and stored **only** in the backend, from a ledger of auditable events — never trusted from or computed by a client.
+- A purchase only ever credits a balance after a signature-verified Stripe webhook confirms payment; a successful Checkout redirect on its own grants nothing.
+- In-app calling never calls into the billing service under any code path — the module boundary between `calling` and `billing` is the enforcement mechanism for "in-app is always free," not a policy flag that could be toggled incorrectly.
+- New error codes: `UNKNOWN_SKU`, `INVALID_SIGNATURE`, `BILLING_UNAVAILABLE`, `INSUFFICIENT_BALANCE`, `PROVIDER_ERROR`, `CALL_NOT_FOUND`, `ADMIN_REQUIRED`.

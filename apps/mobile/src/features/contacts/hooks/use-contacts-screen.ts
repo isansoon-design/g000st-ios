@@ -7,6 +7,7 @@ import { addContact, listContacts, removeContact } from '@/api/contacts';
 import type { Contact } from '@/domain/contacts/types';
 import { G000ST_ID_LENGTH } from '@/domain/identity/constants';
 import { useAuth } from '@/features/auth/hooks/use-auth';
+import { useCalling } from '@/features/calling/hooks/use-calling';
 import { useConfirmModal } from '@/providers/confirm-modal-provider';
 
 export type ContactsTab = 'all' | 'online';
@@ -23,6 +24,7 @@ export function useContactsScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const { confirm } = useConfirmModal();
+  const { callUser } = useCalling();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<ContactsTab>('all');
@@ -133,9 +135,20 @@ export function useContactsScreen() {
     [router],
   );
 
+  const callAudio = useCallback(
+    (contact: Contact) => void callUser(contact.publicId, contact.displayName, 'audio'),
+    [callUser],
+  );
+  const callVideo = useCallback(
+    (contact: Contact) => void callUser(contact.publicId, contact.displayName, 'video'),
+    [callUser],
+  );
+
   return {
     addError,
     addValue,
+    callAudio,
+    callVideo,
     closeAdd,
     contacts: visibleContacts,
     isAddOpen,

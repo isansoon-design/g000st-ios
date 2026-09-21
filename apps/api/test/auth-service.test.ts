@@ -4,6 +4,8 @@ import { describe, it } from 'node:test';
 import { AuthService } from '../src/auth/auth-service.js';
 import type {
   AccountReservation,
+  AccountRole,
+  ActiveAccount,
   AuthStore,
   RecoveryCredentialRecord,
   ReserveAccountResult,
@@ -22,7 +24,7 @@ class MemoryAuthStore implements AuthStore {
   private readonly families = new Map<string, { revoked: boolean }>();
   private readonly recoveries = new Map<string, RecoveryCredentialRecord>();
   private readonly refresh = new Map<string, StoredSession & { rotated: boolean }>();
-  private readonly users = new Set<string>();
+  private readonly users = new Map<string, AccountRole>();
 
   constructor(private readonly forcedCreateResults: ReserveAccountResult[] = []) {}
 
@@ -33,7 +35,7 @@ class MemoryAuthStore implements AuthStore {
     if (this.users.has(reservation.publicId)) return 'public_id_unavailable';
     if (this.recoveries.has(reservation.recovery.lookupHash)) return 'recovery_collision';
 
-    this.users.add(reservation.publicId);
+    this.users.set(reservation.publicId, 'user');
     this.recoveries.set(reservation.recovery.lookupHash, reservation.recovery);
     this.saveSession(reservation.publicId, reservation.session);
     return 'created';
@@ -46,15 +48,20 @@ class MemoryAuthStore implements AuthStore {
   async findActivePublicIdByAccessHash(
     accessHash: string,
     nowMs: number,
-  ): Promise<string | null> {
+  ): Promise<ActiveAccount | null> {
     const session = this.access.get(accessHash);
     if (!session || session.accessExpiresAtMs <= nowMs) return null;
     if (this.families.get(session.familyId)?.revoked) return null;
-    return this.users.has(session.publicId) ? session.publicId : null;
+    const role = this.users.get(session.publicId);
+    return role ? { publicId: session.publicId, role } : null;
   }
 
   async findRecoveryCredential(lookupHash: string): Promise<RecoveryCredentialRecord | null> {
     return this.recoveries.get(lookupHash) ?? null;
+  }
+
+  async getAccountRole(publicId: string): Promise<AccountRole> {
+    return this.users.get(publicId) ?? 'user';
   }
 
   async isUserActive(publicId: string): Promise<boolean> {
@@ -180,5 +187,19 @@ describe('AuthService', () => {
 
     assert.equal(user.publicId, registered.user.publicId);
     assert.equal(hashOpaqueToken(registered.session.accessToken).length, 64);
+  });
+
+  it('defaults new accounts to the user role and carries the stored role through auth', async () => {
+    const store = new MemoryAuthStore();
+    const service = new AuthService(store, PEPPER, () => NOW);
+    const registered = await service.register();
+
+    assert.equal(registered.user.role, 'user');
+
+    const authenticated = await service.getUser(registered.session.accessToken);
+    assert.equal(authenticated.role, 'user');
+
+    const restored = await service.restore(registered.recoveryId);
+    assert.equal(restored.user.role, 'user');
   });
 });

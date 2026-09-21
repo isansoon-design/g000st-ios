@@ -3,6 +3,15 @@ import 'dotenv/config';
 import { AuthService } from './auth/auth-service.js';
 import { FirestoreAuthStore } from './auth/firestore-auth-store.js';
 import { createApp } from './app.js';
+import { BillingService } from './billing/billing-service.js';
+import { FirestoreBillingStore } from './billing/firestore-billing-store.js';
+import { StripeCheckoutClient } from './billing/stripe-client.js';
+import { ApnsVoipClient } from './calling/apns-voip-client.js';
+import { CallingRelay } from './calling/calling-relay.js';
+import { CallingService } from './calling/calling-service.js';
+import { FcmVoipClient } from './calling/fcm-voip-client.js';
+import { FirestoreCallingStore } from './calling/firestore-calling-store.js';
+import { HmacTurnCredentialProvider } from './calling/turn-credential-provider.js';
 import { ChatExpirationWorker } from './chat/chat-expiration-worker.js';
 import { ChatService } from './chat/chat-service.js';
 import { FirestoreChatStore } from './chat/firestore-chat-store.js';
@@ -57,9 +66,38 @@ async function main(): Promise<void> {
     presenceService,
   );
   const expirationWorker = new ChatExpirationWorker(chatStore, Date.now, mediaService);
+  function buildBilling(config: NonNullable<typeof environment.billing>) {
+    const stripeClient = new StripeCheckoutClient(config.stripeSecretKey);
+    return {
+      service: new BillingService(
+        new FirestoreBillingStore(firestore, environment.collectionPrefix),
+        stripeClient,
+        config.checkoutUrls,
+      ),
+      stripeClient,
+      stripeWebhookSecret: config.stripeWebhookSecret,
+    };
+  }
+
+  const billing = environment.billing ? buildBilling(environment.billing) : undefined;
+  const turnCredentialProvider = environment.turn
+    ? new HmacTurnCredentialProvider(environment.turn.urls, environment.turn.sharedSecret)
+    : undefined;
+  const callingService = new CallingService(
+    new FirestoreCallingStore(firestore, environment.collectionPrefix),
+    turnCredentialProvider,
+    notificationService,
+    {
+      ...(environment.apnsVoip ? { apns: new ApnsVoipClient(environment.apnsVoip) } : {}),
+      fcm: new FcmVoipClient(),
+    },
+  );
+  const callingRelay = new CallingRelay(authService, callingService);
   const app = createApp({
     allowedOrigins: environment.allowedOrigins,
     authService,
+    billing,
+    callingService,
     chatService,
     contactsService,
     notificationService,
@@ -69,6 +107,9 @@ async function main(): Promise<void> {
   const server = app.listen(environment.port, environment.host, () => {
     expirationWorker.start();
     console.log(`g000st API listening on ${environment.host}:${environment.port}`);
+  });
+  server.on('upgrade', (request, socket, head) => {
+    void callingRelay.handleUpgrade(request, socket, head);
   });
 
   const close = () => {

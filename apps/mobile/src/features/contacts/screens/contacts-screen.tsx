@@ -15,6 +15,8 @@ export function ContactsScreen() {
       onChangeAddValue={contacts.setAddValue}
       onChangeQuery={contacts.setQuery}
       onChangeTab={contacts.setTab}
+      onCallAudio={contacts.callAudio}
+      onCallVideo={contacts.callVideo}
       onCloseAdd={contacts.closeAdd}
       onOpenAdd={contacts.openAdd}
       onOpenChat={contacts.openChat}

@@ -1,3 +1,10 @@
+export type AccountRole = 'admin' | 'user';
+
+export type ActiveAccount = Readonly<{
+  publicId: string;
+  role: AccountRole;
+}>;
+
 export type RecoveryCredentialRecord = Readonly<{
   publicId: string;
   salt: string;
@@ -29,8 +36,9 @@ export type RotateRefreshResult =
 export interface AuthStore {
   createAccount(reservation: AccountReservation): Promise<ReserveAccountResult>;
   createSession(publicId: string, material: SessionMaterial, createdAtMs: number): Promise<void>;
-  findActivePublicIdByAccessHash(accessHash: string, nowMs: number): Promise<string | null>;
+  findActivePublicIdByAccessHash(accessHash: string, nowMs: number): Promise<ActiveAccount | null>;
   findRecoveryCredential(lookupHash: string): Promise<RecoveryCredentialRecord | null>;
+  getAccountRole(publicId: string): Promise<AccountRole>;
   isUserActive(publicId: string): Promise<boolean>;
   rotateRefresh(
     currentRefreshHash: string,

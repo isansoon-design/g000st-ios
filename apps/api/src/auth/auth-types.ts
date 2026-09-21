@@ -1,3 +1,5 @@
+import type { AccountRole } from './auth-store.js';
+
 export type AuthTokens = Readonly<{
   accessToken: string;
   expiresAt: number;
@@ -6,6 +8,7 @@ export type AuthTokens = Readonly<{
 
 export type AuthenticatedUser = Readonly<{
   publicId: string;
+  role: AccountRole;
 }>;
 
 export type AuthenticationResult = Readonly<{

@@ -11,7 +11,18 @@ export interface ChatNotifier {
   notifyNewMessage(input: NewChatMessageNotification): Promise<void>;
 }
 
-export class NotificationService implements ChatNotifier {
+export type IncomingCallNotification = Readonly<{
+  callId: string;
+  callerPublicId: string;
+  calleePublicId: string;
+  media: 'audio' | 'video';
+}>;
+
+export interface CallingNotifier {
+  notifyIncomingCall(input: IncomingCallNotification): Promise<void>;
+}
+
+export class NotificationService implements ChatNotifier, CallingNotifier {
   constructor(
     private readonly store: NotificationStore,
     private readonly gateway: ExpoPushGateway,
@@ -41,6 +52,21 @@ export class NotificationService implements ChatNotifier {
         conversationId: input.conversationId,
         type: 'chat.message',
         url: `g000st://chat?conversationId=${input.conversationId}`,
+      },
+      title: 'g000st',
+    });
+  }
+
+  async notifyIncomingCall(input: IncomingCallNotification): Promise<void> {
+    const devices = await this.store.listActiveDevices(input.calleePublicId);
+    await this.gateway.send(devices, {
+      body: input.media === 'video' ? 'Incoming video call' : 'Incoming call',
+      data: {
+        callId: input.callId,
+        callerPublicId: input.callerPublicId,
+        media: input.media,
+        type: 'calling.invite',
+        url: `g000st://calling?callId=${input.callId}`,
       },
       title: 'g000st',
     });

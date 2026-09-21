@@ -3,6 +3,8 @@ import { describe, it } from 'node:test';
 
 import type {
   AccountReservation,
+  AccountRole,
+  ActiveAccount,
   AuthStore,
   RecoveryCredentialRecord,
   ReserveAccountResult,
@@ -58,11 +60,15 @@ class ActiveUsersStore implements AuthStore {
   async findActivePublicIdByAccessHash(
     _accessHash: string,
     _nowMs: number,
-  ): Promise<string | null> {
+  ): Promise<ActiveAccount | null> {
     throw new Error('Not used by ChatService tests.');
   }
 
   async findRecoveryCredential(_lookupHash: string): Promise<RecoveryCredentialRecord | null> {
+    throw new Error('Not used by ChatService tests.');
+  }
+
+  async getAccountRole(_publicId: string): Promise<AccountRole> {
     throw new Error('Not used by ChatService tests.');
   }
 
