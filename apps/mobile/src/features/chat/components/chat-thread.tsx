@@ -37,6 +37,8 @@ type ChatThreadProps = Readonly<{
   messages: readonly ChatThreadMessage[];
   nowMs: number;
   onBack: () => void;
+  onCallAudio: () => void;
+  onCallVideo: () => void;
   onCaptureAttachment: () => Promise<void>;
   onChangeDraft: (value: string) => void;
   onLoadOlder: () => void;
@@ -189,6 +191,8 @@ function ChatThreadComponent({
   messages,
   nowMs,
   onBack,
+  onCallAudio,
+  onCallVideo,
   onCaptureAttachment,
   onChangeDraft,
   onLoadOlder,
@@ -340,6 +344,26 @@ function ChatThreadComponent({
             {isParticipantDeleted ? 'Deleted account' : shortId(participantPublicId)}
           </Text>
         </View>
+        {isParticipantDeleted ? null : (
+          <View className="flex-row items-center gap-1">
+            <Pressable
+              accessibilityLabel="Call"
+              accessibilityRole="button"
+              className="h-9 w-9 items-center justify-center rounded-full active:bg-black/5"
+              onPress={onCallAudio}
+            >
+              <Text className="text-lg">📞</Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel="Video call"
+              accessibilityRole="button"
+              className="h-9 w-9 items-center justify-center rounded-full active:bg-black/5"
+              onPress={onCallVideo}
+            >
+              <Text className="text-lg">🎥</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
 
       <KeyboardAvoidingView automaticOffset behavior="padding" style={{ flex: 1 }}>

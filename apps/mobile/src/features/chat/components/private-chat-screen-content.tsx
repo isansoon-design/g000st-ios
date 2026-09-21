@@ -8,6 +8,7 @@ import { ChatConversationList } from '@/features/chat/components/chat-conversati
 import { ChatThread } from '@/features/chat/components/chat-thread';
 import { NewChatModal } from '@/features/chat/components/new-chat-modal';
 import { usePrivateChat } from '@/features/chat/hooks/use-private-chat';
+import { useCalling } from '@/features/calling/hooks/use-calling';
 
 function OnlineSignal() {
   return (
@@ -30,8 +31,10 @@ function PrivateChatScreenContentComponent({
   openRequestId,
 }: PrivateChatScreenContentProps) {
   const chat = usePrivateChat(initialConversationId, openRequestId);
+  const { callUser } = useCalling();
 
   if (chat.activeConversation) {
+    const participantPublicId = chat.activeConversation.participantPublicId;
     return (
       <>
         <ChatThread
@@ -49,6 +52,8 @@ function PrivateChatScreenContentComponent({
           messages={chat.messages}
           nowMs={chat.nowMs}
           onBack={chat.closeConversation}
+          onCallAudio={() => void callUser(participantPublicId, undefined, 'audio')}
+          onCallVideo={() => void callUser(participantPublicId, undefined, 'video')}
           onCaptureAttachment={chat.captureAttachment}
           onChangeDraft={chat.updateDraft}
           onLoadOlder={() => void chat.loadOlderMessages()}
