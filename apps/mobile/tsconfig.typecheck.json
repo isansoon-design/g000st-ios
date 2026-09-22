@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/assets/*": ["./assets/*"],
+      "@telnyx/react-native-voice-sdk": ["./src/types/telnyx-react-native-voice-sdk-stub.ts"]
+    }
+  }
+}

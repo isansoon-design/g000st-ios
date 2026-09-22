@@ -7,6 +7,12 @@
     "icon": "./assets/brand/icon-1024.png",
     "scheme": "g000st",
     "userInterfaceStyle": "light",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2cfd1331-dd33-43a8-9b21-c2cc2eddf965"
+    },
     "ios": {
       "bundleIdentifier": "com.g000st.app",
       "icon": "./assets/brand/icon-1024.png",

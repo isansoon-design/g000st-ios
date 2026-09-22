@@ -13,7 +13,21 @@
       "environment": "preview"
     },
     "production": {
-      "environment": "production"
+      "distribution": "store",
+      "autoIncrement": true,
+      "channel": "production",
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
+    "production-apk": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "channel": "production-apk",
+      "environment": "production",
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {

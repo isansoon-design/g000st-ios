@@ -529,10 +529,50 @@ in-app calling (ذاك منجز بشكل مستقل مسبقًا). عقد الـ
   المكالمة (ringing/active/ended)، mute، hangup، عداد مدة المكالمة، شاشة تغطية أثناء المكالمة.
 - `npm run typecheck:web` و`npm run build:web` ناجحان (حجم `/mobile` صار 78.3kB بعد تضمين SDK
   الـWebRTC، متوقع).
-- **لم يُنفَّذ بعد عمدًا**: ربط الهاتف (Expo) — يحتاج EAS dev-client rebuild جديد (البند 8 في
-  الخطة)، لوحة الأدمن، وأهم شيء: **اختبار حي فعلي مقابل حساب Telnyx حقيقي** — لا توجد بيانات
-  اعتماد Telnyx أو Stripe في بيئة staging إطلاقًا حتى الآن (تأكدنا عبر `ssh g000st-web`). القائمة
-  الكاملة لما هو مطلوب من المستخدم محفوظة في الذاكرة
+### تحديث فرعي — ربط الهاتف (Expo) فعليًا (نفس اليوم، 22 سبتمبر، مساءً)
+
+تنفيذ البند 8 من الخطة (ربط الموبايل). قبل كتابة أي كود، اكتُشفت وحُلّت مشكلتان حقيقيتان بالبحث
+والتحقق المباشر من الكود المثبَّت فعليًا (وليس تخمينًا من التوثيق):
+
+- **تعارض WebRTC الأصلي**: `@telnyx/react-native-voice-sdk` يعتمد على حزمة `react-native-webrtc`
+  الأصلية، بينما ميزة in-app calling الموجودة مسبقًا تستخدم `@livekit/react-native-webrtc`. تأكدنا
+  عبر قراءة الكود الأصلي (Android) أن كلا الحزمتين تسجّلان نفس اسم native module
+  (`com.oney.WebRTCModule.WebRTCModule`) — تعارض بناء حقيقي مؤكد وليس افتراضًا. **القرار (وافق
+  عليه المستخدم صراحة)**: إضافة `"react-native-webrtc": "npm:@livekit/react-native-webrtc@^144.2.0"`
+  إلى `overrides` في `package.json` الجذر، بحيث تُحلّ كل استيرادات `react-native-webrtc` إلى نفس
+  حزمة LiveKit المثبّتة والمُختبرة مسبقًا. تحقّقنا عبر `npm ls` أن هناك native module واحد فقط الآن.
+- **حزمة Telnyx نفسها ناقصة dependencies حقيقية**: قراءة مصدر الحزمة المثبّتة (v1.1.0، وهي أحدث
+  إصدار متاح) أظهرت أنها تستورد فعليًا `@react-native-async-storage/async-storage` و`rxjs` وقت
+  التشغيل، لكن `package.json` الخاص بها لا يذكرهما ضمن `dependencies` إطلاقًا — كانت ستفشل
+  التطبيق فعليًا عند التشغيل (`Unable to resolve module`) لو لم نُضفهما يدويًا. أُضيفتا صراحةً إلى
+  `apps/mobile/package.json` (`@react-native-async-storage/async-storage` عبر `npx expo install`
+  للحصول على النسخة المتوافقة مع SDK 56، و`rxjs@^7`).
+- **مشكلة typecheck منفصلة**: نفس حزمة Telnyx تشحن كود `.ts` خام غير مُصرَّف كنقطة `types`/`main`،
+  وهذا الكود لا يمر فحص TypeScript الصارم لهذا المشروع (أخطاء null-safety وRTCStatsReport داخلية
+  في الحزمة نفسها). الحل: `apps/mobile/tsconfig.typecheck.json` جديد (يُستخدم فقط بواسطة سكربت
+  `npm run typecheck`، **لا يمسّه Metro إطلاقًا** الذي يستخدم `tsconfig.json` الأصلي) يعيد توجيه
+  استيراد `@telnyx/react-native-voice-sdk` عبر `paths` إلى stub محلي مكتوب يدويًا
+  (`src/types/telnyx-react-native-voice-sdk-stub.ts`) يطابق الواجهة الحقيقية المُتحقَّق منها من
+  الكود المصدري فقط — التطبيق الفعلي (Metro) يستمر باستخدام الحزمة الحقيقية بلا أي تغيير.
+- وحدة جديدة `apps/mobile/src/features/mobile/`: hooks (`use-mobile-external-call.ts`،
+  `use-mobile-balance.ts`، `use-mobile-sms.ts`، `use-mobile-checkout.ts`) + مكوّنات
+  (`external-call-overlay.tsx`، `sms-composer-modal.tsx`، `plans-modal.tsx`) + `src/api/mobile.ts`
+  و`src/domain/mobile/types.ts` (zod). `mobile-screen.tsx`/`mobile-screen-content.tsx` أعيد بناؤهما
+  لتفعيل أزرار SMS وCALL الحقيقية (كانتا معطّلتين/وهميتين)، مع شاشة تغطية أثناء المكالمة (mute،
+  hangup، عداد مدة) تُطابق أسلوب `call-overlay.tsx` الموجود لـin-app calling.
+- **ملاحظة تصميم لـ`react-hooks/set-state-in-effect`** (قاعدة eslint صارمة موجودة مسبقًا في هذا
+  المشروع): يُستخدم نمط `void Promise.resolve().then(load)` بدل `void load()` مباشرة داخل
+  `useEffect` لتحميل البيانات الأولي (يطابق `use-contacts-screen.ts` الموجود)، وعداد مدة المكالمة
+  يُصفَّر من داخل `handleCall` (حدث مستخدم فعلي) بدل تصفيره تفاعليًا داخل effect.
+- `npm run typecheck:mobile` و`npm run lint:mobile` كلاهما نظيفان (التحذير الوحيد المتبقي
+  `screenWidth` غير مستخدم في `animated-tab-bar.tsx` — سابق لهذا التحديث وغير متعلق به).
+- **التالي مباشرة**: تحقّق محلي عبر `npx expo prebuild --clean` (لا يحتاج EAS، محلي بالكامل
+  ومُتجاهَل من git) للتأكد فعليًا أن autolinking لا يُنشئ CocoaPods pod مكرر لنفس الحزمة (احتياط
+  إضافي بعد حل تعارض الـnative module JS-level) — **قيد التنفيذ وقت كتابة هذا السطر**. بعده مباشرة:
+  EAS dev-client build فعلي (طلب المستخدم صراحة تنفيذه بعد اكتمال كل شيء).
+- **لم يُنفَّذ بعد عمدًا**: لوحة الأدمن، وأهم شيء: **اختبار حي فعلي مقابل حساب Telnyx حقيقي** — لا
+  توجد بيانات اعتماد Telnyx أو Stripe في بيئة staging إطلاقًا حتى الآن (تأكدنا عبر
+  `ssh g000st-web`). القائمة الكاملة لما هو مطلوب من المستخدم محفوظة في الذاكرة
   (`g000st-telephony-billing-keys-needed` في نظام الذاكرة الخاص بالجلسات).
 
 ## الأولوية التشغيلية التالية
