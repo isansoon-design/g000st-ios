@@ -6,6 +6,7 @@ export type AuthTokens = Readonly<{
 
 export type AuthenticatedUser = Readonly<{
   publicId: string;
+  role: "user" | "admin";
 }>;
 
 export type AuthenticationResult = Readonly<{

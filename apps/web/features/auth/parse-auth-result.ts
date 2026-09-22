@@ -21,7 +21,11 @@ function isTokens(value: unknown): value is AuthTokens {
 function isUser(value: unknown): value is AuthenticatedUser {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<AuthenticatedUser>;
-  return typeof candidate.publicId === "string" && candidate.publicId.length === 50;
+  return (
+    typeof candidate.publicId === "string" &&
+    candidate.publicId.length === 50 &&
+    (candidate.role === "user" || candidate.role === "admin")
+  );
 }
 
 export function parseAuthenticationResult(value: unknown): AuthenticationResult {

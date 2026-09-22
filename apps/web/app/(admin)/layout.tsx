@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Users, Settings, LogOut, Menu } from "lucide-react";
+import { CreditCard, Users, Settings, LogOut, Menu } from "lucide-react";
 import { useState } from "react";
 
 export default function AdminLayout({
@@ -43,21 +43,28 @@ export default function AdminLayout({
         >
           <div className="p-6 space-y-4">
             <Link
-              href="/admin/dashboard"
+              href="/dashboard"
               className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
             >
               <Settings className="w-5 h-5" />
               <span>Dashboard</span>
             </Link>
             <Link
-              href="/admin/users"
+              href="/users"
               className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
             >
               <Users className="w-5 h-5" />
               <span>Users</span>
             </Link>
             <Link
-              href="/admin/settings"
+              href="/billing"
+              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
+            >
+              <CreditCard className="w-5 h-5" />
+              <span>Billing</span>
+            </Link>
+            <Link
+              href="/settings"
               className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
             >
               <Settings className="w-5 h-5" />

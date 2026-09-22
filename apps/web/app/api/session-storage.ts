@@ -24,13 +24,14 @@ function isPersistedSession(value: unknown): value is PersistedSession {
   );
 }
 
-function setSessionHint(enabled: boolean): void {
+function setCookie(name: string, value: string | null): void {
   if (typeof document === "undefined") return;
 
   const secure = window.location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = enabled
-    ? `${SESSION_HINT_COOKIE}=1; Path=/; Max-Age=2592000; SameSite=Lax${secure}`
-    : `${SESSION_HINT_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+  document.cookie =
+    value !== null
+      ? `${name}=${value}; Path=/; Max-Age=2592000; SameSite=Lax${secure}`
+      : `${name}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
 }
 
 export const sessionStorage = {
@@ -54,11 +55,15 @@ export const sessionStorage = {
   save(session: PersistedSession): void {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    setSessionHint(true);
+    setCookie(SESSION_HINT_COOKIE, "1");
+    // Also only a routing hint (see middleware.ts) — the API enforces the real admin check
+    // server-side via requireAdminRole against the access token, not this cookie.
+    setCookie("user_role", session.user.role);
   },
 
   clear(): void {
     if (typeof window !== "undefined") window.localStorage.removeItem(SESSION_KEY);
-    setSessionHint(false);
+    setCookie(SESSION_HINT_COOKIE, null);
+    setCookie("user_role", null);
   },
 };
