@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { getChatAttachmentDownload } from "@/features/chat/api";
 import type { ChatConversationSummary } from "@/features/chat/types";
 import { usePrivateChat } from "@/features/chat/use-private-chat";
+import { useCalling } from "@/features/calling/use-calling";
 import Image from "next/image";
 
 function shortId(publicId: string): string {
@@ -245,6 +246,7 @@ function ConversationList({
 export default function PrivateChatPage() {
   const chat = usePrivateChat();
   const { confirm } = useConfirmModal();
+  const { callUser } = useCalling();
   const bottomRef = useRef<HTMLDivElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
@@ -342,6 +344,26 @@ export default function PrivateChatPage() {
                   : shortId(chat.activeConversation.participantPublicId)}
               </p>
             </div>
+            {!participantDeleted ? (
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  aria-label="Call"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-base hover:bg-black/5"
+                  onClick={() => void callUser(chat.activeConversation!.participantPublicId, "audio")}
+                  type="button"
+                >
+                  📞
+                </button>
+                <button
+                  aria-label="Video call"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-base hover:bg-black/5"
+                  onClick={() => void callUser(chat.activeConversation!.participantPublicId, "video")}
+                  type="button"
+                >
+                  🎥
+                </button>
+              </div>
+            ) : null}
           </div>
 
           {chat.isLoadingMessages && chat.messages.length === 0 ? (

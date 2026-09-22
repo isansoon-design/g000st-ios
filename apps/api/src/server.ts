@@ -27,6 +27,9 @@ import { FirestorePresenceStore } from './presence/firestore-presence-store.js';
 import { PresenceService } from './presence/presence-service.js';
 import { FirestoreSocialStore } from './social/firestore-social-store.js';
 import { SocialService } from './social/social-service.js';
+import { FirestoreTelephonyStore } from './telephony/firestore-telephony-store.js';
+import { TelephonyService } from './telephony/telephony-service.js';
+import { TelnyxClient } from './telephony/telnyx-client.js';
 
 async function main(): Promise<void> {
   const environment = readEnvironment();
@@ -80,6 +83,23 @@ async function main(): Promise<void> {
   }
 
   const billing = environment.billing ? buildBilling(environment.billing) : undefined;
+  function buildTelephony(config: NonNullable<typeof environment.telephony>) {
+    if (!billing) {
+      throw new Error('Telephony configuration requires the billing module to also be configured.');
+    }
+
+    return {
+      service: new TelephonyService(
+        new FirestoreTelephonyStore(firestore, environment.collectionPrefix),
+        new TelnyxClient(config.telnyxApiKey, config.telnyxConnectionId, config.telnyxSharedNumberE164),
+        billing.service,
+        environment.recoveryPepper,
+      ),
+      telnyxPublicKey: config.telnyxPublicKey,
+    };
+  }
+
+  const telephony = environment.telephony ? buildTelephony(environment.telephony) : undefined;
   const turnCredentialProvider = environment.turn
     ? new HmacTurnCredentialProvider(environment.turn.urls, environment.turn.sharedSecret)
     : undefined;
@@ -103,6 +123,7 @@ async function main(): Promise<void> {
     notificationService,
     presenceService,
     socialService,
+    telephony,
   });
   const server = app.listen(environment.port, environment.host, () => {
     expirationWorker.start();

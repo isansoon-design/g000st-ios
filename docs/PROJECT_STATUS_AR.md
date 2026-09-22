@@ -23,6 +23,10 @@
 - التالي في الخارطة: تاب **Mobile** (اتصال، شحن رصيد، SMS) — أنظر القسم #6 والقيود المهمة فيه
   (لا مفاتيح مزوّد في العميل، لا اختيار مزوّد نهائي بدون موافقة المستخدم، مراجعة IAP قبل البيع
   داخل التطبيق).
+- **محدَّث 22 سبتمبر**: نُفّذ في الباك فقط (بدون ربط عميل بعد) وحدة `apps/api/src/telephony/`
+  الكاملة — Telnyx SMS الصادر ومكالمات خارجية صادرة عبر Call Control، مع توثيق Ed25519 للـwebhooks،
+  idempotency، وربطها بوحدة billing الموجودة مسبقًا (`debitForCall`/`debitForSms`). التفاصيل في
+  قسم "تحديث Telephony" أدناه.
 - لم تُمس نسخة الإنتاج على `g000st.com`.
 
 ## تحديث جلسة 19 سبتمبر — Chat وExpo 56
@@ -468,6 +472,68 @@ npm --prefix apps/mobile run web -- --port 8082
   bucket. المساحة الحالية نحو 38GB إجماليًا/29GB متاحًا؛ يلزم لاحقًا وضع سياسة نسخ احتياطي ومراقبة سعة.
 - قرار حذف البيانات النهائي وقاعدة البيانات المستقبلية مؤجلان للنقاش.
 - اسم مستودع GitHub لم يتغير بعد من `g000st-ios` إلى `g000st`.
+
+## تحديث Telephony — 22 سبتمبر 2026 (SMS ومكالمات خارجية، باك فقط)
+
+تنفيذ لبندي "5" و"6" من قسم Sequencing في خطة Mobile tab المحفوظة سابقًا
+(`/Users/moudy/.claude/plans/buzzing-swimming-kitten.md`) — الجزء الخاص بـTelnyx تحديدًا، وليس
+in-app calling (ذاك منجز بشكل مستقل مسبقًا). عقد الـAPI (`## Mobile API` في
+`docs/API_CONTRACT_V1.md`) كان مكتوبًا مسبقًا بالكامل؛ هذا التحديث ينفّذه فعليًا.
+
+- وحدة جديدة `apps/api/src/telephony/`: `telephony-router.ts` (REST)،
+  `telephony-webhook-router.ts` (Telnyx webhooks)، `telephony-service.ts`، `telnyx-client.ts`
+  (طبقة رقيقة فوق `fetch` بلا SDK خارجي)، `telnyx-webhook-verify.ts` (توقيع Ed25519 محقَّق عبر
+  اختبار فعلي — الصيغة الموقَّعة هي `${timestamp}|${rawBody}` والمفتاح العام JWK OKP)،
+  `firestore-telephony-store.ts` وأنواع/cursor مطابقة لأسلوب `billing`/`calling` الموجود.
+- SMS: `POST/GET /api/v1/telephony/sms`، صادر فقط، عبر Telnyx Messaging API، مع خصم رصيد SMS
+  واحد لكل رسالة من billing ledger الموجود مسبقًا.
+- مكالمات خارجية — **تصحيح معماري مهم بتاريخ 22 سبتمبر (بعد المحاولة الأولى في نفس اليوم)**:
+  التصميم الصحيح هو أن **المتصفح/الهاتف يتصل مباشرة عبر Telnyx WebRTC SDK**
+  (`client.newCall({destinationNumber})`)، وليس عبر Call Control REST dial من الباك. اكتشفنا هذا
+  أثناء بحث توثيق Telnyx WebRTC قبل ربط الواجهة: طلب REST dial من الباك كان سينشئ مكالمة حقيقية
+  منفصلة لا تتصل بالمستخدم إطلاقًا. لذلك `POST /api/v1/telephony/calls` أصبح **فحص رصيد فقط**
+  (`authorizeExternalCall`، بلا أي اتصال بـTelnyx)، وسجل المكالمة (`ExternalCall`) يُنشأ الآن
+  تفاعليًا من webhook حدث `call.initiated` (وليس من الـREST endpoint). الفوترة عند `call.hangup`
+  كما هي (مدة answered→hangup مقرَّبة لأعلى للدقيقة، idempotent على مستويين).
+- **إصلاح أمني مرتبط بالتصحيح أعلاه**: بما أن العميل هو من يضع `clientState` عند طلب المكالمة عبر
+  WebRTC SDK، كان يمكن لعميل خبيث انتحال Public ID مستخدم آخر وتحميل فاتورة المكالمة عليه. الحل:
+  `POST /api/v1/telephony/webrtc-credential` الآن يُرجع `clientState` كـtoken موقَّع بـHMAC من
+  الباك (باستخدام `AUTH_RECOVERY_PEPPER` نفسه، بفصل نطاقي domain-separated) بدل الـPublic ID
+  الخام؛ العميل يمرره كما هو بلا فك أو إنشاء، والباك يتحقق من التوقيع قبل الثقة به عند أي webhook.
+  اختبار مخصص جديد يتأكد من رفض `client_state` مزوَّر (`telephony-service.test.ts`).
+- `POST /api/v1/telephony/webrtc-credential`: يُصدر بيانات دخول WebRTC قصيرة العمر عبر
+  `/v2/telephony_credentials` + `/v2/telephony_credentials/{id}/token`. **تحذير**: صيغة استجابة
+  الـtoken endpoint (نص خام JWT أم JSON) غير موثَّقة علنًا بالكامل من Telnyx وتحتاج تأكيدًا فعليًا
+  بمجرد توفر `TELNYX_API_KEY` حقيقي — لم تُختبر ضد حساب Telnyx فعلي بعد.
+- Config: `TELNYX_API_KEY`/`TELNYX_PUBLIC_KEY`/`TELNYX_CONNECTION_ID`/`TELNYX_SHARED_NUMBER_E164`
+  في `apps/api/src/config/env.ts` (اختيارية معًا، وتتطلب أن يكون billing/Stripe مُفعَّلاً أيضًا) —
+  موثقة في `.env.example`. لا مفاتيح Telnyx في Expo أو الويب أبدًا (يتطابق مع القيد المذكور أعلاه).
+- إضافة فهرس Firestore مركّب جديد لـ`staging_v1_telephony_sms` في `firestore.indexes.json` (لم
+  يُنشر على staging بعد — نفس الحالة التي واجهها فهرس `social_posts` سابقًا، يحتاج نشرًا يدويًا).
+- اختبارات جديدة كاملة (`telephony-cursor`، `telnyx-webhook-verify`، `telephony-service`،
+  `telephony-webhook-router`) — **73/73 ناجحة** إجمالاً بعد الإضافة (كانت 70 قبل التصحيح المعماري
+  والأمني)، ونجح `typecheck:api`/`typecheck:tests`/`build:api`.
+
+### تحديث فرعي — ربط الويب فعليًا (نفس اليوم، 22 سبتمبر)
+
+بدأنا تنفيذ البند 9 من الخطة (ربط الويب) لأنه لا يحتاج EAS dev-client rebuild كالهاتف:
+
+- `apps/web/app/api/mobile.ts` + `apps/web/features/mobile/types.ts`: طبقة API كاملة لـbilling
+  وtelephony (SKUs، رصيد، ledger، credential، calls، sms).
+- تبويب **SMS** في `apps/web/app/(user)/mobile/page.tsx`: إرسال/سجل حقيقي بالكامل، معالجة
+  `INSUFFICIENT_BALANCE`.
+- تبويب **Plans**: SKUs حقيقية من الباك، زر **Buy** واحد (حسب القرار المعتمد: لا أزرار Apple/Google
+  Pay داخل التطبيق) يوجّه إلى Stripe Checkout، ورجوع إلى `/mobile?checkout=success|cancel` مع
+  polling قصير للرصيد بدل الثقة بالـredirect وحده (كما يشترط العقد).
+- تبويب **Keypad**: مكالمات خارجية حقيقية عبر `@telnyx/webrtc` (تثبيت جديد، `apps/web/features/mobile/use-external-call.ts`) — تسجيل SIP بالـcredential، `newCall`، حالة
+  المكالمة (ringing/active/ended)، mute، hangup، عداد مدة المكالمة، شاشة تغطية أثناء المكالمة.
+- `npm run typecheck:web` و`npm run build:web` ناجحان (حجم `/mobile` صار 78.3kB بعد تضمين SDK
+  الـWebRTC، متوقع).
+- **لم يُنفَّذ بعد عمدًا**: ربط الهاتف (Expo) — يحتاج EAS dev-client rebuild جديد (البند 8 في
+  الخطة)، لوحة الأدمن، وأهم شيء: **اختبار حي فعلي مقابل حساب Telnyx حقيقي** — لا توجد بيانات
+  اعتماد Telnyx أو Stripe في بيئة staging إطلاقًا حتى الآن (تأكدنا عبر `ssh g000st-web`). القائمة
+  الكاملة لما هو مطلوب من المستخدم محفوظة في الذاكرة
+  (`g000st-telephony-billing-keys-needed` في نظام الذاكرة الخاص بالجلسات).
 
 ## الأولوية التشغيلية التالية
 

@@ -8,6 +8,15 @@
         { "fieldPath": "createdAtMs", "order": "DESCENDING" },
         { "fieldPath": "__name__", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "staging_v1_telephony_sms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "publicId", "order": "ASCENDING" },
+        { "fieldPath": "createdAtMs", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

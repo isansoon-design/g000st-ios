@@ -22,6 +22,9 @@ import { createPresenceRouter } from './presence/presence-router.js';
 import { PresenceService } from './presence/presence-service.js';
 import { createSocialRouter } from './social/social-router.js';
 import { SocialService } from './social/social-service.js';
+import { createTelephonyRouter } from './telephony/telephony-router.js';
+import { createTelephonyWebhookRouter } from './telephony/telephony-webhook-router.js';
+import type { TelephonyService } from './telephony/telephony-service.js';
 
 declare global {
   namespace Express {
@@ -45,6 +48,7 @@ type CreateAppOptions = Readonly<{
   notificationService: NotificationService;
   presenceService: PresenceService;
   socialService: SocialService;
+  telephony?: Readonly<{ service: TelephonyService; telnyxPublicKey: string }>;
 }>;
 
 export function createApp({
@@ -57,6 +61,7 @@ export function createApp({
   notificationService,
   presenceService,
   socialService,
+  telephony,
 }: CreateAppOptions): Express {
   const app = express();
   const allowed = new Set(allowedOrigins);
@@ -85,6 +90,13 @@ export function createApp({
       createBillingStripeWebhookRouter(billing.stripeClient, billing.stripeWebhookSecret, billing.service),
     );
     app.use('/api/v1/billing', createBillingRouter(authService, billing.service));
+  }
+  if (telephony) {
+    app.use(
+      '/api/v1/telephony/webhooks',
+      createTelephonyWebhookRouter(telephony.service, telephony.telnyxPublicKey),
+    );
+    app.use('/api/v1/telephony', createTelephonyRouter(authService, telephony.service));
   }
   app.use('/api/v1/calling', createCallingRouter(authService, callingService));
   app.use('/api/v1/social', createSocialRouter(authService, socialService));

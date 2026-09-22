@@ -1,15 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+
+import {
+  createCheckoutSession,
+  getBalance,
+  listBillingSkus,
+  listSms,
+  sendSms as sendSmsRequest,
+} from "@/app/api/mobile";
+import { ApiError } from "@/app/api/api-error";
+import type { Balance, BillingSku, OutboundSms } from "@/features/mobile/types";
+import { useExternalCall } from "@/features/mobile/use-external-call";
 
 type Tab = "keypad" | "sms" | "plans";
 
-const PLANS = [
-  { key: "sms5",  icon: "💬", name: "5 SMS",       sub: "UK / EU / USA",       price: "£5"  },
-  { key: "min10", icon: "📞", name: "10 MINUTES",   sub: "Mobile voice",         price: "£10" },
-  { key: "min30", icon: "⏱", name: "30 MINUTES",   sub: "UK / EU / USA",       price: "£25" },
-];
+const SKU_ICON: Record<string, string> = { sms: "💬", voice_minutes: "📞" };
+
+function formatPrice(priceCents: number, currency: string): string {
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(priceCents / 100);
+}
 
 export default function MobilePage() {
   const [tab, setTab] = useState<Tab>("keypad");
@@ -17,8 +28,124 @@ export default function MobilePage() {
   const [dialNumber, setDialNumber] = useState("");
   const [smsTo, setSmsTo] = useState("");
   const [smsText, setSmsText] = useState("");
-  const [smsLog, setSmsLog] = useState<string[]>([]);
+  const [smsHistory, setSmsHistory] = useState<OutboundSms[]>([]);
+  const [smsHistoryLoading, setSmsHistoryLoading] = useState(false);
+  const [smsHistoryError, setSmsHistoryError] = useState(false);
+  const [smsSending, setSmsSending] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [balance, setBalance] = useState<Balance | null>(null);
+  const [skus, setSkus] = useState<BillingSku[]>([]);
+  const [skusLoading, setSkusLoading] = useState(false);
+  const [skusError, setSkusError] = useState(false);
+  const [checkoutStarting, setCheckoutStarting] = useState(false);
+  const externalCall = useExternalCall();
+  const [callDurationSec, setCallDurationSec] = useState(0);
+
+  useEffect(() => {
+    if (externalCall.status !== "active") {
+      setCallDurationSec(0);
+      return;
+    }
+    const interval = setInterval(() => setCallDurationSec((prev) => prev + 1), 1_000);
+    return () => clearInterval(interval);
+  }, [externalCall.status]);
+
+  const loadBalance = async () => {
+    try {
+      setBalance(await getBalance());
+    } catch {
+      // Non-critical: keypad/plans just fall back to a loading state.
+    }
+  };
+
+  const loadSkus = async () => {
+    setSkusLoading(true);
+    setSkusError(false);
+    try {
+      setSkus(await listBillingSkus());
+    } catch {
+      setSkusError(true);
+    } finally {
+      setSkusLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Reads the query param synchronously via window.location instead of Next's
+    // useSearchParams so this stays a plain client-rendered effect with no Suspense
+    // boundary requirement — this page has no server-rendered data to hydrate anyway.
+    const checkoutResult = new URLSearchParams(window.location.search).get("checkout");
+    if (checkoutResult) window.history.replaceState(null, "", window.location.pathname);
+
+    if (checkoutResult === "success") {
+      // The redirect back from Stripe only means the *browser* returned — the balance only
+      // becomes real once the signature-verified webhook lands, which can be a moment behind.
+      // Poll briefly instead of trusting the redirect (see docs/API_CONTRACT_V1.md).
+      setTab("plans");
+      toast("Payment received — confirming your balance…");
+      void pollBalanceAfterCheckout();
+    } else if (checkoutResult === "cancel") {
+      toast("Checkout cancelled.");
+      void loadBalance();
+    } else {
+      void loadBalance();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const pollBalanceAfterCheckout = async () => {
+    const before = await getBalance().catch(() => null);
+    setBalance(before);
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      const next = await getBalance().catch(() => null);
+      if (!next) continue;
+      setBalance(next);
+      if (!before || next.updatedAtMs !== before.updatedAtMs) {
+        toast.success("Balance updated!");
+        return;
+      }
+    }
+
+    toast("Still confirming — check back in a moment if the balance hasn't updated.");
+  };
+
+  useEffect(() => {
+    if (tab === "plans" && skus.length === 0 && !skusLoading) void loadSkus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const handleBuy = async () => {
+    if (!selectedPlan) { toast.error("Choose a plan first"); return; }
+    setCheckoutStarting(true);
+    try {
+      const { checkoutUrl } = await createCheckoutSession(selectedPlan);
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      const apiError = error instanceof ApiError ? error : null;
+      toast.error(apiError?.message ?? "Could not start checkout. Try again.");
+      setCheckoutStarting(false);
+    }
+  };
+
+  const loadSmsHistory = async () => {
+    setSmsHistoryLoading(true);
+    setSmsHistoryError(false);
+    try {
+      const { items } = await listSms();
+      setSmsHistory(items);
+    } catch {
+      setSmsHistoryError(true);
+    } finally {
+      setSmsHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "sms") void loadSmsHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   const digit = (d: string) => {
     const newNum = dialNumber + d;
@@ -32,23 +159,50 @@ export default function MobilePage() {
     setDialDisplay(newNum || "g000st");
   };
 
-  const call = () => {
+  const handleCall = async () => {
     if (!dialNumber) { toast.error("Enter a number first"); return; }
-    toast.success(`Calling ${dialNumber}…`);
+    const toE164 = dialNumber.startsWith("+") ? dialNumber : `+${dialNumber}`;
+    if (!/^\+[1-9]\d{1,14}$/.test(toE164)) {
+      toast.error("Enter the full number with country code, e.g. 15551234567");
+      return;
+    }
+    await externalCall.placeCall(toE164);
   };
 
-  const sendSms = () => {
-    if (!smsTo.trim()) { toast.error("Enter a number"); return; }
-    if (!smsText.trim()) { toast.error("Write a message"); return; }
-    setSmsLog((prev) => [`→ ${smsTo}: ${smsText}`, ...prev]);
-    setSmsText("");
-    toast.success("SMS sent!");
-  };
+  useEffect(() => {
+    if (externalCall.status !== "error" || !externalCall.errorMessage) return;
+    if (externalCall.errorCode === "INSUFFICIENT_BALANCE") {
+      toast.error("Not enough call credit — buy a bundle first");
+    } else {
+      toast.error(externalCall.errorMessage);
+    }
+    externalCall.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalCall.status]);
 
-  const pay = (method: string) => {
-    if (!selectedPlan) { toast.error("Choose a plan first"); return; }
-    const plan = PLANS.find((p) => p.key === selectedPlan);
-    toast.success(`${method} payment for ${plan?.name} ${plan?.price}`);
+  const handleSendSms = async () => {
+    const toE164 = smsTo.trim();
+    const body = smsText.trim();
+    if (!toE164) { toast.error("Enter a number"); return; }
+    if (!/^\+[1-9]\d{1,14}$/.test(toE164)) { toast.error("Use full international format, e.g. +15551234567"); return; }
+    if (!body) { toast.error("Write a message"); return; }
+
+    setSmsSending(true);
+    try {
+      const message = await sendSmsRequest(toE164, body);
+      setSmsHistory((prev) => [message, ...prev]);
+      setSmsText("");
+      toast.success("SMS sent!");
+    } catch (error) {
+      const apiError = error instanceof ApiError ? error : null;
+      if (apiError?.code === "INSUFFICIENT_BALANCE") {
+        toast.error("Not enough SMS credit — buy a bundle first");
+      } else {
+        toast.error(apiError?.message ?? "Could not send the SMS. Try again.");
+      }
+    } finally {
+      setSmsSending(false);
+    }
   };
 
   const btnStyle: React.CSSProperties = {
@@ -66,8 +220,15 @@ export default function MobilePage() {
     color: active ? "#fff" : "#333", fontWeight: 800, fontSize: 12, cursor: "pointer",
   });
 
+  const callStatusLabel: Record<string, string> = {
+    connecting: "Connecting…",
+    ringing: "Ringing…",
+    active: "In call",
+    ended: "Call ended",
+  };
+
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#D8D8D8", overflow: "hidden", color: "#111" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#D8D8D8", overflow: "hidden", color: "#111", position: "relative" }}>
 
       {/* Top bar */}
       <div style={{
@@ -102,7 +263,7 @@ export default function MobilePage() {
             PRIVATE NUMBER · NO RECORDING
           </div>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#333", textAlign: "center", marginBottom: 6 }}>
-            No credit
+            {balance ? `${Math.floor(balance.voiceSecondsRemaining / 60)} min · ${balance.smsRemaining} SMS` : "No credit"}
           </div>
 
           {/* Dial Pad */}
@@ -126,9 +287,10 @@ export default function MobilePage() {
               minWidth: 72, height: 56, borderRadius: 16, border: "2px solid #111",
               background: "#fff", color: "#111", fontWeight: 900, fontSize: 16, letterSpacing: "0.04em", cursor: "pointer",
             }}>SMS</button>
-            <button onClick={call} style={{
+            <button onClick={() => void handleCall()} disabled={externalCall.status !== "idle" && externalCall.status !== "error"} style={{
               width: 70, height: 70, borderRadius: "50%", border: 0, background: "#34C759", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
+              opacity: externalCall.status !== "idle" && externalCall.status !== "error" ? 0.5 : 1,
             }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff">
                 <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.2 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z"/>
@@ -182,17 +344,29 @@ export default function MobilePage() {
               resize: "none" as const, outline: "none", marginBottom: 8, boxSizing: "border-box" as const,
               fontWeight: 600,
             }} />
-          <button onClick={sendSms} style={{
+          <button onClick={handleSendSms} disabled={smsSending} style={{
             width: "100%", height: 52, borderRadius: 16, border: 0,
-            background: "#333", color: "#fff", fontWeight: 900, fontSize: 18, marginBottom: 10, cursor: "pointer",
-          }}>Send</button>
+            background: "#333", color: "#fff", fontWeight: 900, fontSize: 18, marginBottom: 10,
+            cursor: smsSending ? "default" : "pointer", opacity: smsSending ? 0.6 : 1,
+          }}>{smsSending ? "Sending…" : "Send"}</button>
           <div style={{
             flex: 1, minHeight: 80, background: "#ececec", borderRadius: 16, padding: 14,
             overflow: "auto", fontSize: 14,
           }}>
-            {smsLog.length === 0
+            {smsHistoryLoading
+              ? <span style={{ color: "#888" }}>Loading…</span>
+              : smsHistoryError
+              ? <span style={{ color: "#9b1c1c" }}>Could not load SMS history. <button onClick={() => void loadSmsHistory()} style={{ border: 0, background: "none", color: "#9b1c1c", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Retry</button></span>
+              : smsHistory.length === 0
               ? <span style={{ color: "#888" }}>SMS log will appear here</span>
-              : smsLog.map((msg, i) => <div key={i} style={{ marginBottom: 6, fontWeight: 600 }}>{msg}</div>)
+              : smsHistory.map((message) => (
+                <div key={message.id} style={{ marginBottom: 6, fontWeight: 600 }}>
+                  → {message.toE164}: {message.body}
+                  <span style={{ marginLeft: 6, fontWeight: 700, fontSize: 11, color: message.status === "delivery_failed" || message.status === "sending_failed" ? "#C62828" : "#666" }}>
+                    [{message.status}]
+                  </span>
+                </div>
+              ))
             }
           </div>
         </div>
@@ -205,20 +379,37 @@ export default function MobilePage() {
             NO TRACE · PRIVATE · NO RECORDING
           </div>
 
-          {PLANS.map((plan) => (
-            <button key={plan.key} onClick={() => setSelectedPlan(plan.key)} style={{
+          {skusLoading && (
+            <div style={{ textAlign: "center", color: "#888", padding: "24px 0" }}>Loading…</div>
+          )}
+
+          {skusError && (
+            <div style={{ textAlign: "center", color: "#9b1c1c", padding: "12px 0" }}>
+              Could not load bundles.{" "}
+              <button onClick={() => void loadSkus()} style={{ border: 0, background: "none", color: "#9b1c1c", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Retry</button>
+            </div>
+          )}
+
+          {!skusLoading && !skusError && skus.length === 0 && (
+            <div style={{ textAlign: "center", color: "#888", padding: "24px 0" }}>No bundles available right now.</div>
+          )}
+
+          {skus.map((sku) => (
+            <button key={sku.id} onClick={() => setSelectedPlan(sku.id)} style={{
               width: "100%", display: "flex", alignItems: "center", gap: 12, textAlign: "left",
-              background: selectedPlan === plan.key ? "#ffe8e8" : "#fff",
-              border: selectedPlan === plan.key ? "2.5px solid #C62828" : "1.5px solid #e4e4e4",
+              background: selectedPlan === sku.id ? "#ffe8e8" : "#fff",
+              border: selectedPlan === sku.id ? "2.5px solid #C62828" : "1.5px solid #e4e4e4",
               borderRadius: 18, padding: "18px 16px", minHeight: 76, color: "#111",
               marginBottom: 12, boxShadow: "0 1px 0 rgba(0,0,0,.04)", cursor: "pointer",
             }}>
-              <div style={{ width: 36, fontSize: 22, color: "#C62828", textAlign: "center" }}>{plan.icon}</div>
+              <div style={{ width: 36, fontSize: 22, color: "#C62828", textAlign: "center" }}>{SKU_ICON[sku.kind] ?? "•"}</div>
               <div style={{ flex: 1 }}>
-                <b style={{ display: "block", fontSize: 16, fontWeight: 800 }}>{plan.name}</b>
-                <span style={{ display: "block", color: "#888", fontSize: 12, marginTop: 2 }}>{plan.sub}</span>
+                <b style={{ display: "block", fontSize: 16, fontWeight: 800 }}>{sku.label}</b>
+                <span style={{ display: "block", color: "#888", fontSize: 12, marginTop: 2 }}>
+                  {sku.kind === "voice_minutes" ? "Mobile voice" : "UK / EU / USA"}
+                </span>
               </div>
-              <div style={{ fontSize: 22, fontWeight: 800 }}>{plan.price}</div>
+              <div style={{ fontSize: 22, fontWeight: 800 }}>{formatPrice(sku.priceCents, sku.currency)}</div>
             </button>
           ))}
 
@@ -226,39 +417,73 @@ export default function MobilePage() {
             <div style={{ textAlign: "center", margin: "8px auto 12px", display: "inline-block",
               background: "#f3c7c7", color: "#9b1c1c", borderRadius: 999,
               padding: "6px 12px", fontSize: 11, fontWeight: 700, width: "100%" }}>
-              {PLANS.find((p) => p.key === selectedPlan)?.name} selected — choose payment below
+              {skus.find((s) => s.id === selectedPlan)?.label} selected — tap Buy below
             </div>
           )}
 
-          <button onClick={() => pay("Apple Pay")} style={{
+          <button onClick={handleBuy} disabled={checkoutStarting || !selectedPlan} style={{
             height: 56, borderRadius: 28, border: 0, background: "#111", color: "#fff",
-            width: "78%", maxWidth: 280, margin: "18px auto 10px", display: "flex",
-            alignItems: "center", justifyContent: "center", gap: 10,
-            fontWeight: 800, fontSize: 18, cursor: "pointer",
+            width: "78%", maxWidth: 280, margin: "18px auto 12px", display: "flex",
+            alignItems: "center", justifyContent: "center",
+            fontWeight: 800, fontSize: 18,
+            cursor: checkoutStarting || !selectedPlan ? "default" : "pointer",
+            opacity: checkoutStarting || !selectedPlan ? 0.5 : 1,
           }}>
-            <span style={{ display: "inline-block", width: 22, height: 22, background: "#000", borderRadius: 4 }} />
-            Apple Pay
+            {checkoutStarting ? "Redirecting…" : "Buy"}
           </button>
 
-          <button onClick={() => pay("Google Pay")} style={{
-            height: 56, borderRadius: 28, border: "1px solid #ccc", background: "#fff", color: "#111",
-            width: "78%", maxWidth: 280, margin: "0 auto 12px", display: "flex",
-            alignItems: "center", justifyContent: "center", gap: 10,
-            fontWeight: 800, fontSize: 18, cursor: "pointer",
-          }}>
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.6c-.2 1.2-.9 2.2-2 2.9v2.4h3.2c1.9-1.7 3-4.3 3-7.1z"/>
-              <path fill="#34A853" d="M12 22c2.7 0 5-1 6.6-2.7l-3.2-2.4c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.5C4.7 19.7 8.1 22 12 22z"/>
-              <path fill="#FBBC05" d="M6.4 13.8c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V7.7H3.1C2.4 9.1 2 10.5 2 12s.4 2.9 1.1 4.3l3.3-2.5z"/>
-              <path fill="#EA4335" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.8-2.8C16.9 3 14.7 2 12 2 8.1 2 4.7 4.3 3.1 7.7l3.3 2.5C7.2 7.7 9.4 5.9 12 5.9z"/>
-            </svg>
-            Google Pay
-          </button>
-
-          {!selectedPlan && (
+          {!selectedPlan && !skusLoading && skus.length > 0 && (
             <div style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: "#9b1c1c",
               background: "#f3c7c7", borderRadius: 999, padding: "6px 12px", margin: "0 auto", display: "inline-block", width: "100%" }}>
-              Choose a plan then Pay
+              Choose a bundle then Buy
+            </div>
+          )}
+
+          <div style={{ textAlign: "center", fontSize: 11, color: "#888", marginTop: 10 }}>
+            Card, Apple Pay, or Google Pay on the next screen
+          </div>
+        </div>
+      )}
+
+      {/* IN-CALL OVERLAY */}
+      {externalCall.status !== "idle" && externalCall.status !== "error" && (
+        <div style={{
+          position: "absolute", inset: 0, background: "rgba(17,17,17,0.94)",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          color: "#fff", padding: 24, gap: 16, zIndex: 10,
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.12em", color: "#8FE39A" }}>
+            {callStatusLabel[externalCall.status]}
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 800 }}>{dialDisplay}</div>
+          {externalCall.status === "active" && (
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#bbb" }}>
+              {String(Math.floor(callDurationSec / 60)).padStart(2, "0")}:{String(callDurationSec % 60).padStart(2, "0")}
+            </div>
+          )}
+
+          {externalCall.status === "ended" ? (
+            <button onClick={() => externalCall.reset()} style={{
+              marginTop: 12, height: 48, padding: "0 32px", borderRadius: 24, border: "1px solid #666",
+              background: "transparent", color: "#fff", fontWeight: 800, fontSize: 16, cursor: "pointer",
+            }}>Close</button>
+          ) : (
+            <div style={{ display: "flex", gap: 20, marginTop: 12 }}>
+              {externalCall.status === "active" && (
+                <button onClick={() => externalCall.toggleMute()} style={{
+                  width: 60, height: 60, borderRadius: "50%", border: "1px solid #666",
+                  background: externalCall.isMuted ? "#fff" : "transparent",
+                  color: externalCall.isMuted ? "#111" : "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer",
+                }}>{externalCall.isMuted ? "Unmute" : "Mute"}</button>
+              )}
+              <button onClick={() => externalCall.hangup()} style={{
+                width: 60, height: 60, borderRadius: "50%", border: 0, background: "#E53935", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff" style={{ transform: "rotate(135deg)" }}>
+                  <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.2 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z"/>
+                </svg>
+              </button>
             </div>
           )}
         </div>

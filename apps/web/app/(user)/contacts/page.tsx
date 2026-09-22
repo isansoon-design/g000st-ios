@@ -8,6 +8,7 @@ import { addContact, listContacts, removeContact, type Contact } from "@/app/api
 import { sessionStorage } from "@/app/api/session-storage";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { startChatConversation } from "@/features/chat/api";
+import { useCalling } from "@/features/calling/use-calling";
 
 const PUBLIC_ID_LENGTH = 50;
 
@@ -20,6 +21,7 @@ function errorMessage(error: unknown): string {
 export default function ContactsPage() {
   const router = useRouter();
   const { confirm } = useConfirmModal();
+  const { callUser } = useCalling();
   const myId = sessionStorage.get()?.user.publicId;
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,6 +210,20 @@ export default function ContactsPage() {
                   {contact.publicId}
                 </div>
               </div>
+              <button
+                aria-label="Call"
+                onClick={(event) => { event.stopPropagation(); void callUser(contact.publicId, "audio"); }}
+                style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "transparent", fontSize: 15, cursor: "pointer" }}
+              >
+                📞
+              </button>
+              <button
+                aria-label="Video call"
+                onClick={(event) => { event.stopPropagation(); void callUser(contact.publicId, "video"); }}
+                style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "transparent", fontSize: 15, cursor: "pointer" }}
+              >
+                🎥
+              </button>
               <button
                 aria-label="Remove contact"
                 onClick={(event) => { event.stopPropagation(); void onRemove(contact); }}

@@ -1,4 +1,6 @@
 import { ConfirmModalProvider } from "@/context/ConfirmModalContext";
+import { CallingBootstrap } from "@/features/calling/calling-bootstrap";
+import { CallOverlayHost } from "@/features/calling/call-overlay";
 import type { Metadata } from "next";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
@@ -18,6 +20,8 @@ export default function RootLayout({
       <body>
         <ConfirmModalProvider>
           {children}
+          <CallingBootstrap />
+          <CallOverlayHost />
           <Toaster position="bottom-center" />
         </ConfirmModalProvider>
       </body>

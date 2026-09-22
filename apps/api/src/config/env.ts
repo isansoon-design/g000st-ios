@@ -25,6 +25,10 @@ const envSchema = z.object({
   APNS_VOIP_TEAM_ID: z.string().min(1).optional(),
   STRIPE_SECRET_KEY: z.string().min(1).optional(),
   STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  TELNYX_API_KEY: z.string().min(1).optional(),
+  TELNYX_CONNECTION_ID: z.string().min(1).optional(),
+  TELNYX_PUBLIC_KEY: z.string().min(1).optional(),
+  TELNYX_SHARED_NUMBER_E164: z.string().regex(/^\+[1-9]\d{1,14}$/).optional(),
   TURN_SHARED_SECRET: z.string().min(1).optional(),
   TURN_URLS: z.string().min(1).optional(),
 });
@@ -60,6 +64,12 @@ export type ApiEnvironment = Readonly<{
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
   recoveryPepper: string;
+  telephony?: Readonly<{
+    telnyxApiKey: string;
+    telnyxConnectionId: string;
+    telnyxPublicKey: string;
+    telnyxSharedNumberE164: string;
+  }>;
   turn?: Readonly<{ sharedSecret: string; urls: readonly string[] }>;
 }>;
 
@@ -95,6 +105,21 @@ export function readEnvironment(source: NodeJS.ProcessEnv = process.env): ApiEnv
   const hasCompleteBillingConfig = billingValues.every(Boolean);
   if (hasAnyBillingValue && !hasCompleteBillingConfig) {
     throw new Error('Invalid API environment fields: incomplete billing/Stripe configuration');
+  }
+
+  const telephonyValues = [
+    result.data.TELNYX_API_KEY,
+    result.data.TELNYX_PUBLIC_KEY,
+    result.data.TELNYX_CONNECTION_ID,
+    result.data.TELNYX_SHARED_NUMBER_E164,
+  ];
+  const hasAnyTelephonyValue = telephonyValues.some(Boolean);
+  const hasCompleteTelephonyConfig = telephonyValues.every(Boolean);
+  if (hasAnyTelephonyValue && !hasCompleteTelephonyConfig) {
+    throw new Error('Invalid API environment fields: incomplete Telnyx telephony configuration');
+  }
+  if (hasCompleteTelephonyConfig && !hasCompleteBillingConfig) {
+    throw new Error('Invalid API environment fields: telephony configuration requires billing/Stripe to also be configured');
   }
 
   const turnValues = [result.data.TURN_SHARED_SECRET, result.data.TURN_URLS];
@@ -170,6 +195,16 @@ export function readEnvironment(source: NodeJS.ProcessEnv = process.env): ApiEnv
     nodeEnv: result.data.NODE_ENV,
     port: result.data.PORT,
     recoveryPepper: result.data.AUTH_RECOVERY_PEPPER,
+    ...(hasCompleteTelephonyConfig
+      ? {
+          telephony: {
+            telnyxApiKey: result.data.TELNYX_API_KEY!,
+            telnyxConnectionId: result.data.TELNYX_CONNECTION_ID!,
+            telnyxPublicKey: result.data.TELNYX_PUBLIC_KEY!,
+            telnyxSharedNumberE164: result.data.TELNYX_SHARED_NUMBER_E164!,
+          },
+        }
+      : {}),
     ...(hasCompleteTurnConfig
       ? {
           turn: {
