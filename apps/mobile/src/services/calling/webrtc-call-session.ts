@@ -4,6 +4,7 @@ import {
   RTCIceCandidate,
   RTCPeerConnection,
   RTCSessionDescription,
+  type RTCRtpTransceiver,
 } from '@livekit/react-native-webrtc';
 
 import type { TurnCredential } from '@/domain/calling/types';
@@ -44,6 +45,8 @@ export type WebrtcCallSessionCallbacks = Readonly<{
  */
 export class WebrtcCallSession {
   private readonly pc: RTCPeerConnection;
+  private readonly audioTransceiver: RTCRtpTransceiver;
+  private readonly videoTransceiver: RTCRtpTransceiver | null;
   private localStream: MediaStream | null = null;
 
   constructor(
@@ -52,6 +55,14 @@ export class WebrtcCallSession {
     private readonly callbacks: WebrtcCallSessionCallbacks,
   ) {
     this.pc = new RTCPeerConnection({ iceServers: buildIceServers(turnCredential) });
+
+    // Transceivers are created explicitly, upfront, on both the offering and answering
+    // side — never left to addTrack()'s implicit "reuse a transceiver created by
+    // setRemoteDescription" behavior. That implicit path is a known source of m-line
+    // mismatches between offer and answer in mobile WebRTC bindings once a video m-line
+    // is involved, which breaks the whole session (audio included), not just video.
+    this.audioTransceiver = this.pc.addTransceiver('audio', { direction: 'sendrecv' });
+    this.videoTransceiver = hasVideo ? this.pc.addTransceiver('video', { direction: 'sendrecv' }) : null;
 
     this.pc.addEventListener('icecandidate', (event) => {
       if (event.candidate) this.callbacks.onLocalCandidate(event.candidate.toJSON());
@@ -72,7 +83,13 @@ export class WebrtcCallSession {
       audio: true,
       video: this.hasVideo ? { facingMode: 'user' } : false,
     });
-    stream.getTracks().forEach((track) => this.pc.addTrack(track, stream));
+
+    const audioTrack = stream.getAudioTracks()[0];
+    if (audioTrack) await this.audioTransceiver.sender.replaceTrack(audioTrack);
+
+    const videoTrack = stream.getVideoTracks()[0];
+    if (videoTrack && this.videoTransceiver) await this.videoTransceiver.sender.replaceTrack(videoTrack);
+
     this.localStream = stream;
     return stream;
   }

@@ -68,8 +68,16 @@ export class CallingRelay {
     this.addSocket(publicId, socket);
     console.log(`[calling] socket open for ${publicId.slice(0, 8)} (${this.socketsByPublicId.get(publicId)?.size ?? 0} open for this user)`);
 
+    // Messages are handled strictly in the order they arrive on this socket. Without this,
+    // e.g. a call-invite (which awaits a Firestore write before relaying) can finish AFTER a
+    // call-offer sent right behind it (which has no such await) — the callee then receives
+    // the offer before its own call record exists, drops it, and is left with no offer to
+    // ever answer. This was observed directly: server logs showed "call-offer relayed"
+    // before "call-invite relayed" for the same call.
+    let processingChain: Promise<void> = Promise.resolve();
     socket.on('message', (raw) => {
-      void this.handleMessage(publicId, raw.toString());
+      const payload = raw.toString();
+      processingChain = processingChain.then(() => this.handleMessage(publicId, payload));
     });
 
     socket.on('close', () => {

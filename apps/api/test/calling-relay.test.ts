@@ -75,7 +75,10 @@ type StoredCall = {
 class MemoryCallingStore implements CallingStore {
   readonly calls = new Map<string, StoredCall>();
 
+  constructor(private readonly createCallDelayMs = 0) {}
+
   async createCall(entry: { id: string; callerPublicId: string; calleePublicId: string; media: CallMedia; startedAtMs: number }): Promise<void> {
+    if (this.createCallDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, this.createCallDelayMs));
     if (this.calls.has(entry.id)) return;
     this.calls.set(entry.id, { ...entry, status: 'ringing' });
   }
@@ -260,6 +263,76 @@ describe('CallingRelay', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     assert.equal(callingStore.calls.get(callId)?.status, 'missed');
+
+    alice.close();
+    bob.close();
+  });
+});
+
+describe('CallingRelay message ordering', () => {
+  // A regression test for a real bug found in production testing: call-invite's handler
+  // awaits a Firestore write (simulated here with an artificial delay) before relaying,
+  // while call-offer's handler has no such await. Without strictly sequential per-socket
+  // processing, a call-offer sent immediately after a call-invite could be relayed FIRST,
+  // arriving at the callee before their call record exists — the offer was then dropped
+  // silently, leaving the callee stuck on a "connecting" screen with nothing to answer.
+  let httpServer: Server;
+  let baseUrl: string;
+  let aliceToken: string;
+  let bobToken: string;
+  let bobPublicId: string;
+
+  before(async () => {
+    const authStore = new MemoryAuthStore();
+    const authService = new AuthService(authStore, PEPPER);
+    const alice = await authService.register();
+    const bob = await authService.register();
+    aliceToken = alice.session.accessToken;
+    bobToken = bob.session.accessToken;
+    bobPublicId = bob.user.publicId;
+
+    const slowStore = new MemoryCallingStore(50);
+    const relay = new CallingRelay(authService, new CallingService(slowStore, undefined, new SpyCallingNotifier()));
+
+    httpServer = createServer();
+    httpServer.on('upgrade', (request, socket, head) => {
+      void relay.handleUpgrade(request, socket, head);
+    });
+    await new Promise<void>((resolve) => httpServer.listen(0, resolve));
+    baseUrl = `ws://127.0.0.1:${(httpServer.address() as AddressInfo).port}/api/v1/calling/socket`;
+  });
+
+  after(async () => {
+    await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+  });
+
+  function connect(token: string): Promise<WebSocket> {
+    return new Promise((resolve, reject) => {
+      const socket = new WebSocket(`${baseUrl}?token=${token}`);
+      socket.once('open', () => resolve(socket));
+      socket.once('error', reject);
+    });
+  }
+
+  it('delivers call-invite before a call-offer sent immediately after it, even though invite processing is slower', async () => {
+    const alice = await connect(aliceToken);
+    const bob = await connect(bobToken);
+    const callId = crypto.randomUUID();
+    const received: string[] = [];
+
+    const gotBoth = new Promise<void>((resolve) => {
+      bob.on('message', (raw) => {
+        const message = JSON.parse(raw.toString()) as { type: string };
+        received.push(message.type);
+        if (received.length === 2) resolve();
+      });
+    });
+
+    alice.send(JSON.stringify({ type: 'call-invite', callId, toPublicId: bobPublicId, media: 'video' }));
+    alice.send(JSON.stringify({ type: 'call-offer', callId, toPublicId: bobPublicId, sdp: 'v=0…' }));
+    await gotBoth;
+
+    assert.deepEqual(received, ['call-invite', 'call-offer']);
 
     alice.close();
     bob.close();
