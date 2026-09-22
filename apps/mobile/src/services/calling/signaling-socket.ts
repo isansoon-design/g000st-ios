@@ -36,6 +36,13 @@ export class SignalingSocket {
   private readonly listeners = new Set<(message: IncomingRelayMessage) => void>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private closedByCaller = true;
+  /**
+   * Messages sent before the handshake finishes (e.g. the user places a call within the
+   * first moment after a cold app start) were previously dropped silently — the invite
+   * would simply never reach the callee, with no visible error. Queue instead, flush once
+   * the socket actually opens.
+   */
+  private readonly outbox: OutgoingRelayMessage[] = [];
 
   async connect(): Promise<void> {
     this.closedByCaller = false;
@@ -44,6 +51,12 @@ export class SignalingSocket {
 
     const socket = new WebSocket(`${resolveWsBase()}/calling/socket?token=${encodeURIComponent(token)}`);
     this.socket = socket;
+
+    socket.onopen = () => {
+      while (this.outbox.length > 0 && this.socket === socket) {
+        socket.send(JSON.stringify(this.outbox.shift()));
+      }
+    };
 
     socket.onmessage = (event) => {
       try {
@@ -67,7 +80,10 @@ export class SignalingSocket {
   send(message: OutgoingRelayMessage): void {
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(message));
+      return;
     }
+    this.outbox.push(message);
+    if (!this.socket) void this.connect();
   }
 
   onMessage(listener: (message: IncomingRelayMessage) => void): () => void {

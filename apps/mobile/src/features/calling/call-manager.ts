@@ -73,6 +73,7 @@ export class CallManager {
   private call: ActiveCall | null = null;
   private nativeSubscriptions: { remove: () => void }[] = [];
   private started = false;
+  private cachedSnapshot: CallUiState = IDLE_STATE;
 
   start(): void {
     if (this.started) return;
@@ -109,6 +110,7 @@ export class CallManager {
     this.nativeSubscriptions = [];
     this.call?.session?.close();
     this.call = null;
+    this.cachedSnapshot = IDLE_STATE;
   }
 
   subscribe(listener: (state: CallUiState) => void): () => void {
@@ -116,7 +118,18 @@ export class CallManager {
     return () => this.listeners.delete(listener);
   }
 
+  /**
+   * `useSyncExternalStore` requires this to return the SAME reference across calls
+   * whenever nothing has actually changed — returning a freshly allocated object every
+   * time (even with identical field values) makes React think the store is perpetually
+   * changing and triggers a "Maximum update depth exceeded" infinite render loop. The
+   * snapshot is therefore computed once in `emit()` and cached, never recomputed here.
+   */
   getSnapshot(): CallUiState {
+    return this.cachedSnapshot;
+  }
+
+  private computeSnapshot(): CallUiState {
     if (!this.call) return IDLE_STATE;
     const { peerPublicId, peerDisplayName, media, direction } = this.call;
 
@@ -166,12 +179,29 @@ export class CallManager {
     if (!this.call) return;
     const call = this.call;
     this.signaling.send({ type: 'call-reject', callId: call.callId, toPublicId: call.peerPublicId });
+    this.scheduleEndGuard(call.callId);
     await endCall(call.nativeCallId);
   }
 
   async hangUp(): Promise<void> {
     if (!this.call) return;
-    await endCall(this.call.nativeCallId);
+    const call = this.call;
+    this.signaling.send({ type: 'call-end', callId: call.callId, toPublicId: call.peerPublicId });
+    this.scheduleEndGuard(call.callId);
+    await endCall(call.nativeCallId);
+  }
+
+  /**
+   * `endCall()` only requests the OS end the call; the actual local teardown normally
+   * happens when the native side reports it back via `addCallEndedListener`. If that
+   * round trip never arrives (seen in testing: the close button did nothing), this
+   * guard force-clears local state after a short grace period rather than leaving the
+   * user stuck on an unresponsive call screen.
+   */
+  private scheduleEndGuard(callId: string): void {
+    setTimeout(() => {
+      if (this.call?.callId === callId) this.teardownLocal();
+    }, 4_000);
   }
 
   toggleMute(): void {
@@ -327,8 +357,8 @@ export class CallManager {
   }
 
   private emit(): void {
-    const snapshot = this.getSnapshot();
-    this.listeners.forEach((listener) => listener(snapshot));
+    this.cachedSnapshot = this.computeSnapshot();
+    this.listeners.forEach((listener) => listener(this.cachedSnapshot));
   }
 }
 

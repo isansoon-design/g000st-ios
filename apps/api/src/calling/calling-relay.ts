@@ -66,6 +66,7 @@ export class CallingRelay {
 
   private handleConnection(socket: WebSocket, publicId: string): void {
     this.addSocket(publicId, socket);
+    console.log(`[calling] socket open for ${publicId.slice(0, 8)} (${this.socketsByPublicId.get(publicId)?.size ?? 0} open for this user)`);
 
     socket.on('message', (raw) => {
       void this.handleMessage(publicId, raw.toString());
@@ -73,13 +74,18 @@ export class CallingRelay {
 
     socket.on('close', () => {
       this.removeSocket(publicId, socket);
+      console.log(`[calling] socket closed for ${publicId.slice(0, 8)}`);
     });
   }
 
   private async handleMessage(fromPublicId: string, raw: string): Promise<void> {
     const parsed = relayMessage.safeParse(safeJsonParse(raw));
-    if (!parsed.success) return;
+    if (!parsed.success) {
+      console.log(`[calling] dropped malformed message from ${fromPublicId.slice(0, 8)}:`, parsed.error.issues[0]);
+      return;
+    }
     const message = parsed.data;
+    console.log(`[calling] ${message.type} from ${fromPublicId.slice(0, 8)} to ${message.toPublicId.slice(0, 8)} (call ${message.callId})`);
 
     if (message.type === 'call-invite') {
       await this.callingService.recordInvite(message.callId, fromPublicId, message.toPublicId, message.media ?? 'audio');
@@ -94,6 +100,7 @@ export class CallingRelay {
     }
 
     const delivered = this.relay(message, fromPublicId);
+    console.log(`[calling] ${message.type} ${delivered ? 'relayed to an open socket' : 'target has no open socket'}`);
 
     if (!delivered && message.type === 'call-invite') {
       await this.callingService.notifyMissedInvite(message.callId, fromPublicId, message.toPublicId, message.media ?? 'audio');
