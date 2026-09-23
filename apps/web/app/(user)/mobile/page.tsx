@@ -94,18 +94,20 @@ export default function MobilePage() {
   }, []);
 
   const pollBalanceAfterCheckout = async () => {
-    const before = await getBalance().catch(() => null);
-    setBalance(before);
-
+    // Fetch immediately rather than waiting first: the webhook that credits the balance often
+    // finishes before the browser even completes the redirect back from Stripe, so by the time
+    // this runs the balance may already be current. Any successful fetch is trusted as-is —
+    // there's no reliable "before" snapshot to diff against (the balance is fetched fresh on
+    // every page load, not carried over from before checkout), so we don't wait for a change,
+    // just for the first fetch that succeeds. Retries only guard against a slow/failed request.
     for (let attempt = 0; attempt < 6; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 2_000));
       const next = await getBalance().catch(() => null);
-      if (!next) continue;
-      setBalance(next);
-      if (!before || next.updatedAtMs !== before.updatedAtMs) {
+      if (next) {
+        setBalance(next);
         toast.success("Balance updated!");
         return;
       }
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
     }
 
     toast("Still confirming — check back in a moment if the balance hasn't updated.");

@@ -6,11 +6,14 @@ import type { Balance } from '@/domain/mobile/types';
 export function useMobileBalance() {
   const [balance, setBalance] = useState<Balance | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<Balance | null> => {
     try {
-      setBalance(await getBalance());
+      const next = await getBalance();
+      setBalance(next);
+      return next;
     } catch {
       // Non-critical: the dial pad just falls back to showing no balance yet.
+      return null;
     }
   }, []);
 

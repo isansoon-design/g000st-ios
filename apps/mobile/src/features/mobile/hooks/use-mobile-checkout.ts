@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import Toast from 'react-native-toast-message';
 
 import { createCheckoutSession } from '@/api/mobile';
+import type { Balance } from '@/domain/mobile/types';
 
 const POLL_ATTEMPTS = 6;
 const POLL_DELAY_MS = 2_000;
@@ -12,12 +13,14 @@ function errorMessage(error: unknown): string {
 }
 
 /**
- * `refreshBalance` is called repeatedly after the browser returns — a successful redirect only
- * means the *browser* came back, not that the balance updated. The balance only becomes real
- * once the signature-verified Stripe webhook lands, which can be a moment behind (see
- * docs/API_CONTRACT_V1.md). Polling briefly catches that instead of trusting the redirect alone.
+ * `refreshBalance` is called after the browser returns — a successful redirect only means the
+ * *browser* came back, not that the balance updated. The balance only becomes real once the
+ * signature-verified Stripe webhook lands, which is often a moment behind but can just as
+ * easily have already finished before this even runs — so the first successful fetch is trusted
+ * outright rather than waiting for a detected change (there's no reliable "before" snapshot to
+ * diff against anyway; see docs/API_CONTRACT_V1.md and the web equivalent's fix notes).
  */
-export function useMobileCheckout(refreshBalance: () => Promise<void>) {
+export function useMobileCheckout(refreshBalance: () => Promise<Balance | null>) {
   const [starting, setStarting] = useState(false);
 
   const buy = useCallback(
@@ -29,10 +32,19 @@ export function useMobileCheckout(refreshBalance: () => Promise<void>) {
 
         if (result.type === 'success') {
           Toast.show({ text1: 'Purchase', text2: 'Payment received — confirming your balance…', type: 'success' });
+          let confirmed = false;
           for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt += 1) {
+            if (await refreshBalance()) {
+              confirmed = true;
+              break;
+            }
             await new Promise((resolve) => setTimeout(resolve, POLL_DELAY_MS));
-            await refreshBalance();
           }
+          Toast.show(
+            confirmed
+              ? { text1: 'Purchase', text2: 'Balance updated!', type: 'success' }
+              : { text1: 'Purchase', text2: "Still confirming — check back in a moment if the balance hasn't updated.", type: 'info' },
+          );
         } else {
           await refreshBalance();
         }
