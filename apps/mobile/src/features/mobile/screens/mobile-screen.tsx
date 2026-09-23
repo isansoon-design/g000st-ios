@@ -12,6 +12,14 @@ import { useMobileSms } from '@/features/mobile/hooks/use-mobile-sms';
 
 const E164_PATTERN = /^\+[1-9]\d{1,14}$/;
 
+/** Accepts "+", the "00" international trunk prefix (common outside the US), or bare digits. */
+function normalizeE164(input: string): string {
+  const trimmed = input.trim();
+  if (trimmed.startsWith('+')) return trimmed;
+  if (trimmed.startsWith('00')) return `+${trimmed.slice(2)}`;
+  return `+${trimmed}`;
+}
+
 export function MobileScreen() {
   const dialer = useMobileDialer();
   const externalCall = useMobileExternalCall();
@@ -53,7 +61,7 @@ export function MobileScreen() {
       Toast.show({ text1: 'Call', text2: 'Enter a number first', type: 'error' });
       return;
     }
-    const toE164 = dialer.dialValue.startsWith('+') ? dialer.dialValue : `+${dialer.dialValue}`;
+    const toE164 = normalizeE164(dialer.dialValue);
     if (!E164_PATTERN.test(toE164)) {
       Toast.show({ text1: 'Call', text2: 'Enter the full number with country code, e.g. 15551234567', type: 'error' });
       return;
@@ -63,13 +71,13 @@ export function MobileScreen() {
   }, [dialer.dialValue, externalCall]);
 
   const openSms = useCallback(() => {
-    setSmsTo(dialer.dialValue ? (dialer.dialValue.startsWith('+') ? dialer.dialValue : `+${dialer.dialValue}`) : '');
+    setSmsTo(dialer.dialValue ? normalizeE164(dialer.dialValue) : '');
     setSmsBody('');
     setIsSmsOpen(true);
   }, [dialer.dialValue]);
 
   const handleSend = useCallback(async () => {
-    const sent = await sms.send(smsTo, smsBody);
+    const sent = await sms.send(smsTo ? normalizeE164(smsTo) : smsTo, smsBody);
     if (sent) setSmsBody('');
   }, [sms, smsBody, smsTo]);
 

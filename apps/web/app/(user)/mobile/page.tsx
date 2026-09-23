@@ -22,6 +22,14 @@ function formatPrice(priceCents: number, currency: string): string {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(priceCents / 100);
 }
 
+/** Accepts "+", the "00" international trunk prefix (common outside the US), or bare digits. */
+function normalizeE164(input: string): string {
+  const trimmed = input.trim();
+  if (trimmed.startsWith("+")) return trimmed;
+  if (trimmed.startsWith("00")) return `+${trimmed.slice(2)}`;
+  return `+${trimmed}`;
+}
+
 export default function MobilePage() {
   const [tab, setTab] = useState<Tab>("keypad");
   const [dialDisplay, setDialDisplay] = useState("g000st");
@@ -163,7 +171,7 @@ export default function MobilePage() {
 
   const handleCall = async () => {
     if (!dialNumber) { toast.error("Enter a number first"); return; }
-    const toE164 = dialNumber.startsWith("+") ? dialNumber : `+${dialNumber}`;
+    const toE164 = normalizeE164(dialNumber);
     if (!/^\+[1-9]\d{1,14}$/.test(toE164)) {
       toast.error("Enter the full number with country code, e.g. 15551234567");
       return;
@@ -183,9 +191,9 @@ export default function MobilePage() {
   }, [externalCall.status]);
 
   const handleSendSms = async () => {
-    const toE164 = smsTo.trim();
+    if (!smsTo.trim()) { toast.error("Enter a number"); return; }
+    const toE164 = normalizeE164(smsTo);
     const body = smsText.trim();
-    if (!toE164) { toast.error("Enter a number"); return; }
     if (!/^\+[1-9]\d{1,14}$/.test(toE164)) { toast.error("Use full international format, e.g. +15551234567"); return; }
     if (!body) { toast.error("Write a message"); return; }
 
