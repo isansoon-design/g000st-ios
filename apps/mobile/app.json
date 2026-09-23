@@ -16,7 +16,11 @@
     "ios": {
       "bundleIdentifier": "com.g000st.app",
       "icon": "./assets/brand/icon-1024.png",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.g000st.app",

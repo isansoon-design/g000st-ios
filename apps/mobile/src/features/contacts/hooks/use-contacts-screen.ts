@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import { startChatConversation } from '@/api/chat';
@@ -34,18 +35,51 @@ export function useContactsScreen() {
   const [addError, setAddError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options?: { silent?: boolean }) => {
     try {
       setContacts(await listContacts());
     } catch (error) {
-      Toast.show({ text1: 'Contacts', text2: errorMessage(error), type: 'error' });
+      if (!options?.silent) {
+        Toast.show({ text1: 'Contacts', text2: errorMessage(error), type: 'error' });
+      }
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void Promise.resolve().then(load);
+  }, [load]);
+
+  // Presence is heartbeat-based, not push-based, so the "online" dot only reflects
+  // whatever the server returned at fetch time. Refetch periodically while the app
+  // is foregrounded so it doesn't go stale for the whole time the screen is open.
+  const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    const REFRESH_INTERVAL_MS = 20_000;
+    const refresh = () => void load({ silent: true });
+
+    if (AppState.currentState === 'active') {
+      refreshTimerRef.current = setInterval(refresh, REFRESH_INTERVAL_MS);
+    }
+
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        refresh();
+        if (!refreshTimerRef.current) {
+          refreshTimerRef.current = setInterval(refresh, REFRESH_INTERVAL_MS);
+        }
+      } else if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    });
+
+    return () => {
+      subscription.remove();
+      if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    };
   }, [load]);
 
   const visibleContacts = useMemo(() => {

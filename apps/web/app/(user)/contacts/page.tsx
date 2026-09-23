@@ -32,18 +32,54 @@ export default function ContactsPage() {
   const [addError, setAddError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options?: { silent?: boolean }) => {
     try {
       setContacts(await listContacts());
     } catch (error) {
-      toast.error(errorMessage(error));
+      if (!options?.silent) toast.error(errorMessage(error));
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  // Presence is heartbeat-based, not push-based, so the "online" dot only reflects
+  // whatever the server returned at fetch time. Refetch periodically while the tab
+  // is visible so it doesn't go stale for the whole time the screen stays open.
+  useEffect(() => {
+    const REFRESH_INTERVAL_MS = 20_000;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const start = () => {
+      if (intervalId) return;
+      intervalId = setInterval(() => void load({ silent: true }), REFRESH_INTERVAL_MS);
+    };
+    const stop = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void load({ silent: true });
+        start();
+      } else {
+        stop();
+      }
+    };
+
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [load]);
 
   const visibleContacts = useMemo(() => {
