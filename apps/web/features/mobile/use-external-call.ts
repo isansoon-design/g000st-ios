@@ -24,6 +24,24 @@ export function useExternalCall() {
   const clientRef = useRef<TelnyxRTC | null>(null);
   const callRef = useRef<Call | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
+  // Guards every event handler and teardown() itself against re-entrancy: disconnecting the
+  // client can itself emit a 'telnyx.error'/'telnyx.notification' event synchronously (e.g. the
+  // SDK reporting its own socket closing), which — without this guard — re-invokes the handler
+  // that called disconnect() in the first place, calling it again, forever. This froze the whole
+  // tab on hangup before this fix (confirmed live: clicking hangup, and even the *other* party
+  // hanging up, both hard-locked the page).
+  const tornDownRef = useRef(true);
+
+  const teardown = useCallback(() => {
+    if (tornDownRef.current) return;
+    tornDownRef.current = true;
+
+    const client = clientRef.current;
+    clientRef.current = null;
+    callRef.current = null;
+    setIsMuted(false);
+    client?.disconnect();
+  }, []);
 
   useEffect(() => {
     const audio = document.createElement("audio");
@@ -32,24 +50,17 @@ export function useExternalCall() {
     audioElementRef.current = audio;
 
     return () => {
-      callRef.current?.hangup();
-      clientRef.current?.disconnect();
+      teardown();
       audio.remove();
     };
-  }, []);
-
-  const teardown = useCallback(() => {
-    clientRef.current?.disconnect();
-    clientRef.current = null;
-    callRef.current = null;
-    setIsMuted(false);
-  }, []);
+  }, [teardown]);
 
   const placeCall = useCallback(
     async (toE164: string) => {
       setErrorMessage(null);
       setErrorCode(null);
       setStatus("connecting");
+      tornDownRef.current = false;
 
       try {
         await authorizeExternalCall(toE164);
@@ -59,6 +70,7 @@ export function useExternalCall() {
         clientRef.current = client;
 
         client.on("telnyx.error", (error: unknown) => {
+          if (tornDownRef.current) return;
           const message = (error as { message?: string } | undefined)?.message;
           setErrorMessage(message ?? "Call connection failed.");
           setStatus("error");
@@ -66,6 +78,7 @@ export function useExternalCall() {
         });
 
         client.on("telnyx.notification", (notification: { type: string; call?: Call }) => {
+          if (tornDownRef.current) return;
           if (notification.type !== "callUpdate" || !notification.call) return;
 
           const state = notification.call.state;
@@ -82,6 +95,7 @@ export function useExternalCall() {
         });
 
         client.on("telnyx.ready", () => {
+          if (tornDownRef.current) return;
           callRef.current = client.newCall({
             destinationNumber: toE164,
             audio: true,
@@ -104,8 +118,8 @@ export function useExternalCall() {
 
   const hangup = useCallback(() => {
     callRef.current?.hangup();
-    teardown();
     setStatus("ended");
+    teardown();
   }, [teardown]);
 
   const toggleMute = useCallback(() => {

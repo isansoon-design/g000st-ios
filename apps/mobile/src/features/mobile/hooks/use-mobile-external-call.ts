@@ -38,26 +38,36 @@ export function useMobileExternalCall() {
   const [isMuted, setIsMuted] = useState(false);
   const clientRef = useRef<TelnyxRTC | null>(null);
   const callRef = useRef<Call | null>(null);
-
-  useEffect(() => {
-    return () => {
-      callRef.current?.hangup();
-      clientRef.current?.disconnect();
-    };
-  }, []);
+  // Guards every event handler and teardown() itself against re-entrancy: disconnecting the
+  // client can itself emit a 'telnyx.client.error'/'telnyx.call.stateChanged' event synchronously
+  // (e.g. the SDK reporting its own socket closing), which — without this guard — re-invokes the
+  // handler that called disconnect() in the first place, calling it again, forever. Confirmed
+  // live on the web equivalent of this hook: hanging up (either side) hard-froze the whole page.
+  const tornDownRef = useRef(true);
 
   const teardown = useCallback(() => {
-    clientRef.current?.disconnect();
+    if (tornDownRef.current) return;
+    tornDownRef.current = true;
+
+    const client = clientRef.current;
     clientRef.current = null;
     callRef.current = null;
     setIsMuted(false);
+    client?.disconnect();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      teardown();
+    };
+  }, [teardown]);
 
   const placeCall = useCallback(
     async (toE164: string) => {
       setErrorText(null);
       setErrorCodeValue(null);
       setStatus('connecting');
+      tornDownRef.current = false;
 
       try {
         await authorizeExternalCall(toE164);
@@ -67,12 +77,14 @@ export function useMobileExternalCall() {
         clientRef.current = client;
 
         client.on('telnyx.client.error', (error: Error) => {
+          if (tornDownRef.current) return;
           setErrorText(errorMessage(error));
           setStatus('error');
           teardown();
         });
 
         client.on('telnyx.call.stateChanged', (_call: Call, state: string) => {
+          if (tornDownRef.current) return;
           const mapped = mapCallState(state);
           if (!mapped) return;
           setStatus(mapped);
@@ -96,8 +108,8 @@ export function useMobileExternalCall() {
 
   const hangup = useCallback(() => {
     callRef.current?.hangup();
-    teardown();
     setStatus('ended');
+    teardown();
   }, [teardown]);
 
   const toggleMute = useCallback(() => {
