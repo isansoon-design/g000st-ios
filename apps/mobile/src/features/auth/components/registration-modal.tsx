@@ -10,6 +10,7 @@ type RegistrationModalProps = Readonly<{
   onCancel: () => void;
   onConfirm: () => void;
   onCopy: () => void;
+  onLoginWithId: () => void;
   stage: RegistrationModalStage;
 }>;
 
@@ -19,6 +20,7 @@ function RegistrationModalComponent({
   onCancel,
   onConfirm,
   onCopy,
+  onLoginWithId,
   stage,
 }: RegistrationModalProps) {
   const isConfirming = stage === 'confirm';
@@ -92,6 +94,13 @@ function RegistrationModalComponent({
                   <Text className="text-xs font-black text-white">Copy</Text>
                 </Pressable>
               </View>
+              <Pressable
+                accessibilityRole="button"
+                className="mt-3 h-12 w-full items-center justify-center rounded-field bg-g000st-red active:opacity-80 disabled:opacity-60"
+                onPress={onLoginWithId}
+              >
+                <Text className="font-black text-white">Login</Text>
+              </Pressable>
               <Text className="mt-4 text-center text-xs font-bold leading-[17px] text-g000st-red">
                 If you lose this ID, support cannot reveal it to you.
               </Text>

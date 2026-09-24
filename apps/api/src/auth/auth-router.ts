@@ -67,5 +67,14 @@ export function createAuthRouter(authService: AuthService): Router {
     }),
   );
 
+  router.delete(
+    '/me',
+    authRateLimit(5),
+    asyncRoute(async (request, response) => {
+      await authService.deleteAccount(bearerToken(request));
+      response.status(204).send();
+    }),
+  );
+
   return router;
 }

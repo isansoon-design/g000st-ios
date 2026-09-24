@@ -37,6 +37,15 @@ export class ContactsService {
     );
     return Promise.all(
       contacts.map(async (contact) => {
+        const active = await this.authStore.isUserActive(contact.contactPublicId);
+        if (!active) {
+          return {
+            addedAtMs: contact.addedAtMs,
+            displayName: 'Deleted account',
+            online: false,
+            publicId: contact.contactPublicId,
+          };
+        }
         const profile = await this.socialService
           .getProfile(ownerPublicId, contact.contactPublicId)
           .catch(() => null);

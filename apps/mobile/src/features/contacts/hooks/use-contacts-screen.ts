@@ -48,7 +48,7 @@ export function useContactsScreen() {
   }, []);
 
   useEffect(() => {
-    void Promise.resolve().then(load);
+    void Promise.resolve().then(() => load());
   }, [load]);
 
   // Presence is heartbeat-based, not push-based, so the "online" dot only reflects

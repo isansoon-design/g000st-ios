@@ -19,3 +19,7 @@ export async function restoreAccount(
 ): Promise<AxiosResponse<AuthenticationResult>> {
   return await axiosInstance.post('/auth/sessions', request);
 }
+
+export async function deleteAccount(): Promise<void> {
+  await axiosInstance.delete('/auth/me');
+}

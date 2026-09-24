@@ -8,9 +8,11 @@ export function IdentityScreen() {
     <IdentityScreenContent
       avatarUrl={identity.avatarUrl}
       fields={identity.fields}
+      deleting={identity.deleting}
       loading={identity.loading}
       onChangePhoto={identity.changePhoto}
       onCopyPublicId={identity.copyPublicId}
+      onDeleteAccount={identity.requestDeleteAccount}
       onSave={identity.save}
       onSetField={identity.setField}
       onSignOut={identity.requestSignOut}

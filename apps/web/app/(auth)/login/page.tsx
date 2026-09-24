@@ -10,8 +10,8 @@ export default function LoginPage() {
   const isModalOpen = idGate.registrationModalStage !== "closed";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#E8E8E8] px-[22px] py-6">
-      <section className="w-full max-w-[400px]">
+    <main className="flex min-h-screen flex-col items-center justify-between bg-[#E8E8E8] px-[22px] py-6">
+      <section className="flex w-full flex-1 flex-col justify-center max-w-[400px]">
         <h1 className="mb-[10px] text-center text-[28px] font-black">
           g<span className="text-[#C62828]">000</span>st
         </h1>
@@ -56,7 +56,9 @@ export default function LoginPage() {
             {idGate.busyAction === "restore" ? "..." : "Login"}
           </button>
         </form>
+      </section>
 
+      <section className="w-full max-w-[400px] pb-[20px]">
         <button
           className="mt-3 h-[50px] w-full rounded-[14px] border-2 border-[#111] bg-transparent font-black text-[#111] active:opacity-70 disabled:opacity-60"
           disabled={isBusy}
@@ -129,6 +131,14 @@ export default function LoginPage() {
                     <Copy aria-hidden="true" className="h-5 w-5" />
                   </button>
                 </div>
+                <button
+                  className="mt-3 h-[50px] w-full rounded-[14px] bg-[#C62828] font-black text-white active:opacity-80 disabled:opacity-60"
+                  disabled={isBusy}
+                  onClick={() => void idGate.loginWithNewId()}
+                  type="button"
+                >
+                  {idGate.busyAction === "restore" ? "..." : "Login"}
+                </button>
                 <p className="mt-4 text-center text-xs font-bold leading-[17px] text-[#C62828]">
                   If you lose this ID, support cannot reveal it to you.
                 </p>

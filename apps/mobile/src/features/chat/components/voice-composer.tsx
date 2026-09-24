@@ -159,7 +159,6 @@ function VoiceComposerComponent({
 
   useEffect(() => () => {
     if (limitTimerRef.current) clearTimeout(limitTimerRef.current);
-    if (recorder.isRecording) void recorder.stop();
     void setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
   }, [recorder]);
 

@@ -23,6 +23,8 @@ import { ExpoPushGateway } from './notifications/expo-push-gateway.js';
 import { FirestoreNotificationStore } from './notifications/firestore-notification-store.js';
 import { NotificationService } from './notifications/notification-service.js';
 import { MediaService } from './media/media-service.js';
+import { FirestoreMarketStore } from './market/firestore-market-store.js';
+import { MarketService } from './market/market-service.js';
 import { FirestorePresenceStore } from './presence/firestore-presence-store.js';
 import { PresenceService } from './presence/presence-service.js';
 import { FirestoreSocialStore } from './social/firestore-social-store.js';
@@ -49,6 +51,11 @@ async function main(): Promise<void> {
   const socialService = new SocialService(
     new FirestoreSocialStore(firestore, environment.collectionPrefix, mediaService),
     store,
+    Date.now,
+    mediaService,
+  );
+  const marketService = new MarketService(
+    new FirestoreMarketStore(firestore, environment.collectionPrefix, mediaService),
     Date.now,
     mediaService,
   );
@@ -121,6 +128,7 @@ async function main(): Promise<void> {
     callingService,
     chatService,
     contactsService,
+    marketService,
     notificationService,
     presenceService,
     socialService,

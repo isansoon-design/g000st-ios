@@ -50,6 +50,7 @@ export class FirestoreSocialStore implements SocialStore {
     const profile = await this.profiles().doc(publicId).get();
     const data = profile.data();
     return publicDisplayName(publicId, {
+      deletedAtMs: data?.deletedAtMs as number | undefined,
       displayName: data?.displayName as string | undefined,
       showDisplayName: data?.showDisplayName === true,
     });
@@ -236,11 +237,15 @@ export class FirestoreSocialStore implements SocialStore {
     if (!visible) return { displayName: 'Anonymous' };
     const profile = await this.profiles().doc(publicId).get();
     const data = profile.data();
+    const deletedAtMs = data?.deletedAtMs as number | undefined;
     const avatarObjectKey = data?.avatarObjectKey as string | undefined;
-    const avatarUrl = avatarObjectKey ? await this.avatarUrl(avatarObjectKey) : undefined;
+    const avatarUrl = deletedAtMs === undefined && avatarObjectKey
+      ? await this.avatarUrl(avatarObjectKey)
+      : undefined;
     return {
       publicId,
       displayName: publicDisplayName(publicId, {
+        deletedAtMs,
         displayName: data?.displayName as string | undefined,
         showDisplayName: data?.showDisplayName === true,
       }),

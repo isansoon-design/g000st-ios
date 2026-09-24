@@ -10,17 +10,23 @@ import {
 type BlurredMessageTextProps = Readonly<{
   blurred: boolean;
   content: string;
+  fontSize?: number;
   mine: boolean;
 }>;
 
-export function BlurredMessageText({ blurred, content, mine }: BlurredMessageTextProps) {
+export function BlurredMessageText({
+  blurred,
+  content,
+  fontSize = 14,
+  mine,
+}: BlurredMessageTextProps) {
   return (
     <Host matchContents pointerEvents="none">
       <Text
         modifiers={[
-          font({ size: 14, weight: 'bold' }),
+          font({ size: fontSize, weight: 'bold' }),
           foregroundStyle(mine ? '#111111' : '#FFFFFF'),
-          lineHeight(20),
+          lineHeight(Math.round(fontSize * 1.4)),
           multilineTextAlignment('leading'),
           ...(blurred ? [blur(7)] : []),
         ]}

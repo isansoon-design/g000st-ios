@@ -36,6 +36,7 @@ export type RotateRefreshResult =
 export interface AuthStore {
   createAccount(reservation: AccountReservation): Promise<ReserveAccountResult>;
   createSession(publicId: string, material: SessionMaterial, createdAtMs: number): Promise<void>;
+  deleteAccount(publicId: string, deletedAtMs: number): Promise<void>;
   findActivePublicIdByAccessHash(accessHash: string, nowMs: number): Promise<ActiveAccount | null>;
   findRecoveryCredential(lookupHash: string): Promise<RecoveryCredentialRecord | null>;
   getAccountRole(publicId: string): Promise<AccountRole>;

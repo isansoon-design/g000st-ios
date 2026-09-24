@@ -16,6 +16,8 @@ import { createContactsRouter } from './contacts/contacts-router.js';
 import { ContactsService } from './contacts/contacts-service.js';
 import { ApiError } from './http/api-error.js';
 import { createMediaRouter } from './media/media-router.js';
+import { createMarketRouter } from './market/market-router.js';
+import type { MarketService } from './market/market-service.js';
 import { createNotificationRouter } from './notifications/notification-router.js';
 import { NotificationService } from './notifications/notification-service.js';
 import { createPresenceRouter } from './presence/presence-router.js';
@@ -46,6 +48,7 @@ type CreateAppOptions = Readonly<{
   chatService: ChatService;
   contactsService: ContactsService;
   notificationService: NotificationService;
+  marketService: MarketService;
   presenceService: PresenceService;
   socialService: SocialService;
   telephony?: Readonly<{ service: TelephonyService; telnyxPublicKey: string }>;
@@ -59,6 +62,7 @@ export function createApp({
   chatService,
   contactsService,
   notificationService,
+  marketService,
   presenceService,
   socialService,
   telephony,
@@ -100,6 +104,7 @@ export function createApp({
   }
   app.use('/api/v1/calling', createCallingRouter(authService, callingService));
   app.use('/api/v1/social', createSocialRouter(authService, socialService));
+  app.use('/api/v1/market', createMarketRouter(authService, marketService));
   app.use('/api/v1/contacts', createContactsRouter(authService, contactsService));
   app.use('/api/v1/presence', createPresenceRouter(authService, presenceService));
 

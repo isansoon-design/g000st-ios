@@ -74,28 +74,32 @@ export function useIdGate({ onAuthenticated }: UseIdGateOptions) {
     }
   }, [showToast]);
 
-  const submitRestore = useCallback(async () => {
-    const validationErrors = validateRecoveryId(recoveryId);
-    setErrors(validationErrors);
+  const submitRestore = useCallback(
+    async (optionalId?: string | React.BaseSyntheticEvent) => {
+      const idToUse = typeof optionalId === "string" ? optionalId : recoveryId;
+      const validationErrors = validateRecoveryId(idToUse);
+      setErrors(validationErrors);
 
-    const firstError = firstValidationMessage(validationErrors, ["recoveryId"]);
-    if (firstError) {
-      showToast(firstError);
-      return;
-    }
+      const firstError = firstValidationMessage(validationErrors, ["recoveryId"]);
+      if (firstError) {
+        showToast(firstError);
+        return;
+      }
 
-    setBusyAction("restore");
-    try {
-      const result = await recoverAccount({
-        recoveryId: normalizeId(recoveryId),
-      });
-      await onAuthenticated(result);
-    } catch (error) {
-      showToast(toApiError(error).message);
-    } finally {
-      setBusyAction(null);
-    }
-  }, [onAuthenticated, recoveryId, showToast]);
+      setBusyAction("restore");
+      try {
+        const result = await recoverAccount({
+          recoveryId: normalizeId(idToUse),
+        });
+        await onAuthenticated(result);
+      } catch (error) {
+        showToast(toApiError(error).message);
+      } finally {
+        setBusyAction(null);
+      }
+    },
+    [onAuthenticated, recoveryId, showToast],
+  );
 
   const copyCreatedRecoveryId = useCallback(async () => {
     if (!createdRecoveryId) return;
@@ -111,6 +115,21 @@ export function useIdGate({ onAuthenticated }: UseIdGateOptions) {
     }
   }, [createdRecoveryId, showToast]);
 
+  const loginWithNewId = useCallback(async () => {
+    if (!createdRecoveryId) return;
+
+    try {
+      await copyText(createdRecoveryId);
+      setRecoveryId(createdRecoveryId);
+      const idToLogin = createdRecoveryId;
+      setCreatedRecoveryId(null);
+      setRegistrationModalStage("closed");
+      await submitRestore(idToLogin);
+    } catch (error) {
+      showToast(toApiError(error).message);
+    }
+  }, [createdRecoveryId, submitRestore, showToast]);
+
   return {
     busyAction,
     cancelRegistration,
@@ -119,6 +138,7 @@ export function useIdGate({ onAuthenticated }: UseIdGateOptions) {
     copyCreatedRecoveryId,
     createdRecoveryId,
     errors,
+    loginWithNewId,
     recoveryId,
     registrationModalStage,
     requestRegistration,

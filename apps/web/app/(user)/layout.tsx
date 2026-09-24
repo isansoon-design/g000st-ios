@@ -10,6 +10,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
 
   const navItems = [
     { href: "/social", label: "SOCIAL", icon: "◎" },
+    { href: "/market", label: "MARKET", icon: "🛍" },
     { href: "/chat", label: "CHAT", icon: "💬" },
     { href: "/contacts", label: "CONTACTS", icon: "👥" },
     { href: "/profile", label: "ID", icon: "🪪" },

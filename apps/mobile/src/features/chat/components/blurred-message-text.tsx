@@ -4,14 +4,16 @@ type BlurredMessageTextProps = Readonly<{
   blurred: boolean;
   content: string;
   mine: boolean;
+  fontSize?: number;
 }>;
 
-export function BlurredMessageText({ blurred, content, mine }: BlurredMessageTextProps) {
+export function BlurredMessageText({ blurred, content, mine, fontSize = 14 }: BlurredMessageTextProps) {
+  const style = { fontSize, lineHeight: Math.round(fontSize * 1.4) };
   return (
     <Text
       accessibilityLabel={blurred ? 'Message hidden by blur' : undefined}
-      className={`text-sm font-bold leading-5 ${mine ? 'text-black' : 'text-white'}`}
-      style={blurred ? { filter: 'blur(7px)' } : undefined}
+      className={`font-bold ${mine ? 'text-black' : 'text-white'}`}
+      style={blurred ? { filter: 'blur(7px)', ...style } : style}
     >
       {content}
     </Text>

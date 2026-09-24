@@ -29,6 +29,17 @@ describe('Social display identity', () => {
     assert.equal(publicDisplayName(PUBLIC_ID, { displayName: '   ', showDisplayName: true }), 'B12cD34e');
   });
 
+  it('always uses the deleted-account tombstone instead of a name or alias', () => {
+    assert.equal(
+      publicDisplayName(PUBLIC_ID, {
+        deletedAtMs: 1,
+        displayName: 'Former Name',
+        showDisplayName: true,
+      }),
+      'Deleted account',
+    );
+  });
+
   it('returns the real name to its owner but masks it for another viewer', async () => {
     const store = {
       async getProfile() {

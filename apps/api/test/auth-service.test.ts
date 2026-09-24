@@ -45,6 +45,19 @@ class MemoryAuthStore implements AuthStore {
     this.saveSession(publicId, material);
   }
 
+  async deleteAccount(publicId: string): Promise<void> {
+    this.users.delete(publicId);
+    for (const [lookupHash, credential] of this.recoveries) {
+      if (credential.publicId === publicId) this.recoveries.delete(lookupHash);
+    }
+    for (const [familyId, family] of this.families) {
+      const belongsToUser = [...this.access.values()].some(
+        (session) => session.familyId === familyId && session.publicId === publicId,
+      );
+      if (belongsToUser) family.revoked = true;
+    }
+  }
+
   async findActivePublicIdByAccessHash(
     accessHash: string,
     nowMs: number,
@@ -201,5 +214,26 @@ describe('AuthService', () => {
 
     const restored = await service.restore(registered.recoveryId);
     assert.equal(restored.user.role, 'user');
+  });
+
+  it('permanently disables a deleted account and all of its credentials', async () => {
+    const store = new MemoryAuthStore();
+    const service = new AuthService(store, PEPPER, () => NOW);
+    const registered = await service.register();
+
+    await service.deleteAccount(registered.session.accessToken);
+
+    await assert.rejects(
+      () => service.getUser(registered.session.accessToken),
+      expectApiError('SESSION_EXPIRED'),
+    );
+    await assert.rejects(
+      () => service.refresh(registered.session.refreshToken),
+      expectApiError('SESSION_EXPIRED'),
+    );
+    await assert.rejects(
+      () => service.restore(registered.recoveryId),
+      expectApiError('INVALID_RECOVERY_ID'),
+    );
   });
 });

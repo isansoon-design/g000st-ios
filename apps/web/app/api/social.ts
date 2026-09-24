@@ -17,7 +17,7 @@ export async function uploadSocialMedia(clientPostId: string, file: File): Promi
 export async function updateSocialPost(postId: string, content: string) { const { data } = await axios.patch<{ post: SocialPost }>(`/social/posts/${postId}`, { content }); return data.post; }
 export async function deleteSocialPost(postId: string) { await axios.delete(`/social/posts/${postId}`); }
 export async function toggleSocialLike(postId: string) { const { data } = await axios.post<{ liked: boolean; likeCount: number }>(`/social/posts/${postId}/like`); return data; }
-export async function listSocialComments(postId: string) { const { data } = await axios.get<SocialPage<SocialComment>>(`/social/posts/${postId}/comments`, { params: { limit: 50 } }); return data.items; }
+export async function listSocialComments(postId: string, cursor?: string) { const { data } = await axios.get<SocialPage<SocialComment>>(`/social/posts/${postId}/comments`, { params: { cursor, limit: 20 } }); return data; }
 export async function createSocialComment(postId: string, content: string, visibility: SocialVisibility) { const { data } = await axios.post<{ comment: SocialComment }>(`/social/posts/${postId}/comments`, { content, visibility }); return data.comment; }
 export async function deleteSocialComment(postId: string, commentId: string) { await axios.delete(`/social/posts/${postId}/comments/${commentId}`); }
 export async function toggleSocialCamp(publicId: string) { const { data } = await axios.post<{ camped: boolean }>(`/social/profiles/${publicId}/camp`); return data; }

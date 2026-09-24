@@ -269,6 +269,7 @@ function ConversationList({
 export default function PrivateChatPage() {
   const chat = usePrivateChat();
   const [blurMessages, setBlurMessages] = useState(false);
+  const [fontSize, setFontSize] = useState(14);
   const voiceRecorder = useVoiceRecorder();
   const { confirm } = useConfirmModal();
   const { callUser } = useCalling();
@@ -342,6 +343,24 @@ export default function PrivateChatPage() {
         <div className="flex items-center gap-1.5">
           <Brand />
           <OnlineSignal />
+          <div className="ml-2 flex items-center gap-2 rounded-md border border-black/10 bg-white/50 px-1">
+            <button
+              aria-label="Decrease font size"
+              className="flex h-6 w-6 items-center justify-center rounded-sm bg-white text-lg font-black leading-none text-black hover:bg-gray-100"
+              onClick={() => setFontSize((s) => Math.max(10, s - 2))}
+              type="button"
+            >
+              -
+            </button>
+            <button
+              aria-label="Increase font size"
+              className="flex h-6 w-6 items-center justify-center rounded-sm bg-white text-lg font-black leading-none text-black hover:bg-gray-100"
+              onClick={() => setFontSize((s) => Math.min(32, s + 2))}
+              type="button"
+            >
+              +
+            </button>
+          </div>
         </div>
         <button
           aria-label="Start a new private chat"
@@ -506,7 +525,7 @@ export default function PrivateChatPage() {
                           role={message.locked ? "button" : undefined}
                           tabIndex={message.locked ? 0 : undefined}
                         >
-                          {message.locked || message.content ? <p aria-label={!message.locked && blurMessages ? "Message hidden by blur" : undefined} className={`whitespace-pre-wrap break-words text-sm font-bold ${mine ? "text-black" : "text-white"} ${!message.locked && blurMessages ? "pointer-events-none select-none" : ""}`} style={!message.locked && blurMessages ? { filter: "blur(10px)" } : undefined}>{message.locked ? "🔒 Click to open · burns in 5s" : message.content}</p> : null}
+                          {message.locked || message.content ? <p aria-label={!message.locked && blurMessages ? "Message hidden by blur" : undefined} className={`whitespace-pre-wrap break-words font-bold ${mine ? "text-black" : "text-white"} ${!message.locked && blurMessages ? "pointer-events-none select-none" : ""}`} style={!message.locked && blurMessages ? { filter: "blur(10px)", fontSize } : { fontSize }}>{message.locked ? "🔒 Click to open · burns in 5s" : message.content}</p> : null}
                           {!message.locked && message.attachments?.length ? (
                             <div className="mt-2 flex flex-col gap-1">
                               {message.attachments.map((attachment) => (

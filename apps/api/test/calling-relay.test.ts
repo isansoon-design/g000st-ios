@@ -40,6 +40,10 @@ class MemoryAuthStore implements AuthStore {
 
   async createSession(): Promise<void> {}
 
+  async deleteAccount(publicId: string): Promise<void> {
+    this.users.delete(publicId);
+  }
+
   async findActivePublicIdByAccessHash(accessHash: string): Promise<ActiveAccount | null> {
     const publicId = this.access.get(accessHash);
     return publicId ? { publicId, role: this.users.get(publicId) ?? 'user' } : null;

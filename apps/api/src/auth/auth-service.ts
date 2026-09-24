@@ -132,6 +132,11 @@ export class AuthService {
     return account;
   }
 
+  async deleteAccount(accessToken: string): Promise<void> {
+    const account = await this.getUser(accessToken);
+    await this.store.deleteAccount(account.publicId, this.now());
+  }
+
   private generateDistinctRecoveryId(publicId: string): string {
     let recoveryId = generateG000stId();
     while (recoveryId === publicId) recoveryId = generateG000stId();

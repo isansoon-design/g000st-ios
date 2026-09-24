@@ -32,49 +32,51 @@ function IdGateFormComponent({
       keyboardShouldPersistTaps="handled"
       bottomOffset={20}
     >
-      <View className="w-full max-w-[400px] self-center">
-        <G000stWordmark className="mb-[10px] text-center text-[28px]" />
+      <View className="flex-1 w-full max-w-[400px] self-center justify-between pb-[20px]">
+        <View className="justify-center flex-1">
+          <G000stWordmark className="mb-[10px] text-center text-[28px]" />
 
-        <Text className="mb-[22px] text-center text-xs font-bold leading-[17px] text-g000st-muted">
-          By downloading the app you are agreeing to our Terms &amp; Conditions and Privacy
-          Policy.
-        </Text>
+          <Text className="mb-[22px] text-center text-xs font-bold leading-[17px] text-g000st-muted">
+            By downloading the app you are agreeing to our Terms &amp; Conditions and Privacy
+            Policy.
+          </Text>
 
-        <TextInput
-          accessibilityLabel="Account ID"
-          autoCapitalize="none"
-          autoCorrect={false}
-          className={`h-[50px] w-full rounded-field bg-white px-[14px] font-extrabold text-g000st-red ${errors.recoveryId ? 'border-2 border-red-600' : 'border-2 border-g000st-red'
-            }`}
-          editable={!isBusy}
-          maxLength={50}
-          onChangeText={onChangeRecoveryId}
-          onSubmitEditing={onLogin}
-          placeholder="Enter your ID"
-          placeholderTextColor="#C62828"
-          returnKeyType="go"
-          testID="account-id-input"
-          value={recoveryId}
-        />
-        <FieldError message={errors.recoveryId} />
+          <TextInput
+            accessibilityLabel="Account ID"
+            autoCapitalize="none"
+            autoCorrect={false}
+            className={`h-[50px] w-full rounded-field bg-white px-[14px] font-extrabold text-g000st-red ${errors.recoveryId ? 'border-2 border-red-600' : 'border-2 border-g000st-red'
+              }`}
+            editable={!isBusy}
+            maxLength={50}
+            onChangeText={onChangeRecoveryId}
+            onSubmitEditing={onLogin}
+            placeholder="Enter your ID"
+            placeholderTextColor="#C62828"
+            returnKeyType="go"
+            testID="account-id-input"
+            value={recoveryId}
+          />
+          <FieldError message={errors.recoveryId} />
+
+          <Pressable
+            accessibilityRole="button"
+            className="mt-2 h-[50px] w-full items-center justify-center rounded-field bg-g000st-red active:opacity-80 disabled:opacity-60"
+            disabled={isBusy}
+            onPress={onLogin}
+            testID="login-button"
+          >
+            {busyAction === 'restore' ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text className="font-black text-white">Login</Text>
+            )}
+          </Pressable>
+        </View>
 
         <Pressable
           accessibilityRole="button"
-          className="mt-2 h-[50px] w-full items-center justify-center rounded-field bg-g000st-red active:opacity-80 disabled:opacity-60"
-          disabled={isBusy}
-          onPress={onLogin}
-          testID="login-button"
-        >
-          {busyAction === 'restore' ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text className="font-black text-white">Login</Text>
-          )}
-        </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
-          className="mt-3 h-[50px] w-full items-center justify-center rounded-field border-2 border-g000st-black active:opacity-70 disabled:opacity-60"
+          className="mb-6 h-[50px] w-full items-center justify-center rounded-field border-2 border-g000st-black active:opacity-70 disabled:opacity-60"
           disabled={isBusy}
           onPress={onRegister}
           testID="register-button"

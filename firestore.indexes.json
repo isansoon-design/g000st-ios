@@ -10,6 +10,15 @@
       ]
     },
     {
+      "collectionGroup": "staging_v1_market_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerPublicId", "order": "ASCENDING" },
+        { "fieldPath": "createdAtMs", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "staging_v1_telephony_sms",
       "queryScope": "COLLECTION",
       "fields": [

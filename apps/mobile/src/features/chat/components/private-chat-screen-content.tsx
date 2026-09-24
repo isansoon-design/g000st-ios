@@ -1,14 +1,15 @@
-import { memo, useState } from 'react';
+import { useNavigation } from 'expo-router';
+import { memo, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { G000stWordmark } from '@/components/brand/g000st-wordmark';
 import { FeatureScreen } from '@/components/layout/feature-screen';
+import { useCalling } from '@/features/calling/hooks/use-calling';
 import { AttachmentPreviewModal } from '@/features/chat/components/attachment-preview-modal';
 import { ChatConversationList } from '@/features/chat/components/chat-conversation-list';
 import { ChatThread } from '@/features/chat/components/chat-thread';
 import { NewChatModal } from '@/features/chat/components/new-chat-modal';
 import { usePrivateChat } from '@/features/chat/hooks/use-private-chat';
-import { useCalling } from '@/features/calling/hooks/use-calling';
 
 function OnlineSignal() {
   return (
@@ -33,6 +34,15 @@ function PrivateChatScreenContentComponent({
   const chat = usePrivateChat(initialConversationId, openRequestId);
   const { callUser } = useCalling();
   const [blurMessages, setBlurMessages] = useState(false);
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    // @ts-expect-error tabPress is available on tab screens
+    const unsubscribe = navigation.addListener('tabPress', () => {
+      chat.closeConversation();
+    });
+    return unsubscribe;
+  }, [navigation, chat.closeConversation]);
 
   if (chat.activeConversation) {
     const participantPublicId = chat.activeConversation.participantPublicId;

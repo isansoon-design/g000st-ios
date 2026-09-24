@@ -89,11 +89,14 @@ export async function toggleSocialLike(postId: string) {
   const response = await axiosInstance.post(`/social/posts/${postId}/like`);
   return parseApiPayload(socialLikeResultSchema, response.data);
 }
-export async function listSocialComments(postId: string) {
+export async function listSocialComments(postId: string, cursor?: string) {
   const response = await axiosInstance.get(`/social/posts/${postId}/comments`, {
-    params: { limit: 50 },
+    params: { cursor, limit: 20 },
   });
-  return parseApiPayload(socialCommentPageSchema, response.data).items;
+  return parseApiPayload(socialCommentPageSchema, response.data);
+}
+export async function deleteSocialComment(postId: string, commentId: string) {
+  await axiosInstance.delete(`/social/posts/${postId}/comments/${commentId}`);
 }
 export async function createSocialComment(
   postId: string,

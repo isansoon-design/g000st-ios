@@ -78,6 +78,15 @@ Successful response (`200`):
 
 The server invalidates the old refresh token after rotation.
 
+## `DELETE /auth/me`
+
+Requires `Authorization: Bearer <accessToken>` and returns `204` after permanently disabling the
+current account. The Recovery ID and push registrations are deleted, all sessions stop authorizing
+requests, and optional profile data is replaced by a `Deleted account` tombstone. Retained posts,
+comments, marketplace listings, messages, and conversation records keep their internal owner ID so
+existing feeds and threads remain structurally valid, but every public identity projection displays
+`Deleted account` without the former name or avatar. The deleted account cannot be restored.
+
 ## Error shape
 
 All non-2xx JSON responses use:
@@ -131,6 +140,32 @@ The profile field `showDisplayName` defaults to `false`. Unless it is explicitly
 non-empty `displayName` exists, every public identity projection (posts, comments, alerts,
 contacts, chats, and calls) uses the last eight characters of `publicId` as the display alias.
 Only the profile owner receives their unmasked `displayName` from `GET /profiles/:publicId`.
+
+## Market API
+
+All Market routes require `Authorization: Bearer <accessToken>` and are rooted at
+`/api/v1/market`. Market identities are public so buyers can start a private chat or in-app call
+with the seller. The server derives the seller from the authenticated session and enforces
+owner-only mutations.
+
+- `GET /posts?limit=20&cursor=...&ownerId=...`: cursor-paginated listings or one seller's listings.
+- `POST /posts`: creates a listing from `{ clientPostId, content, price, currency, quantity, city, media? }`.
+- `GET|PATCH|DELETE /posts/:postId`: reads or changes a listing; mutations require ownership.
+- `POST /posts/:postId/like`: atomically toggles the current user's heart reaction.
+- `GET|POST /posts/:postId/comments`: cursor-paginates or creates comments.
+- `DELETE /posts/:postId/comments/:commentId`: owner-only comment deletion.
+- `POST /uploads`: creates a signed upload using the same media limits as Social.
+
+`price` is a non-negative finite decimal, `currency` is a three-letter ISO-style code (currently
+the clients submit `USD`), `quantity` is a positive integer, and `city` is required. Clients open
+chat through the existing `/chat` API and in-app audio calls through the existing `/calling`
+signaling channel; Market does not duplicate either communication system.
+
+Creating or editing a listing is rejected with `422 PROHIBITED_MARKET_CONTENT` when any of its textual
+content contains a configured prohibited English keyword or phrase. Matching is case-insensitive,
+Unicode-normalized, punctuation-tolerant for multi-word phrases, and token-aware to avoid matching
+fragments inside unrelated words. This policy is enforced by the API before any listing write;
+client-side messaging is only a convenience and is never the security boundary.
 
 ## Mobile API
 

@@ -60,7 +60,7 @@ type ChatThreadProps = Readonly<{
   participantDisplayName?: string;
   participantPublicId: string;
   userPublicId: string;
-  attachments: readonly Readonly<{ fileName: string }> [];
+  attachments: readonly Readonly<{ fileName: string }>[];
 }>;
 
 const NEAR_BOTTOM_THRESHOLD = 80;
@@ -90,6 +90,7 @@ type MessageBubbleProps = Readonly<{
   nowMs: number;
   onOpenBurn: (messageId: string) => void;
   onRetry: (clientMessageId: string) => void;
+  fontSize: number;
 }>;
 
 function MessageBubbleComponent({
@@ -100,6 +101,7 @@ function MessageBubbleComponent({
   nowMs,
   onOpenBurn,
   onRetry,
+  fontSize,
 }: MessageBubbleProps) {
   const failed = hasStatus(message) && message.status === 'failed';
   const pending = hasStatus(message) && message.status === 'pending';
@@ -127,22 +129,20 @@ function MessageBubbleComponent({
       <Pressable
         accessibilityHint={message.locked ? 'Opens this message for five seconds' : undefined}
         accessibilityRole={canPress ? 'button' : undefined}
-        className={`max-w-[78%] px-3 py-2 ${
-          mine
-            ? `rounded-[18px] rounded-br border bg-[#E0E0E0] ${
-                failed ? 'border-2 border-g000st-red' : 'border-g000st-silver'
-              }`
-            : 'rounded-[18px] rounded-bl border-2 border-g000st-silver bg-[#A8A8A8]'
-        } ${pending ? 'opacity-60' : ''}`}
+        className={`max-w-[78%] px-3 py-2 ${mine
+          ? `rounded-[18px] rounded-br border bg-[#E0E0E0] ${failed ? 'border-2 border-g000st-red' : 'border-g000st-silver'
+          }`
+          : 'rounded-[18px] rounded-bl border-2 border-g000st-silver bg-[#A8A8A8]'
+          } ${pending ? 'opacity-60' : ''}`}
         disabled={!canPress}
         onPress={handlePress}
       >
         {message.locked ? (
-          <Text className="text-sm font-black leading-5 text-white">
+          <Text className="font-black text-white" style={{ fontSize, lineHeight: Math.round(fontSize * 1.4) }}>
             🔒 Tap to open · burns in 5s
           </Text>
         ) : message.content ? (
-          <BlurredMessageText blurred={blurMessages} content={message.content} mine={mine} />
+          <BlurredMessageText blurred={blurMessages} content={message.content} mine={mine} fontSize={fontSize} />
         ) : null}
         {!message.locked && message.attachments?.length ? (
           <View className={message.content ? 'mt-2 gap-2' : 'gap-2'}>
@@ -229,6 +229,7 @@ function ChatThreadComponent({
   const prevIdsRef = useRef<Set<string> | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
+  const [fontSize, setFontSize] = useState(14);
   const canSend = !isParticipantDeleted && !isSending && (draft.trim().length > 0 || attachments.length > 0);
   const { confirm } = useConfirmModal();
 
@@ -325,17 +326,18 @@ function ChatThreadComponent({
             nowMs={nowMs}
             onOpenBurn={onOpenBurn}
             onRetry={onRetry}
+            fontSize={fontSize}
           />
         </View>
       );
     },
-    [blurMessages, firstUnreadMessageId, nowMs, onOpenBurn, onRetry, userPublicId],
+    [blurMessages, firstUnreadMessageId, nowMs, onOpenBurn, onRetry, userPublicId, fontSize],
   );
 
   return (
     <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: '#D0D0D0' }}>
       {/* Header */}
-      <View className="h-12 flex-row items-center border-b border-black/10 bg-[#D0D0D0] px-2">
+      <View className="h-14 flex-row items-center border-b border-black/10 bg-[#D0D0D0] px-2">
         <Pressable
           accessibilityLabel="Back to conversations"
           accessibilityRole="button"
@@ -351,23 +353,53 @@ function ChatThreadComponent({
             <Text>◎</Text>
           )}
         </View>
+
         <View className="ml-2 min-w-0 flex-1">
           <Text className="text-[11px] font-bold text-black/45">PRIVATE CHAT</Text>
           <Text className="font-mono text-[12px] font-black text-g000st-black" numberOfLines={1}>
             {isParticipantDeleted ? 'Deleted account' : participantDisplayName || shortId(participantPublicId)}
           </Text>
         </View>
-        <View className="mr-1 flex-row items-center">
-          <Text className="text-[9px] font-black text-black/45">BLUR</Text>
-          <Switch
-            accessibilityLabel={`Message blur ${blurMessages ? 'on' : 'off'}`}
-            onValueChange={onToggleMessageBlur}
-            thumbColor="#FFFFFF"
-            trackColor={{ false: '#B0B0B0', true: '#111111' }}
-            value={blurMessages}
-            style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }}
-          />
+        {/* Start Increase & Decrease Font Size & Blur */}
+        <View className=" flex-row items-center gap-1">
+          {/* Start Increase & Decrease Font Size */}
+          <View className="flex-row items-center gap-2 rounded-md border border-black/10 bg-white/50 px-1">
+            <Pressable
+              accessibilityLabel="Decrease font size"
+              accessibilityRole="button"
+              className="h-7 w-7 items-center justify-center rounded-sm bg-white"
+              onPress={() => setFontSize((s) => Math.max(10, s - 2))}
+            >
+              <Text className="text-lg font-black leading-5 text-black">-</Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel="Increase font size"
+              accessibilityRole="button"
+              className="h-7 w-7 items-center justify-center rounded-sm bg-white"
+              onPress={() => setFontSize((s) => Math.min(32, s + 2))}
+            >
+              <Text className="text-lg font-black leading-5 text-black">+</Text>
+            </Pressable>
+          </View>
+          {/* End Increase & Decrease Font Size */}
+
+          {/* Start Blur */}
+          <View className="flex-row items-center">
+            <Text className="text-[9px] font-black text-black/45">BLUR</Text>
+            <Switch
+              accessibilityLabel={`Message blur ${blurMessages ? 'on' : 'off'}`}
+              onValueChange={onToggleMessageBlur}
+              thumbColor="#FFFFFF"
+              trackColor={{ false: '#B0B0B0', true: '#111111' }}
+              value={blurMessages}
+              style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }}
+            />
+          </View>
+          {/* End Blur */}
         </View>
+        {/* End Increase & Decrease Font Size & Blur */}
+
+        {/* Start Call Buttons */}
         {isParticipantDeleted ? null : (
           <View className="flex-row items-center gap-1">
             <Pressable
@@ -388,6 +420,7 @@ function ChatThreadComponent({
             </Pressable>
           </View>
         )}
+        {/* End Call Buttons */}
       </View>
 
       <KeyboardAvoidingView automaticOffset behavior="padding" style={{ flex: 1 }}>
@@ -414,6 +447,7 @@ function ChatThreadComponent({
               style={{ flex: 1, backgroundColor: '#D8D8D8' }}
               contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end', padding: 12 }}
               data={messages}
+              extraData={`${blurMessages}-${fontSize}-${nowMs}`}
               keyExtractor={(item) => item.id}
               keyboardDismissMode="interactive"
               keyboardShouldPersistTaps="handled"
@@ -488,9 +522,8 @@ function ChatThreadComponent({
                   accessibilityLabel={`Burn after read ${burnAfterRead ? 'on' : 'off'}`}
                   accessibilityRole="switch"
                   accessibilityState={{ checked: burnAfterRead }}
-                  className={`min-w-10 mt-2 rounded-full px-1.5 py-0.5 ${
-                    burnAfterRead ? 'bg-g000st-red' : 'bg-black/20'
-                  }`}
+                  className={`min-w-10 mt-2 rounded-full px-1.5 py-0.5 ${burnAfterRead ? 'bg-g000st-red' : 'bg-black/20'
+                    }`}
                   onPress={handleToggleBurn}
                 >
                   <Text className="text-center text-[8px] font-black text-white">

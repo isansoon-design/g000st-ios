@@ -92,6 +92,29 @@ export class FirestoreAuthStore implements AuthStore {
     await batch.commit();
   }
 
+  async deleteAccount(publicId: string, deletedAtMs: number): Promise<void> {
+    const userRef = this.collection('users').doc(publicId);
+    const profileRef = this.collection('social_profiles').doc(publicId);
+    const recoveryCredentials = await this.collection('recovery_credentials')
+      .where('publicId', '==', publicId)
+      .get();
+    const pushDevices = await this.collection('push_devices')
+      .where('publicId', '==', publicId)
+      .get();
+
+    const batch = this.db.batch();
+    batch.update(userRef, { deletedAtMs, status: 'deleted' });
+    batch.set(profileRef, {
+      deletedAtMs,
+      displayName: 'Deleted account',
+      showDisplayName: true,
+      updatedAtMs: deletedAtMs,
+    });
+    for (const credential of recoveryCredentials.docs) batch.delete(credential.ref);
+    for (const device of pushDevices.docs) batch.delete(device.ref);
+    await batch.commit();
+  }
+
   async findActivePublicIdByAccessHash(
     accessHash: string,
     nowMs: number,
@@ -162,14 +185,20 @@ export class FirestoreAuthStore implements AuthStore {
       const familyRef = this.collection('session_families').doc(currentData.familyId);
       const nextAccessRef = this.collection('access_sessions').doc(next.accessHash);
       const nextRefreshRef = this.collection('refresh_sessions').doc(next.refreshHash);
-      const [family, nextAccess, nextRefresh] = await Promise.all([
+      const [family, user, nextAccess, nextRefresh] = await Promise.all([
         transaction.get(familyRef),
+        transaction.get(this.collection('users').doc(currentData.publicId)),
         transaction.get(nextAccessRef),
         transaction.get(nextRefreshRef),
       ]);
       const familyData = family.data() as StoredSessionFamily | undefined;
 
       if (!family.exists || familyData?.revokedAtMs) return 'revoked';
+
+      if (!user.exists || user.data()?.status !== 'active') {
+        transaction.update(familyRef, { revokedAtMs: rotatedAtMs });
+        return 'revoked';
+      }
 
       if (currentData.rotatedAtMs) {
         transaction.update(familyRef, { revokedAtMs: rotatedAtMs });

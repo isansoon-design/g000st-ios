@@ -27,6 +27,7 @@ function IdGateScreenComponent() {
         onCancel={idGate.cancelRegistration}
         onConfirm={idGate.confirmRegistration}
         onCopy={idGate.copyCreatedRecoveryId}
+        onLoginWithId={idGate.loginWithNewId}
         stage={idGate.registrationModalStage}
       />
 

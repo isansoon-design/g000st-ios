@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { logout } from "@/app/api/auth";
+import { deleteAccount, logout } from "@/app/api/auth";
 import { sessionStorage } from "@/app/api/session-storage";
 import {
   getSocialProfile,
@@ -52,6 +52,7 @@ export default function ProfilePage() {
   const [fields, setFields] = useState<ProfileFields>(EMPTY_FIELDS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -144,6 +145,28 @@ export default function ProfilePage() {
     if (!confirmed) return;
     logout();
     router.push("/login");
+  };
+
+  const removeAccount = async () => {
+    const confirmed = await confirm({
+      cancelLabel: "Cancel",
+      confirmLabel: "Delete account",
+      isDangerous: true,
+      message:
+        "This permanently deletes your account and Recovery ID. Your existing posts and messages may remain, but your name and profile photo will be replaced with Deleted account. This cannot be undone.",
+      title: "Delete your account?",
+    });
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      await deleteAccount();
+      logout();
+      router.push("/login");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete your account.");
+      setDeleting(false);
+    }
   };
 
   return (
@@ -321,6 +344,15 @@ export default function ProfilePage() {
                 className="mb-6 h-11 w-full rounded-full border border-black/15 bg-white text-sm font-bold text-[#C62828] transition hover:bg-black/5"
               >
                 Sign out from this device
+              </button>
+
+              {/* Account deletion */}
+              <button
+                disabled={deleting}
+                onClick={() => void removeAccount()}
+                className="mb-10 h-11 w-full rounded-full border border-[#C62828] bg-transparent text-sm font-black text-[#C62828] transition hover:bg-[#C62828]/5 disabled:opacity-60"
+              >
+                {deleting ? "Deleting…" : "Delete my account"}
               </button>
             </>
           )}

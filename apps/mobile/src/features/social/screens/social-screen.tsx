@@ -5,12 +5,12 @@ import { useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { cssInterop } from 'nativewind';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 
 import { startChatConversation } from '@/api/chat';
-import { createSocialComment, createSocialPost, deleteSocialPost, getSocialProfile, listSocialAlerts, listSocialComments, listSocialPosts, markSocialAlertsRead, reportSocialPost, toggleSocialCamp, toggleSocialLike, updateSocialProfile, uploadSocialMedia } from '@/api/social';
+import { createSocialComment, createSocialPost, deleteSocialComment, deleteSocialPost, getSocialProfile, listSocialAlerts, listSocialComments, listSocialPosts, markSocialAlertsRead, reportSocialPost, toggleSocialCamp, toggleSocialLike, updateSocialPost, updateSocialProfile, uploadSocialMedia } from '@/api/social';
 import { FeatureScreen } from '@/components/layout/feature-screen';
 import type { SocialAlert, SocialComment, SocialPost, SocialProfile, SocialVisibility } from '@/domain/social/types';
 import { useAuth } from '@/features/auth/hooks/use-auth';
@@ -25,9 +25,10 @@ export function SocialScreen() {
   const [view, setView] = useState<ViewName>('home');
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [alerts, setAlerts] = useState<SocialAlert[]>([]);
-  const [comments, setComments] = useState<Record<string, SocialComment[]>>({});
+  const [commentsPost, setCommentsPost] = useState<SocialPost>();
+  const [editingPost, setEditingPost] = useState<SocialPost>();
   const [draft, setDraft] = useState('');
-  const [visibility, setVisibility] = useState<SocialVisibility>('anonymous');
+  const [visibility] = useState<SocialVisibility>('anonymous');
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<readonly ImagePicker.ImagePickerAsset[]>([]);
@@ -184,11 +185,11 @@ export function SocialScreen() {
               >
                 <Text className="text-xs font-black">{selectedMedia.length ? `✓ ${selectedMedia.length}` : '📎 Media'}</Text>
               </Pressable>
-              <Switch
+              {/* <Switch
                 value={visibility === 'public'}
                 onValueChange={(value) => setVisibility(value ? 'public' : 'anonymous')}
               />
-              <Text className="ml-2 flex-1 text-xs font-bold">Show identity</Text>
+              <Text className="ml-2 flex-1 text-xs font-bold">Show identity</Text> */}
               <Pressable disabled={!draft.trim() || posting} onPress={() => void publish()} className="rounded-xl bg-[#222] px-5 py-3 disabled:opacity-40">
                 <Text className="font-black text-white">{posting ? 'Posting…' : 'Post'}</Text>
               </Pressable>
@@ -225,13 +226,12 @@ export function SocialScreen() {
             renderItem={({ item: post }) =>
               <PostCard
                 post={post}
-                comments={comments[post.id]}
                 onChat={openChat}
+                onEdit={() => setEditingPost(post)}
                 onDelete={async () => { await deleteSocialPost(post.id); setPosts((items) => items.filter((item) => item.id !== post.id)); }}
                 onReport={() => reportSocialPost(post.id)} onLike={async () => { const result = await toggleSocialLike(post.id); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, ...result, likedByViewer: result.liked } : item)); }}
                 onCamp={async () => { if (!post.ownerPublicId) return; const result = await toggleSocialCamp(post.ownerPublicId); setPosts((items) => items.map((item) => item.ownerPublicId === post.ownerPublicId ? { ...item, campedByViewer: result.camped } : item)); }}
-                onComments={async () => { if (comments[post.id]) { setComments((value) => { const next = { ...value }; delete next[post.id]; return next; }); } else { const loaded = await listSocialComments(post.id); setComments((value) => ({ ...value, [post.id]: loaded })); } }}
-                onComment={async (content) => { const comment = await createSocialComment(post.id, content, visibility); setComments((value) => ({ ...value, [post.id]: [...(value[post.id] ?? []), comment] })); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, commentCount: item.commentCount + 1 } : item)); }}
+                onComments={() => setCommentsPost(post)}
               />
             }
           />
@@ -253,33 +253,88 @@ export function SocialScreen() {
           </View>
         </Pressable>
       </Modal>
+      {commentsPost && <SocialCommentsModal post={commentsPost} visibility={visibility} onClose={() => setCommentsPost(undefined)} onCountChange={(postId, delta) => setPosts((items) => items.map((item) => item.id === postId ? { ...item, commentCount: Math.max(0, item.commentCount + delta) } : item))} />}
+      {editingPost && <EditSocialPostModal post={editingPost} onClose={() => setEditingPost(undefined)} onSave={async (postId, content) => { const updated = await updateSocialPost(postId, content); setPosts((items) => items.map((item) => item.id === postId ? updated : item)); setEditingPost(undefined); }} />}
     </FeatureScreen>
   );
 }
 
-type PostCardProps = { post: SocialPost; comments?: SocialComment[]; onChat: (id?: string) => Promise<void>; onDelete: () => Promise<void>; onReport: () => Promise<void>; onLike: () => Promise<void>; onCamp: () => Promise<void>; onComments: () => Promise<void>; onComment: (content: string) => Promise<void> };
-function PostCard({ post, comments, onChat, onDelete, onReport, onLike, onCamp, onComments, onComment }: PostCardProps) {
-  const [comment, setComment] = useState('');
+type PostCardProps = { post: SocialPost; onChat: (id?: string) => Promise<void>; onEdit: () => void; onDelete: () => Promise<void>; onReport: () => Promise<void>; onLike: () => Promise<void>; onCamp: () => Promise<void>; onComments: () => void };
+function PostCard({ post, onChat, onEdit, onDelete, onReport, onLike, onCamp, onComments }: PostCardProps) {
   const { confirm } = useConfirmModal();
-  return (<View className="overflow-hidden rounded-2xl border border-black/10 bg-white"><View className="flex-row items-center gap-3 p-4"><View className="h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#DDD]">{post.author.avatarUrl ? <Image source={{ uri: post.author.avatarUrl }} contentFit="cover" style={{ height: '100%', width: '100%' }} /> : <Text>◎</Text>}</View><Pressable className="flex-1" onPress={() => void onChat(post.ownerPublicId)}><Text className="font-black">{post.author.displayName}</Text><Text className="text-[10px] text-black/45">{new Date(post.createdAtMs).toLocaleString()}{post.editedAtMs ? ' · edited' : ''}</Text></Pressable><Pressable onPress={async () => { const confirmed = await confirm({ title: post.ownedByViewer ? 'Delete post?' : 'Report post?', message: post.ownedByViewer ? 'Are you sure you want to delete this post?' : 'Are you sure you want to report this post?', confirmLabel: post.ownedByViewer ? 'Delete' : 'Report', isDangerous: true }); if (confirmed) { void (post.ownedByViewer ? onDelete() : onReport()); } }}><Text className="text-xs font-black">{post.ownedByViewer ? 'Delete' : 'Report'}</Text></Pressable></View><Text className="px-4 pb-4 text-[15px] leading-6">{post.content}</Text>{post.media?.map((item) => item.kind === 'video' ? <SocialVideo key={item.id} uri={item.url} /> : <Image key={item.id} source={{ uri: item.url }} contentFit="cover" className={`w-full ${post.media?.length === 2 ? 'h-56' : 'h-80'}`} />)}<View className="flex-row border-t border-black/10 p-2"><Action label={`♥ ${post.likeCount}`} active={post.likedByViewer} onPress={onLike} /><Action label={`💬 ${post.commentCount}`} onPress={onComments} />{post.ownerPublicId && !post.ownedByViewer && <Action label={post.campedByViewer ? 'Camped' : 'Camp'} onPress={onCamp} />}</View>{comments && <View className="border-t border-black/10 bg-black/[.025] p-3">{comments.map((item) => <Text key={item.id} className="mb-2 text-sm"><Text className="font-black">{item.author.displayName} </Text>{item.content}</Text>)}
-    <View className="flex-row gap-2">
-      <TextInput
-        value={comment}
-        onChangeText={setComment}
-        maxLength={1000}
-        placeholder="Write a comment…"
-        className="min-w-0 flex-1 rounded-xl border border-black/15 bg-white px-3 py-2" />
-      <Pressable
-        onPress={() => { const value = comment.trim(); if (value) void onComment(value).then(() => setComment('')); }}
-        className="rounded-xl bg-[#222] px-4 py-2">
-        <Text className="text-white">➤</Text>
-      </Pressable>
+  return (
+    <View className="overflow-hidden rounded-2xl border border-black/10 bg-white">
+      <View className="flex-row items-center gap-3 p-4">
+        <View className="h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#DDD]">
+          {post.author.avatarUrl ?
+            <Image
+              source={{ uri: post.author.avatarUrl }}
+              contentFit="cover"
+              style={{ height: '100%', width: '100%' }}
+            />
+            :
+            <Text>◎</Text>
+          }
+        </View>
+        <Pressable
+          className="flex-1"
+          onPress={() => void onChat(post.ownerPublicId)}>
+          <Text className="font-black">{post.author.displayName}</Text>
+          <Text className="text-[10px] text-black/45">
+            {new Date(post.createdAtMs).toLocaleString()}
+            {post.editedAtMs ? ' · edited' : ''}
+          </Text>
+        </Pressable>
+        {post.ownedByViewer &&
+          <Pressable
+            onPress={onEdit} className="mr-3">
+            <Text>✎</Text>
+          </Pressable>
+        }
+        <Pressable
+          onPress={async () => {
+            const confirmed = await confirm({ title: post.ownedByViewer ? 'Delete post?' : 'Report post?', message: post.ownedByViewer ? 'Are you sure you want to delete this post?' : 'Are you sure you want to report this post?', confirmLabel: post.ownedByViewer ? 'Delete' : 'Report', isDangerous: true });
+            if (confirmed) { void (post.ownedByViewer ? onDelete() : onReport()); }
+          }}
+        >
+          <Text className="text-xs font-black">{post.ownedByViewer ? 'Delete' : 'Report'}</Text>
+        </Pressable>
+      </View>
+      <Text className="px-4 pb-4 text-[15px] leading-6">{post.content}</Text>
+      {post.media?.map((item) => item.kind === 'video' ? <SocialVideo key={item.id} uri={item.url} /> :
+        <Image
+          key={item.id}
+          source={{ uri: item.url }}
+          contentFit="cover"
+          className={`w-full ${post.media?.length === 2 ? 'h-56' : 'h-80'}`}
+        />
+      )}
+      <View className="flex-row border-t border-black/10 p-2">
+        <Action
+          label={`♥ ${post.likeCount}`}
+          active={post.likedByViewer}
+          onPress={onLike}
+        />
+        <Action
+          label={`💬 ${post.commentCount}`}
+          onPress={async () => onComments()}
+        />
+        {post.ownerPublicId && !post.ownedByViewer &&
+          <Action
+            label={post.campedByViewer ? 'Camped' : 'Camp'}
+            onPress={onCamp}
+          />}
+      </View>
     </View>
-  </View>
-  }
-  </View>
   );
 }
+
+function SocialCommentsModal({ post, visibility, onClose, onCountChange }: { post: SocialPost; visibility: SocialVisibility; onClose: () => void; onCountChange: (postId: string, delta: number) => void }) {
+  const [comments, setComments] = useState<SocialComment[]>([]); const [cursor, setCursor] = useState<string>(); const [value, setValue] = useState(''); const [loading, setLoading] = useState(false);
+  useEffect(() => { void Promise.resolve().then(async () => { setLoading(true); try { const page = await listSocialComments(post.id); setComments(page.items); setCursor(page.nextCursor); } catch { Toast.show({ type: 'error', text1: 'Comments', text2: 'Could not load comments.' }); } finally { setLoading(false); } }); }, [post.id]);
+  return <Modal visible transparent animationType="slide" onRequestClose={onClose}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 justify-end bg-black/50"><View className="h-[75%] rounded-t-[28px] bg-white p-4"><View className="mb-3 flex-row justify-between"><Text className="text-lg font-black">Comments</Text><Pressable onPress={onClose}><Text className="text-2xl">×</Text></Pressable></View><FlatList data={comments} keyExtractor={(item) => item.id} contentContainerClassName="gap-3 py-2" renderItem={({ item }) => <View className="flex-row rounded-xl bg-black/[.04] p-3"><Text className="min-w-0 flex-1"><Text className="font-black">{item.author.displayName} </Text>{item.content}</Text>{item.ownedByViewer && <Pressable onPress={async () => { await deleteSocialComment(post.id, item.id); setComments((current) => current.filter((comment) => comment.id !== item.id)); onCountChange(post.id, -1); }}><Text className="text-xs font-black text-[#C62828]">Delete</Text></Pressable>}</View>} ListEmptyComponent={!loading ? <Text className="py-16 text-center text-black/40">No comments yet.</Text> : null} ListFooterComponent={cursor ? <Pressable disabled={loading} onPress={async () => { setLoading(true); try { const page = await listSocialComments(post.id, cursor); setComments((current) => [...current, ...page.items]); setCursor(page.nextCursor); } finally { setLoading(false); } }} className="p-3"><Text className="text-center font-black">{loading ? 'Loading…' : 'Load more'}</Text></Pressable> : null} /><View className="flex-row gap-2 border-t border-black/10 pt-3"><TextInput value={value} onChangeText={setValue} placeholder="Write a comment…" maxLength={1000} className="min-w-0 flex-1 rounded-xl border border-black/15 px-3 py-2" /><Pressable onPress={async () => { const content = value.trim(); if (!content) return; const item = await createSocialComment(post.id, content, visibility); setComments((current) => [...current, item]); setValue(''); onCountChange(post.id, 1); }} className="rounded-xl bg-black px-4 py-3"><Text className="text-white">➤</Text></Pressable></View></View></KeyboardAvoidingView></Modal>;
+}
+function EditSocialPostModal({ post, onClose, onSave }: { post: SocialPost; onClose: () => void; onSave: (postId: string, content: string) => Promise<void> }) { const [content, setContent] = useState(post.content); return <Modal visible transparent animationType="fade" onRequestClose={onClose}><View className="flex-1 justify-center bg-black/50 p-5"><View className="gap-3 rounded-[24px] bg-white p-5"><Text className="text-lg font-black">Edit post</Text><TextInput value={content} onChangeText={setContent} multiline maxLength={4000} className="min-h-28 rounded-xl border border-black/15 p-3" textAlignVertical="top" /><View className="flex-row gap-2"><Pressable onPress={onClose} className="flex-1 rounded-xl bg-[#DDD] p-3"><Text className="text-center font-black">Cancel</Text></Pressable><Pressable onPress={() => { const next = content.trim(); if (next) void onSave(post.id, next); }} className="flex-1 rounded-xl bg-black p-3"><Text className="text-center font-black text-white">Save</Text></Pressable></View></View></View></Modal>; }
 function SocialVideo({ uri }: { uri: string }) { const player = useVideoPlayer(uri); return <VideoView className="h-80 w-full bg-black" contentFit="contain" fullscreenOptions={{ enable: true }} nativeControls player={player} />; }
 function ProfileEditor({ profile, onSave }: { profile: SocialProfile; onSave: (profile: Partial<SocialProfile>) => Promise<void> }) {
   const [editing, setEditing] = useState(false);

@@ -32,6 +32,10 @@ export async function getCurrentUser(): Promise<AxiosResponse<{ user: Authentica
   return await axiosInstance.get("/auth/me");
 }
 
+export async function deleteAccount(): Promise<void> {
+  await axiosInstance.delete("/auth/me");
+}
+
 export function logout(): void {
   sessionStorage.clear();
 }

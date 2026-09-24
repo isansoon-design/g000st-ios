@@ -3,6 +3,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useState } from "react";
 import Toast from "react-native-toast-message";
 
+import { deleteAccount } from "@/api/auth";
 import {
   getSocialProfile,
   updateSocialProfile,
@@ -53,6 +54,7 @@ export function useIdentityScreen() {
   const [fields, setFields] = useState<IdentityProfileFields>(EMPTY_FIELDS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
@@ -207,14 +209,44 @@ export function useIdentityScreen() {
     if (confirmed) await signOut();
   }, [confirm, signOut]);
 
+  const requestDeleteAccount = useCallback(async () => {
+    const confirmed = await confirm({
+      cancelLabel: "Cancel",
+      confirmLabel: "Delete account",
+      isDangerous: true,
+      message:
+        "This permanently deletes your account and Recovery ID. Your existing posts and messages may remain, but your name and profile photo will be replaced with Deleted account. This cannot be undone.",
+      title: "Delete your account?",
+    });
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      await deleteAccount();
+      await signOut();
+    } catch (error) {
+      Toast.show({
+        text1: "Delete account",
+        text2:
+          error instanceof Error
+            ? error.message
+            : "Could not delete your account.",
+        type: "error",
+      });
+      setDeleting(false);
+    }
+  }, [confirm, signOut]);
+
   return {
     avatarUrl: profile?.avatarUrl,
     changePhoto,
     copyPublicId,
+    deleting,
     fields,
     loading,
     publicId: user?.publicId ?? "",
     requestSignOut,
+    requestDeleteAccount,
     save,
     saving,
     setField,

@@ -8,10 +8,12 @@ import type { IdentityProfileFields } from '@/features/identity/hooks/use-identi
 
 type IdentityScreenContentProps = Readonly<{
   avatarUrl?: string;
+  deleting: boolean;
   fields: IdentityProfileFields;
   loading: boolean;
   onChangePhoto: () => void;
   onCopyPublicId: () => void;
+  onDeleteAccount: () => void;
   onSave: () => void;
   onSetField: <K extends keyof IdentityProfileFields>(key: K, value: IdentityProfileFields[K]) => void;
   onSignOut: () => void;
@@ -26,10 +28,12 @@ const FIELD_INPUT = 'h-12 pb-2 rounded-field border border-black/10 bg-white px-
 
 function IdentityScreenContentComponent({
   avatarUrl,
+  deleting,
   fields,
   loading,
   onChangePhoto,
   onCopyPublicId,
+  onDeleteAccount,
   onSave,
   onSetField,
   onSignOut,
@@ -122,15 +126,7 @@ function IdentityScreenContentComponent({
           </Text>
         </View>
 
-        {/* Recovery ID */}
-        <View className={`mb-3 w-full ${CARD}`}>
-          <Text className={LABEL}>Recovery ID</Text>
-          <Text className="text-[13px] font-bold leading-[18px] text-black/60">
-            Shown only once, when your account was created. It is your login credential — we never
-            store or display it again. If you lost it, this device stays signed in, but you cannot
-            sign in again elsewhere without it.
-          </Text>
-        </View>
+
 
         {/* Optional profile */}
         <View className={`mb-3 w-full ${CARD}`}>
@@ -159,9 +155,8 @@ function IdentityScreenContentComponent({
             {(['male', 'female'] as const).map((option) => (
               <Pressable
                 accessibilityRole="button"
-                className={`h-11 flex-1 items-center justify-center rounded-field border ${
-                  fields.sex === option ? 'border-g000st-black bg-g000st-black' : 'border-black/15 bg-white'
-                }`}
+                className={`h-11 flex-1 items-center justify-center rounded-field border ${fields.sex === option ? 'border-g000st-black bg-g000st-black' : 'border-black/15 bg-white'
+                  }`}
                 key={option}
                 onPress={() => onSetField('sex', fields.sex === option ? '' : option)}
               >
@@ -205,6 +200,13 @@ function IdentityScreenContentComponent({
           {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text className="text-sm font-black text-white">Save profile</Text>}
         </Pressable>
 
+        {/* Recovery ID */}
+        <View className={`my-3 w-full ${CARD}`}>
+          <Text className={LABEL}>My ID</Text>
+          <Text className="text-[13px] font-bold leading-[18px] text-black/60">
+            If you forget your account number, you will not be able to log in again.
+          </Text>
+        </View>
         {/* Sign out */}
         <Pressable
           accessibilityRole="button"
@@ -212,6 +214,21 @@ function IdentityScreenContentComponent({
           onPress={onSignOut}
         >
           <Text className="text-sm font-bold text-g000st-red">Sign out from this device</Text>
+        </Pressable>
+
+        {/* Account deletion */}
+        <Pressable
+          accessibilityHint="Permanently deletes your account"
+          accessibilityRole="button"
+          className="mb-10 h-11 w-full items-center justify-center rounded-full border border-g000st-red bg-transparent active:opacity-70 disabled:opacity-60"
+          disabled={deleting}
+          onPress={onDeleteAccount}
+        >
+          {deleting ? (
+            <ActivityIndicator color="#C62828" />
+          ) : (
+            <Text className="text-sm font-black text-g000st-red">Delete my account</Text>
+          )}
         </Pressable>
       </KeyboardAwareScrollView>
     </FeatureScreen>

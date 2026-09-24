@@ -58,6 +58,10 @@ class ActiveUsersStore implements AuthStore {
     throw new Error('Not used by ChatService tests.');
   }
 
+  async deleteAccount(publicId: string): Promise<void> {
+    this.activeUsers.delete(publicId);
+  }
+
   async findActivePublicIdByAccessHash(
     _accessHash: string,
     _nowMs: number,
