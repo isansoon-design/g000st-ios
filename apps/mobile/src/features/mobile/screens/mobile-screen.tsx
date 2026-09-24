@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Toast from 'react-native-toast-message';
 
 import { listBillingSkus } from '@/api/mobile';
@@ -11,6 +12,8 @@ import { useMobileExternalCall } from '@/features/mobile/hooks/use-mobile-extern
 import { useMobileSms } from '@/features/mobile/hooks/use-mobile-sms';
 
 const E164_PATTERN = /^\+[1-9]\d{1,14}$/;
+const CHECKOUT_POLL_ATTEMPTS = 6;
+const CHECKOUT_POLL_DELAY_MS = 2_000;
 
 /** Accepts "+", the "00" international trunk prefix (common outside the US), or bare digits. */
 function normalizeE164(input: string): string {
@@ -21,11 +24,13 @@ function normalizeE164(input: string): string {
 }
 
 export function MobileScreen() {
+  const router = useRouter();
+  const { checkout: checkoutResult } = useLocalSearchParams<{ checkout?: string }>();
   const dialer = useMobileDialer();
   const externalCall = useMobileExternalCall();
-  const balance = useMobileBalance();
+  const { balance, refresh: refreshBalance } = useMobileBalance();
   const sms = useMobileSms();
-  const checkout = useMobileCheckout(balance.refresh);
+  const checkout = useMobileCheckout(refreshBalance);
 
   const [isSmsOpen, setIsSmsOpen] = useState(false);
   const [smsTo, setSmsTo] = useState('');
@@ -35,6 +40,41 @@ export function MobileScreen() {
   const [skusLoading, setSkusLoading] = useState(false);
   const [selectedSkuId, setSelectedSkuId] = useState<string | null>(null);
   const [callDurationSec, setCallDurationSec] = useState(0);
+  const handledCheckoutResult = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (checkoutResult !== 'success' && checkoutResult !== 'cancel') return;
+    if (handledCheckoutResult.current === checkoutResult) return;
+    handledCheckoutResult.current = checkoutResult;
+
+    // Consume the callback once so it is not replayed when this tab is revisited.
+    router.replace('/(app)/(tabs)/mobile');
+
+    if (checkoutResult === 'cancel') {
+      Toast.show({ text1: 'Purchase', text2: 'Checkout cancelled.', type: 'info' });
+      return;
+    }
+
+    Toast.show({ text1: 'Purchase', text2: 'Payment received — confirming your balance…', type: 'success' });
+
+    const confirmBalance = async () => {
+      for (let attempt = 0; attempt < CHECKOUT_POLL_ATTEMPTS; attempt += 1) {
+        if (await refreshBalance()) {
+          Toast.show({ text1: 'Purchase', text2: 'Balance updated!', type: 'success' });
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, CHECKOUT_POLL_DELAY_MS));
+      }
+
+      Toast.show({
+        text1: 'Purchase',
+        text2: "Still confirming — check back in a moment if the balance hasn't updated.",
+        type: 'info',
+      });
+    };
+
+    void confirmBalance();
+  }, [checkoutResult, refreshBalance, router]);
 
   useEffect(() => {
     if (externalCall.status !== 'active') return;
@@ -108,7 +148,7 @@ export function MobileScreen() {
 
   return (
     <MobileScreenContent
-      balance={balance.balance}
+      balance={balance}
       buying={checkout.starting}
       callDurationSec={callDurationSec}
       callStatus={externalCall.status}

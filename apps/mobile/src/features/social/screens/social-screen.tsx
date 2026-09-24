@@ -160,17 +160,18 @@ export function SocialScreen() {
               <View className="mt-3 flex-row gap-3">
                 {selectedMedia.map((media, index) => (
                   <View key={index} className="relative">
-                    <Image source={{ uri: media.uri }} className="h-16 w-16 rounded-xl bg-black/5" contentFit="cover" />
+                    <Image source={{ uri: media.uri }} className="h-16 w-16 rounded-lg bg-black/5" contentFit="cover" />
                     {media.type === 'video' && (
-                      <View className="absolute inset-0 items-center justify-center rounded-xl bg-black/20">
-                        <Text className="text-xs font-black text-white">▶</Text>
+                      <View className="absolute inset-0 items-center justify-center rounded-lg bg-black/20">
+                        <Text className="text-[10px] font-black text-white">▶</Text>
                       </View>
                     )}
                     <Pressable
                       onPress={() => setSelectedMedia((prev) => prev.filter((_, i) => i !== index))}
-                      className="absolute -right-2 -top-2 h-6 w-6 items-center justify-center rounded-full bg-black/50"
+                      hitSlop={8}
+                      className="absolute -right-1.5 -top-1.5 h-5 w-5 items-center justify-center rounded-full bg-black/50"
                     >
-                      <Text className="text-xs font-bold text-white">✕</Text>
+                      <Text className="text-[10px] font-bold text-white">✕</Text>
                     </Pressable>
                   </View>
                 ))}
@@ -370,4 +371,3 @@ function ViewButton({ label, active, onPress }: { label: string; active: boolean
     </Pressable>
   );
 }
-

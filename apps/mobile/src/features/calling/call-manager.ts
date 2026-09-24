@@ -31,10 +31,11 @@ export type CallUiState =
   | Readonly<{ phase: 'idle' }>
   | Readonly<{ phase: 'ringing-outgoing'; peerPublicId: string; peerDisplayName?: string; media: CallMedia }>
   | Readonly<{ phase: 'ringing-incoming'; peerPublicId: string; peerDisplayName?: string; media: CallMedia }>
-  | Readonly<{ phase: 'connecting'; peerPublicId: string; media: CallMedia }>
+  | Readonly<{ phase: 'connecting'; peerPublicId: string; peerDisplayName?: string; media: CallMedia }>
   | Readonly<{
       phase: 'in-call';
       peerPublicId: string;
+      peerDisplayName?: string;
       media: CallMedia;
       isMuted: boolean;
       isCameraOn: boolean;
@@ -135,11 +136,12 @@ export class CallManager {
 
     if (direction === 'outgoing' && !this.call.session) return { phase: 'ringing-outgoing', peerPublicId, peerDisplayName, media };
     if (direction === 'incoming' && !this.call.requestId) return { phase: 'ringing-incoming', peerPublicId, peerDisplayName, media };
-    if (!this.call.session) return { phase: 'connecting', peerPublicId, media };
+    if (!this.call.session) return { phase: 'connecting', peerPublicId, peerDisplayName, media };
 
     return {
       phase: 'in-call',
       peerPublicId,
+      peerDisplayName,
       media,
       isMuted: this.call.isMuted,
       isCameraOn: this.call.isCameraOn,
