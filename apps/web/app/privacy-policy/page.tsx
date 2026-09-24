@@ -77,7 +77,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Contact Us</h2>
             <p>
-              If you have any questions about this privacy policy or our privacy practices, please contact us at our support channels.
+              If you have any questions about this privacy policy or our privacy practices, please contact us at: <a href="mailto:Bakrisabagh@hotmail.com" className="text-blue-600 hover:underline">Bakrisabagh@hotmail.com</a>
             </p>
           </section>
         </div>
