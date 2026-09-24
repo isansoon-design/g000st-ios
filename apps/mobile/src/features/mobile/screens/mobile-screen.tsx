@@ -127,7 +127,13 @@ export function MobileScreen() {
   const loadSkus = useCallback(async () => {
     setSkusLoading(true);
     try {
-      setSkus(await listBillingSkus());
+      const fetchedSkus = await listBillingSkus();
+      setSkus(fetchedSkus);
+      if (fetchedSkus.length >= 3) {
+        setSelectedSkuId(fetchedSkus[1].id);
+      } else if (fetchedSkus.length > 0) {
+        setSelectedSkuId(fetchedSkus[0].id);
+      }
     } catch (error) {
       Toast.show({
         text1: 'Plans',
@@ -141,14 +147,28 @@ export function MobileScreen() {
 
   const openPlans = useCallback(() => {
     setIsPlansOpen(true);
-    if (skus.length === 0) void loadSkus();
-  }, [loadSkus, skus.length]);
+    if (skus.length === 0) {
+      void loadSkus();
+    } else if (skus.length >= 3) {
+      setSelectedSkuId(skus[1].id);
+    } else if (skus.length > 0) {
+      setSelectedSkuId(skus[0].id);
+    }
+  }, [loadSkus, skus]);
 
   const handleBuy = useCallback(async () => {
     if (!selectedSkuId) return;
     const completed = await checkout.buy(selectedSkuId);
     if (completed) setIsPlansOpen(false);
   }, [checkout, selectedSkuId]);
+
+  const handlePressDigit = useCallback((digit: string) => {
+    if (digit === '0' && (!balance || (balance.voiceSecondsRemaining === 0 && balance.smsRemaining === 0))) {
+      Toast.show({ text1: 'Balance', text2: 'عليك شحن رصيدك', type: 'error' });
+      return;
+    }
+    dialer.pressDigit(digit);
+  }, [balance, dialer]);
 
   return (
     <MobileScreenContent
@@ -172,7 +192,7 @@ export function MobileScreen() {
       onHangUp={externalCall.hangup}
       onOpenPlans={openPlans}
       onOpenSms={openSms}
-      onPressDigit={dialer.pressDigit}
+      onPressDigit={handlePressDigit}
       onSelectSku={setSelectedSkuId}
       onSend={() => void handleSend()}
       onToggleMute={externalCall.toggleMute}

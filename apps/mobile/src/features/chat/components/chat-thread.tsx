@@ -556,7 +556,7 @@ function ChatThreadComponent({
                 ))}
               </View>
             ) : null}
-            <Text className="pt-0.5 text-center text-[10px] font-bold leading-3 text-black/40">
+            <Text className="pt-0.5 text-center text-[10px] font-bold leading-3 my-0.5 text-black/40">
               Kept 2 hours · Burn 5s {burnAfterRead ? 'ON' : 'OFF'} · Screenshots possible
             </Text>
           </View>

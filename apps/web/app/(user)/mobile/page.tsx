@@ -70,7 +70,13 @@ export default function MobilePage() {
     setSkusLoading(true);
     setSkusError(false);
     try {
-      setSkus(await listBillingSkus());
+      const fetchedSkus = await listBillingSkus();
+      setSkus(fetchedSkus);
+      if (fetchedSkus.length >= 3) {
+        setSelectedPlan(fetchedSkus[1].id);
+      } else if (fetchedSkus.length > 0) {
+        setSelectedPlan(fetchedSkus[0].id);
+      }
     } catch {
       setSkusError(true);
     } finally {
@@ -122,7 +128,15 @@ export default function MobilePage() {
   };
 
   useEffect(() => {
-    if (tab === "plans" && skus.length === 0 && !skusLoading) void loadSkus();
+    if (tab === "plans") {
+      if (skus.length === 0 && !skusLoading) {
+        void loadSkus();
+      } else if (skus.length >= 3) {
+        setSelectedPlan(skus[1].id);
+      } else if (skus.length > 0) {
+        setSelectedPlan(skus[0].id);
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -158,6 +172,10 @@ export default function MobilePage() {
   }, [tab]);
 
   const digit = (d: string) => {
+    if (d === "0" && (!balance || (balance.voiceSecondsRemaining === 0 && balance.smsRemaining === 0))) {
+      toast.error("عليك شحن رصيدك");
+      return;
+    }
     const newNum = dialNumber + d;
     setDialNumber(newNum);
     setDialDisplay(newNum);

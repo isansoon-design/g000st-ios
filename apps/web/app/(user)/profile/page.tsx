@@ -88,7 +88,7 @@ export default function ProfilePage() {
   };
 
   const shareId = () => {
-    if (navigator.share) navigator.share({ title: "My g000st Public ID", text: publicId }).catch(() => {});
+    if (navigator.share) navigator.share({ title: "My g000st Public ID", text: publicId }).catch(() => { });
     else copyId();
   };
 
@@ -261,15 +261,7 @@ export default function ProfilePage() {
                 </p>
               </div>
 
-              {/* Recovery ID */}
-              <div className={`mb-3 w-full ${cardClass}`}>
-                <div className={labelClass}>Recovery ID</div>
-                <p className="text-[13px] font-bold leading-[18px] text-black/60">
-                  Shown only once, when your account was created. It is your login credential — we
-                  never store or display it again. If you lost it, this device stays signed in, but
-                  you cannot sign in again elsewhere without it.
-                </p>
-              </div>
+
 
               {/* Optional profile */}
               <div className={`mb-3 w-full ${cardClass}`}>
@@ -299,9 +291,8 @@ export default function ProfilePage() {
                     <button
                       key={option}
                       onClick={() => setField("sex", fields.sex === option ? "" : option)}
-                      className={`h-11 flex-1 rounded-[12px] border text-[13px] font-black ${
-                        fields.sex === option ? "border-[#111] bg-[#111] text-white" : "border-black/15 bg-white text-[#111]"
-                      }`}
+                      className={`h-11 flex-1 rounded-[12px] border text-[13px] font-black ${fields.sex === option ? "border-[#111] bg-[#111] text-white" : "border-black/15 bg-white text-[#111]"
+                        }`}
                     >
                       {option === "male" ? "Male" : "Female"}
                     </button>
@@ -337,6 +328,14 @@ export default function ProfilePage() {
               >
                 {saving ? "Saving…" : "Save profile"}
               </button>
+
+              {/* Recovery ID */}
+              <div className={`mb-3 w-full ${cardClass}`}>
+                <div className={labelClass}>My ID</div>
+                <p className="text-[13px] font-bold leading-[18px] text-black/60">
+                  If you forget your account number, you will not be able to log in again.
+                </p>
+              </div>
 
               {/* Sign out */}
               <button
