@@ -13,6 +13,7 @@ const uploadBody = z.object({
   clientMessageId,
   contentType: z.string().min(1).max(160),
   conversationId,
+  durationMs: z.number().int().min(1).max(5 * 60 * 1_000).optional(),
   fileName: z.string().min(1).max(255),
 }).strict();
 

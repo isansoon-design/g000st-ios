@@ -1,22 +1,30 @@
 "use client";
 
 import { useConfirmModal } from "@/context/ConfirmModalContext";
-import { UserRound } from "lucide-react";
+import { Mic, Send, Square, Trash2, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { useCalling } from "@/features/calling/use-calling";
 import { getChatAttachmentDownload } from "@/features/chat/api";
 import type { ChatConversationSummary } from "@/features/chat/types";
 import { usePrivateChat } from "@/features/chat/use-private-chat";
-import { useCalling } from "@/features/calling/use-calling";
+import { useVoiceRecorder } from "@/features/chat/use-voice-recorder";
 import Image from "next/image";
 
 function shortId(publicId: string): string {
-  return `${publicId.slice(0, 12)}…${publicId.slice(-6)}`;
+  return publicId.slice(-8);
 }
 
 function formatTime(value: number): string {
   return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
+
+function formatDuration(value: number): string {
+  const seconds = Math.max(0, Math.ceil(value / 1_000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+const waveform = [5, 11, 16, 9, 19, 13, 7, 15, 20, 10, 17, 8, 14, 6, 12, 18];
 
 function Brand() {
   return (
@@ -125,6 +133,21 @@ function MessageAttachment({ attachment, conversationId, messageId }: MessageAtt
   if (attachment.kind === "video") {
     return <video className="max-h-72 w-full rounded-[14px] bg-black" controls preload="metadata" src={url} />;
   }
+  if (attachment.kind === "audio") {
+    return (
+      <div className="w-64 rounded-[18px] bg-black/10 px-3 py-2.5">
+        <div className="mb-2 flex items-center gap-1" aria-hidden="true">
+          {waveform.map((height, index) => (
+            <span className="w-1 rounded-full bg-current opacity-45" key={index} style={{ height }} />
+          ))}
+          <span className="ml-auto text-[10px] font-black opacity-50">
+            {formatDuration(attachment.durationMs ?? 0)}
+          </span>
+        </div>
+        <audio className="h-8 w-full" controls preload="metadata" src={url} />
+      </div>
+    );
+  }
   return (
     <button className="flex w-full items-center gap-3 rounded-[14px] bg-black/10 p-3 text-left transition hover:bg-black/15" onClick={() => window.open(url, "_blank", "noopener,noreferrer")} type="button">
       <span className="text-3xl">📄</span>
@@ -221,7 +244,7 @@ function ConversationList({
             <span className="block font-mono text-[12px] font-black text-[#111]">
               {conversation.participantStatus === "deleted"
                 ? "Deleted account"
-                : shortId(conversation.participantPublicId)}
+                : conversation.participantDisplayName || shortId(conversation.participantPublicId)}
             </span>
             <span className="mt-1 block truncate text-xs font-semibold text-black/45">
               {conversation.lastMessagePreview || "Private conversation"}
@@ -245,6 +268,8 @@ function ConversationList({
 
 export default function PrivateChatPage() {
   const chat = usePrivateChat();
+  const [blurMessages, setBlurMessages] = useState(false);
+  const voiceRecorder = useVoiceRecorder();
   const { confirm } = useConfirmModal();
   const { callUser } = useCalling();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -280,6 +305,10 @@ export default function PrivateChatPage() {
 
   useEffect(() => {
     didScrollToUnreadRef.current = null;
+    voiceRecorder.cancel();
+    voiceRecorder.discard();
+    // The recorder should reset whenever the user changes conversations.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat.activeConversation?.conversationId]);
 
   useEffect(() => {
@@ -299,6 +328,13 @@ export default function PrivateChatPage() {
     (chat.draft.trim().length > 0 || chat.attachments.length > 0) &&
     !chat.isSending &&
     !participantDeleted;
+
+  const sendVoiceMessage = async () => {
+    const recording = voiceRecorder.recording ?? await voiceRecorder.stop();
+    if (!recording) return;
+    const sent = await chat.submitVoiceMessage(recording.file, recording.durationMs);
+    if (sent) voiceRecorder.discard();
+  };
 
   return (
     <div className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden border-x border-black/10 bg-[#D8D8D8] shadow-2xl">
@@ -341,8 +377,23 @@ export default function PrivateChatPage() {
               <p className="truncate font-mono text-[12px] font-black text-[#111]">
                 {participantDeleted
                   ? "Deleted account"
-                  : shortId(chat.activeConversation.participantPublicId)}
+                  : chat.participantDisplayName || shortId(chat.activeConversation.participantPublicId)}
               </p>
+            </div>
+            <div className="mr-1 flex shrink-0 items-center gap-1.5">
+              <span className="text-[9px] font-black text-black/45">BLUR</span>
+              <button
+                aria-checked={blurMessages}
+                aria-label={`Message blur ${blurMessages ? "on" : "off"}`}
+                className={`relative h-5 w-9 rounded-full transition-colors ${blurMessages ? "bg-[#111]" : "bg-black/20"}`}
+                onClick={() => setBlurMessages((current) => !current)}
+                role="switch"
+                type="button"
+              >
+                <span
+                  className={`absolute left-0 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${blurMessages ? "translate-x-[18px]" : "translate-x-0.5"}`}
+                />
+              </button>
             </div>
             {!participantDeleted ? (
               <div className="flex shrink-0 items-center gap-1">
@@ -455,7 +506,7 @@ export default function PrivateChatPage() {
                           role={message.locked ? "button" : undefined}
                           tabIndex={message.locked ? 0 : undefined}
                         >
-                          {message.locked || message.content ? <p className={`whitespace-pre-wrap break-words text-sm font-bold ${mine ? "text-black" : "text-white"}`}>{message.locked ? "🔒 Click to open · burns in 5s" : message.content}</p> : null}
+                          {message.locked || message.content ? <p aria-label={!message.locked && blurMessages ? "Message hidden by blur" : undefined} className={`whitespace-pre-wrap break-words text-sm font-bold ${mine ? "text-black" : "text-white"} ${!message.locked && blurMessages ? "pointer-events-none select-none" : ""}`} style={!message.locked && blurMessages ? { filter: "blur(10px)" } : undefined}>{message.locked ? "🔒 Click to open · burns in 5s" : message.content}</p> : null}
                           {!message.locked && message.attachments?.length ? (
                             <div className="mt-2 flex flex-col gap-1">
                               {message.attachments.map((attachment) => (
@@ -535,38 +586,54 @@ export default function PrivateChatPage() {
                     {chat.burnAfterRead ? "🔥 ON" : "BURN"}
                   </button>
                 </div>
-                <div className="flex min-h-11 flex-1 items-center rounded-[22px] border border-black/15 bg-white px-1.5">
-                  <textarea
-                    aria-label="Message"
-                    autoFocus
-                    className="max-h-28 px-3 min-h-11 w-full resize-none bg-transparent  pb-1.5 pt-2.5 text-[15px] text-[#111] outline-none"
-                    disabled={chat.isSending}
-                    ref={messageInputRef}
-                    maxLength={4_000}
-                    onChange={(event) => chat.updateDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        if (canSend) {
-                          void chat.submitMessage();
+                {voiceRecorder.isRecording ? (
+                  <div className="flex min-h-11 flex-1 items-center gap-3 rounded-[22px] border border-[#C62828]/25 bg-white px-3 shadow-inner">
+                    <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#C62828]" />
+                    <span className="font-mono text-sm font-black text-[#C62828]">{formatDuration(voiceRecorder.durationMs)}</span>
+                    <span className="flex flex-1 items-center justify-center gap-1" aria-hidden="true">
+                      {waveform.slice(0, 11).map((height, index) => <span className="w-1 animate-pulse rounded-full bg-[#C62828]/55" key={index} style={{ height }} />)}
+                    </span>
+                    <button aria-label="Cancel recording" className="grid h-8 w-8 place-items-center rounded-full text-black/45 hover:bg-black/5" onClick={voiceRecorder.cancel} type="button"><Trash2 size={17} /></button>
+                  </div>
+                ) : voiceRecorder.recording ? (
+                  <div className="flex min-h-11 flex-1 items-center gap-2 rounded-[22px] border border-black/15 bg-white px-2">
+                    <audio className="h-8 min-w-0 flex-1" controls src={voiceRecorder.recording.previewUrl} />
+                    <span className="font-mono text-[11px] font-black text-black/45">{formatDuration(voiceRecorder.recording.durationMs)}</span>
+                    <button aria-label="Delete recording" className="grid h-8 w-8 place-items-center rounded-full text-[#C62828] hover:bg-[#C62828]/10" onClick={voiceRecorder.discard} type="button"><Trash2 size={17} /></button>
+                  </div>
+                ) : (
+                  <div className="flex min-h-11 flex-1 items-center rounded-[22px] border border-black/15 bg-white px-1.5">
+                    <textarea
+                      aria-label="Message"
+                      autoFocus
+                      className="max-h-28 px-3 min-h-11 w-full resize-none bg-transparent pb-1.5 pt-2.5 text-[15px] text-[#111] outline-none"
+                      disabled={chat.isSending}
+                      ref={messageInputRef}
+                      maxLength={4_000}
+                      onChange={(event) => chat.updateDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                          event.preventDefault();
+                          if (canSend) void chat.submitMessage();
                         }
-                      }
-                    }}
-                    placeholder="Type a message"
-                    rows={1}
-                    value={chat.draft}
-                  />
-                </div>
-                <button
-                  aria-label="Send"
-                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-[#9A9A9A] text-base font-black text-white disabled:opacity-50"
-                  disabled={!canSend}
-                  onClick={() => void chat.submitMessage()}
-                  type="button"
-                >
-                  ➤
-                </button>
+                      }}
+                      placeholder="Type a message"
+                      rows={1}
+                      value={chat.draft}
+                    />
+                  </div>
+                )}
+                {voiceRecorder.isRecording ? (
+                  <button aria-label="Stop recording" className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-[#C62828] text-white shadow-md" onClick={() => void voiceRecorder.stop()} type="button"><Square fill="currentColor" size={15} /></button>
+                ) : voiceRecorder.recording ? (
+                  <button aria-label="Send voice message" className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-[#111] text-white shadow-md disabled:opacity-50" disabled={chat.isSending} onClick={() => void sendVoiceMessage()} type="button"><Send size={18} /></button>
+                ) : chat.draft.trim() || chat.attachments.length ? (
+                  <button aria-label="Send" className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-[#9A9A9A] text-white disabled:opacity-50" disabled={!canSend} onClick={() => void chat.submitMessage()} type="button"><Send size={18} /></button>
+                ) : (
+                  <button aria-label="Record a voice message" className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-[#111] text-white shadow-md transition hover:scale-105 disabled:opacity-50" disabled={chat.isSending} onClick={() => void voiceRecorder.start()} type="button"><Mic size={20} /></button>
+                )}
               </div>
+              {voiceRecorder.error ? <p aria-live="polite" className="pt-1 text-center text-[10px] font-bold text-[#C62828]">{voiceRecorder.error}</p> : null}
               {chat.attachments.length > 0 ? (
                 <div className="mt-1 flex flex-wrap gap-1">
                   {chat.attachments.map((file, index) => (

@@ -45,11 +45,14 @@ export function useMobileCheckout(refreshBalance: () => Promise<Balance | null>)
               ? { text1: 'Purchase', text2: 'Balance updated!', type: 'success' }
               : { text1: 'Purchase', text2: "Still confirming — check back in a moment if the balance hasn't updated.", type: 'info' },
           );
+          return true;
         } else {
           await refreshBalance();
+          return false;
         }
       } catch (error) {
         Toast.show({ text1: 'Checkout', text2: errorMessage(error), type: 'error' });
+        return false;
       } finally {
         setStarting(false);
       }

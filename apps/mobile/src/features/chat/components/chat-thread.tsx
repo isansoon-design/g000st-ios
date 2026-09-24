@@ -7,8 +7,8 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
+  Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
@@ -18,13 +18,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConfirmModal } from '@/providers/confirm-modal-provider';
 
 import type { ChatMessage } from '@/domain/chat/types';
+import { BlurredMessageText } from '@/features/chat/components/blurred-message-text';
 import { MessageAttachment } from '@/features/chat/components/message-attachment';
+import { VoiceComposer } from '@/features/chat/components/voice-composer';
 import type { OutboxMessage } from '@/features/chat/hooks/use-private-chat';
 
 type ChatThreadMessage = ChatMessage | OutboxMessage;
 
 type ChatThreadProps = Readonly<{
   attachmentError: string | null;
+  blurMessages: boolean;
   burnAfterRead: boolean;
   draft: string;
   error: string | null;
@@ -49,8 +52,12 @@ type ChatThreadProps = Readonly<{
   onRetry: (clientMessageId: string) => void;
   onRemoveAttachment: (fileName: string) => void;
   onSend: () => void;
+  onSendVoice: (uri: string, durationMs: number) => Promise<boolean>;
   onToggleBurn: () => void;
+  onToggleMessageBlur: () => void;
+  onVoiceError: (message: string | null) => void;
   participantAvatarUrl?: string;
+  participantDisplayName?: string;
   participantPublicId: string;
   userPublicId: string;
   attachments: readonly Readonly<{ fileName: string }> [];
@@ -64,7 +71,7 @@ const messageEntering = FadeInDown.duration(220)
   .reduceMotion(ReduceMotion.System);
 
 function shortId(publicId: string): string {
-  return `${publicId.slice(0, 12)}…${publicId.slice(-6)}`;
+  return publicId.slice(-8);
 }
 
 function formatTime(value: number): string {
@@ -77,6 +84,7 @@ function hasStatus(message: ChatThreadMessage): message is OutboxMessage {
 
 type MessageBubbleProps = Readonly<{
   isNew: boolean;
+  blurMessages: boolean;
   message: ChatThreadMessage;
   mine: boolean;
   nowMs: number;
@@ -86,6 +94,7 @@ type MessageBubbleProps = Readonly<{
 
 function MessageBubbleComponent({
   isNew,
+  blurMessages,
   message,
   mine,
   nowMs,
@@ -133,9 +142,7 @@ function MessageBubbleComponent({
             🔒 Tap to open · burns in 5s
           </Text>
         ) : message.content ? (
-          <Text className={`text-sm font-bold leading-5 ${mine ? 'text-black' : 'text-white'}`}>
-            {message.content}
-          </Text>
+          <BlurredMessageText blurred={blurMessages} content={message.content} mine={mine} />
         ) : null}
         {!message.locked && message.attachments?.length ? (
           <View className={message.content ? 'mt-2 gap-2' : 'gap-2'}>
@@ -179,6 +186,7 @@ const MessageBubble = memo(MessageBubbleComponent);
 
 function ChatThreadComponent({
   attachmentError,
+  blurMessages,
   burnAfterRead,
   draft,
   error,
@@ -203,8 +211,12 @@ function ChatThreadComponent({
   onRetry,
   onRemoveAttachment,
   onSend,
+  onSendVoice,
   onToggleBurn,
+  onToggleMessageBlur,
+  onVoiceError,
   participantAvatarUrl,
+  participantDisplayName,
   participantPublicId,
   userPublicId,
   attachments,
@@ -306,6 +318,7 @@ function ChatThreadComponent({
             </View>
           ) : null}
           <MessageBubble
+            blurMessages={blurMessages}
             isNew={isNew}
             message={item}
             mine={item.senderPublicId === userPublicId}
@@ -316,7 +329,7 @@ function ChatThreadComponent({
         </View>
       );
     },
-    [firstUnreadMessageId, nowMs, onOpenBurn, onRetry, userPublicId],
+    [blurMessages, firstUnreadMessageId, nowMs, onOpenBurn, onRetry, userPublicId],
   );
 
   return (
@@ -341,8 +354,19 @@ function ChatThreadComponent({
         <View className="ml-2 min-w-0 flex-1">
           <Text className="text-[11px] font-bold text-black/45">PRIVATE CHAT</Text>
           <Text className="font-mono text-[12px] font-black text-g000st-black" numberOfLines={1}>
-            {isParticipantDeleted ? 'Deleted account' : shortId(participantPublicId)}
+            {isParticipantDeleted ? 'Deleted account' : participantDisplayName || shortId(participantPublicId)}
           </Text>
+        </View>
+        <View className="mr-1 flex-row items-center">
+          <Text className="text-[9px] font-black text-black/45">BLUR</Text>
+          <Switch
+            accessibilityLabel={`Message blur ${blurMessages ? 'on' : 'off'}`}
+            onValueChange={onToggleMessageBlur}
+            thumbColor="#FFFFFF"
+            trackColor={{ false: '#B0B0B0', true: '#111111' }}
+            value={blurMessages}
+            style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }}
+          />
         </View>
         {isParticipantDeleted ? null : (
           <View className="flex-row items-center gap-1">
@@ -474,30 +498,16 @@ function ChatThreadComponent({
                   </Text>
                 </Pressable>
               </View>
-              <View className="min-h-11 flex-1 justify-center rounded-[22px] border border-black/15 bg-white px-1.5">
-                <TextInput
-                  accessibilityLabel="Message"
-                  className="max-h-28 min-h-11 w-full px-2.5 pb-1.5 pt-2.5 text-[15px] text-g000st-black"
-                  maxLength={4_000}
-                  multiline
-                  onChangeText={onChangeDraft}
-                  placeholder="Type a message"
-                  placeholderTextColor="#777777"
-                  value={draft}
-                />
-              </View>
-              <Pressable
-                accessibilityLabel="Send"
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !canSend }}
-                className={`h-[42px] w-[42px] items-center justify-center rounded-full bg-g000st-silver ${
-                  canSend ? '' : 'opacity-50'
-                }`}
-                disabled={!canSend}
-                onPress={handleSend}
-              >
-                <Text className="text-base font-black text-white">➤</Text>
-              </Pressable>
+              <VoiceComposer
+                canSendText={canSend}
+                draft={draft}
+                hasAttachments={attachments.length > 0}
+                isSending={isSending}
+                onChangeDraft={onChangeDraft}
+                onError={onVoiceError}
+                onSend={onSendVoice}
+                onSendText={handleSend}
+              />
             </View>
             {attachmentError ? (
               <Text className="mt-1 text-center text-[10px] font-bold text-g000st-red">

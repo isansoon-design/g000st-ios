@@ -19,6 +19,7 @@ generic (`Message` or `Burn message`) rather than message plaintext.
     {
       "conversationId": "64-character-conversation-id",
       "participantPublicId": "50-character-public-id",
+      "participantDisplayName": "8-char-alias-or-allowed-name",
       "participantStatus": "active",
       "lastMessagePreview": "Message",
       "lastMessageId": "message-uuid",
@@ -34,6 +35,8 @@ generic (`Message` or `Burn message`) rather than message plaintext.
 }
 ```
 
+`participantDisplayName` is the participant's real name only when their profile has
+`showDisplayName: true`; otherwise it is the last eight characters of their Public ID.
 `participantStatus` is `deleted` when the other account is no longer active. Retained messages
 remain readable, but sending to that conversation returns `410 PARTICIPANT_UNAVAILABLE`.
 
@@ -84,7 +87,7 @@ returned and are physically purged by the server worker.
 For messages sent by the current user, `readAtMs` is present once the other participant has marked
 the message range as read. It is omitted for unread and incoming messages.
 
-## Send a text message
+## Send a message
 
 `POST /conversations/:conversationId/messages`
 
@@ -96,9 +99,38 @@ the message range as read. It is omitted for unread and incoming messages.
 }
 ```
 
-`content` is trimmed and must contain `1..4000` characters. The UUID makes retries idempotent and
-also prevents duplicate push notifications. `burnAfterRead` defaults to `false`. Returns (`201`)
-`{ "message": ChatMessage }`.
+`content` is trimmed and may contain up to 4000 characters. A message must contain text, one or
+more supported attachments, or both. The UUID makes retries idempotent and also prevents duplicate
+push notifications. `burnAfterRead` defaults to `false`. Returns (`201`) `{ "message": ChatMessage }`.
+
+### Voice messages
+
+Voice messages use the normal two-step attachment flow. First, create and upload the audio object
+through `POST /api/v1/media/uploads`, including `durationMs`. Then send the returned pending
+attachment with an empty `content` value:
+
+```json
+{
+  "clientMessageId": "018f6f5d-58e4-7a30-8df8-5f237c0666bb",
+  "content": "",
+  "burnAfterRead": false,
+  "attachments": [
+    {
+      "id": "attachment-uuid",
+      "byteSize": 192000,
+      "contentType": "audio/mp4",
+      "durationMs": 24000,
+      "fileName": "voice-1789478400000.m4a",
+      "objectKey": "pending/..."
+    }
+  ]
+}
+```
+
+Supported voice containers include MP4/M4A, WebM, Ogg, MP3, AAC, and 3GPP. A voice message must be
+at most five minutes and 5 MB, and audio attachments must be sent one at a time. Returned
+attachments have `kind: "audio"`, the message has `type: "voice"`, and its conversation preview
+is `Voice message`.
 
 ## Burn after read
 

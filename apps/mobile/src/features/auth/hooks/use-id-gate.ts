@@ -3,14 +3,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toApiError } from "@/api/api-error";
 import type { AuthenticationResult } from "@/domain/auth/types";
 import {
-  createAccount,
-  recoverAccount,
+    createAccount,
+    recoverAccount,
 } from "@/features/auth/api/auth-use-cases";
 import {
-  firstValidationMessage,
-  normalizeId,
-  validateRecoveryId,
-  type IdGateErrors,
+    firstValidationMessage,
+    normalizeId,
+    validateRecoveryId,
+    type IdGateErrors,
 } from "@/features/auth/validation/id-validation";
 import { copyText } from "@/services/device/clipboard";
 
@@ -102,9 +102,10 @@ export function useIdGate({ onAuthenticated }: UseIdGateOptions) {
 
     try {
       await copyText(createdRecoveryId);
+      setRecoveryId(createdRecoveryId);
       setCreatedRecoveryId(null);
       setRegistrationModalStage("closed");
-      showToast("ID copied. Paste it into the login field.");
+      showToast("ID copied and filled automatically.");
     } catch (error) {
       showToast(toApiError(error).message);
     }

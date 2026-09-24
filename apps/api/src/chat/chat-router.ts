@@ -19,6 +19,7 @@ const createMessageBody = z
           .object({
             byteSize: z.number().int().positive().max(5 * 1024 * 1024),
             contentType: z.string().min(1).max(160),
+            durationMs: z.number().int().min(1).max(5 * 60 * 1_000).optional(),
             fileName: z.string().min(1).max(255),
             id: z.string().uuid(),
             objectKey: z.string().min(1).max(600),

@@ -14,6 +14,7 @@ export type SocialMediaView = Omit<SocialMedia, 'objectKey'> & Readonly<{ url: s
 export type SocialProfile = Readonly<{
   publicId: string;
   displayName?: string;
+  showDisplayName: boolean;
   avatarObjectKey?: string;
   country?: string;
   age?: number;
@@ -96,6 +97,7 @@ export type CreateSocialCommentInput = Readonly<{
 
 export type UpdateSocialProfileInput = Readonly<{
   displayName?: string;
+  showDisplayName?: boolean;
   avatarMedia?: PendingAvatarMedia;
   country?: string;
   age?: number;

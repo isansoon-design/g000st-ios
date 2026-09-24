@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { G000stWordmark } from '@/components/brand/g000st-wordmark';
@@ -32,6 +32,7 @@ function PrivateChatScreenContentComponent({
 }: PrivateChatScreenContentProps) {
   const chat = usePrivateChat(initialConversationId, openRequestId);
   const { callUser } = useCalling();
+  const [blurMessages, setBlurMessages] = useState(false);
 
   if (chat.activeConversation) {
     const participantPublicId = chat.activeConversation.participantPublicId;
@@ -41,6 +42,7 @@ function PrivateChatScreenContentComponent({
           attachmentError={chat.attachmentError}
           attachments={chat.attachments}
           burnAfterRead={chat.burnAfterRead}
+          blurMessages={blurMessages}
           draft={chat.draft}
           error={chat.messagesError}
           firstUnreadMessageId={chat.firstUnreadMessageId}
@@ -64,8 +66,12 @@ function PrivateChatScreenContentComponent({
           onRetry={chat.retryMessage}
           onRemoveAttachment={chat.removeAttachment}
           onSend={chat.submitMessage}
+          onSendVoice={chat.submitVoiceMessage}
           onToggleBurn={chat.toggleBurnAfterRead}
+          onToggleMessageBlur={() => setBlurMessages((current) => !current)}
+          onVoiceError={chat.setVoiceError}
           participantAvatarUrl={chat.participantAvatarUrl}
+          participantDisplayName={chat.participantDisplayName}
           participantPublicId={chat.activeConversation.participantPublicId}
           userPublicId={chat.userPublicId}
         />

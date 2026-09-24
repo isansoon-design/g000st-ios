@@ -15,6 +15,7 @@ import { copyText } from "@/services/device/clipboard";
 
 export type IdentityProfileFields = Readonly<{
   displayName: string;
+  showDisplayName: boolean;
   country: string;
   age: string;
   sex: "male" | "female" | "";
@@ -27,6 +28,7 @@ const EMPTY_FIELDS: IdentityProfileFields = {
   bio: "",
   country: "",
   displayName: "",
+  showDisplayName: false,
   hobby: "",
   sex: "",
 };
@@ -38,6 +40,7 @@ function toFields(profile: SocialProfile | null): IdentityProfileFields {
     bio: profile.bio ?? "",
     country: profile.country ?? "",
     displayName: profile.displayName ?? "",
+    showDisplayName: profile.showDisplayName,
     hobby: profile.hobby ?? "",
     sex: profile.sex ?? "",
   };
@@ -168,6 +171,7 @@ export function useIdentityScreen() {
         bio: fields.bio.trim() || undefined,
         country: fields.country.trim() || undefined,
         displayName: fields.displayName.trim() || undefined,
+        showDisplayName: fields.showDisplayName,
         hobby: fields.hobby.trim() || undefined,
         sex: fields.sex || undefined,
       });

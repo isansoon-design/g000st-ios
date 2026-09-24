@@ -54,6 +54,14 @@
       ],
       "expo-image",
       [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow g000st to record private voice messages.",
+          "enableBackgroundPlayback": false,
+          "enableBackgroundRecording": false
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "cameraPermission": "Allow g000st to capture photos and videos for private chat.",

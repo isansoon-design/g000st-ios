@@ -8,14 +8,14 @@ import { toApiError } from "@/app/api/api-error";
 import { registerAccount, restoreAccount } from "@/app/api/auth";
 import { sessionStorage } from "@/app/api/session-storage";
 import {
-  parseAuthenticationResult,
-  parseRegisterAccountResult,
+    parseAuthenticationResult,
+    parseRegisterAccountResult,
 } from "@/features/auth/parse-auth-result";
 import {
-  firstValidationMessage,
-  normalizeId,
-  validateRecoveryId,
-  type IdGateErrors,
+    firstValidationMessage,
+    normalizeId,
+    validateRecoveryId,
+    type IdGateErrors,
 } from "@/features/auth/validation";
 
 export type BusyAction = "create" | "restore" | null;
@@ -95,9 +95,10 @@ export function useIdGate() {
 
     try {
       await copyText(createdRecoveryId);
+      setRecoveryId(createdRecoveryId);
       setCreatedRecoveryId(null);
       setRegistrationModalStage("closed");
-      toast.success("ID copied. Paste it into the login field.");
+      toast.success("ID copied and filled automatically.");
     } catch (error) {
       toast.error(toApiError(error).message);
     }

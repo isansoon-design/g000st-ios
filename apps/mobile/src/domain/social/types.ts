@@ -13,7 +13,7 @@ export const socialPostResultSchema = z.object({ post: socialPostSchema });
 export const socialCommentResultSchema = z.object({ comment: socialCommentSchema });
 export const socialLikeResultSchema = z.object({ liked: z.boolean(), likeCount: z.number().int() });
 export const socialCampResultSchema = z.object({ camped: z.boolean() });
-export const socialProfileSchema = z.object({ publicId: z.string(), displayName: z.string().optional(), avatarUrl: z.url().optional(), country: z.string().optional(), age: z.number().int().optional(), sex: z.enum(['male', 'female']).optional(), hobby: z.string().optional(), bio: z.string().optional(), updatedAtMs: z.number(), campedByViewer: z.boolean().optional() });
+export const socialProfileSchema = z.object({ publicId: z.string(), displayName: z.string().optional(), showDisplayName: z.boolean().default(false), avatarUrl: z.url().optional(), country: z.string().optional(), age: z.number().int().optional(), sex: z.enum(['male', 'female']).optional(), hobby: z.string().optional(), bio: z.string().optional(), updatedAtMs: z.number(), campedByViewer: z.boolean().optional() });
 export const socialProfileResultSchema = z.object({ profile: socialProfileSchema });
 
 export type SocialVisibility = z.infer<typeof socialVisibilitySchema>;

@@ -13,7 +13,7 @@ type ChatConversationListProps = Readonly<{
 }>;
 
 function shortId(publicId: string): string {
-  return `${publicId.slice(0, 12)}…${publicId.slice(-6)}`;
+  return publicId.slice(-8);
 }
 
 function formatTime(value: number): string {
@@ -89,7 +89,9 @@ function ChatConversationListComponent({
           </View>
           <View className="ml-3 min-w-0 flex-1">
             <Text className="font-mono text-[12px] font-black text-g000st-black">
-              {item.participantStatus === 'deleted' ? 'Deleted account' : shortId(item.participantPublicId)}
+              {item.participantStatus === 'deleted'
+                ? 'Deleted account'
+                : item.participantDisplayName || shortId(item.participantPublicId)}
             </Text>
             <Text className="mt-1" numberOfLines={1}>
               <Text className="text-xs font-semibold text-black/45">

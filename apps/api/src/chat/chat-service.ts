@@ -21,6 +21,10 @@ import type {
 
 const MAX_MESSAGE_LENGTH = 4_000;
 
+type ChatIdentityProvider = Readonly<{
+  getPublicDisplayName(publicId: string): Promise<string>;
+}>;
+
 export class ChatService {
   constructor(
     private readonly store: ChatStore,
@@ -28,6 +32,7 @@ export class ChatService {
     private readonly now: () => number = Date.now,
     private readonly notifier?: ChatNotifier,
     private readonly mediaService?: MediaService,
+    private readonly identityProvider?: ChatIdentityProvider,
   ) {}
 
   async startConversation(
@@ -51,12 +56,17 @@ export class ChatService {
   ): Promise<readonly ChatConversationSummary[]> {
     const summaries = await this.store.listConversations(publicId, limit, this.now());
     return await Promise.all(
-      summaries.map(async (summary) => ({
-        ...summary,
-        participantStatus: (await this.authStore.isUserActive(summary.participantPublicId))
-          ? ('active' as const)
-          : ('deleted' as const),
-      })),
+      summaries.map(async (summary) => {
+        const active = await this.authStore.isUserActive(summary.participantPublicId);
+        const participantDisplayName = active
+          ? await this.identityProvider?.getPublicDisplayName(summary.participantPublicId)
+          : undefined;
+        return {
+          ...summary,
+          ...(participantDisplayName ? { participantDisplayName } : {}),
+          participantStatus: active ? ('active' as const) : ('deleted' as const),
+        };
+      }),
     );
   }
 
@@ -150,7 +160,7 @@ export class ChatService {
       id: clientMessageId,
       locked: false,
       senderPublicId: publicId,
-      type: 'text',
+      type: attachments?.some((attachment) => attachment.kind === 'audio') ? 'voice' : 'text',
     };
 
     const result = await this.store.createTextMessage(message);
@@ -183,6 +193,7 @@ export class ChatService {
       clientMessageId: string;
       contentType: string;
       conversationId: string;
+      durationMs?: number;
       fileName: string;
     }>,
   ) {

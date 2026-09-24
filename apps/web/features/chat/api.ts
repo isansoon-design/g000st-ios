@@ -55,6 +55,7 @@ export async function createChatAttachmentUpload(input: Readonly<{
   clientMessageId: string;
   contentType: string;
   conversationId: string;
+  durationMs?: number;
   fileName: string;
 }>) {
   const response = await axios.post<{

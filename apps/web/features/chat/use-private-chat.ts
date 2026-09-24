@@ -50,6 +50,7 @@ export function usePrivateChat() {
   const [conversations, setConversations] = useState<readonly ChatConversationSummary[]>([]);
   const [conversationsError, setConversationsError] = useState<string | null>(null);
   const [participantAvatarUrl, setParticipantAvatarUrl] = useState<string | undefined>(undefined);
+  const [participantDisplayName, setParticipantDisplayName] = useState<string | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
@@ -158,12 +159,23 @@ export function usePrivateChat() {
     const participantPublicId = activeConversation?.participantPublicId;
     if (!participantPublicId || activeConversation?.participantStatus === "deleted") {
       setParticipantAvatarUrl(undefined);
+      setParticipantDisplayName(undefined);
       return;
     }
     let cancelled = false;
     getSocialProfile(participantPublicId)
-      .then((profile) => { if (!cancelled) setParticipantAvatarUrl(profile.avatarUrl); })
-      .catch(() => { if (!cancelled) setParticipantAvatarUrl(undefined); });
+      .then((profile) => {
+        if (!cancelled) {
+          setParticipantAvatarUrl(profile.avatarUrl);
+          setParticipantDisplayName(profile.displayName);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setParticipantAvatarUrl(undefined);
+          setParticipantDisplayName(undefined);
+        }
+      });
     return () => { cancelled = true; };
   }, [activeConversation?.participantPublicId, activeConversation?.participantStatus]);
 
@@ -311,6 +323,55 @@ export function usePrivateChat() {
     }
   }, [activeConversation, attachments, burnAfterRead, draft, isSending, loadConversations]);
 
+  const submitVoiceMessage = useCallback(async (file: File, durationMs: number) => {
+    if (
+      !activeConversation ||
+      activeConversation.participantStatus === "deleted" ||
+      isSending
+    ) {
+      return false;
+    }
+    if (!file.size || file.size > 5 * 1024 * 1024) {
+      setSendError("Voice messages must be 5 MB or smaller.");
+      return false;
+    }
+
+    setIsSending(true);
+    setSendError(null);
+    try {
+      const clientMessageId = crypto.randomUUID();
+      const upload = await createChatAttachmentUpload({
+        byteSize: file.size,
+        clientMessageId,
+        contentType: file.type || "audio/webm",
+        conversationId: activeConversation.conversationId,
+        durationMs,
+        fileName: file.name,
+      });
+      const uploadResponse = await fetch(upload.uploadUrl, {
+        body: file,
+        headers: upload.headers,
+        method: "PUT",
+      });
+      if (!uploadResponse.ok) throw new Error("Voice message upload failed.");
+      const message = await sendChatMessage(
+        activeConversation.conversationId,
+        "",
+        burnAfterRead,
+        clientMessageId,
+        [upload.attachment],
+      );
+      setMessages((items) => mergeMessages(items, [message]));
+      await loadConversations();
+      return true;
+    } catch (error) {
+      setSendError(errorMessage(error));
+      return false;
+    } finally {
+      setIsSending(false);
+    }
+  }, [activeConversation, burnAfterRead, isSending, loadConversations]);
+
   const openBurnMessage = useCallback(
     async (messageId: string) => {
       if (!activeConversation) return;
@@ -378,6 +439,7 @@ export function usePrivateChat() {
     openConversation,
     openNewChat: () => setIsNewChatOpen(true),
     participantAvatarUrl,
+    participantDisplayName,
     participantError,
     participantInput,
     refreshConversations: () => loadConversations(true),
@@ -411,6 +473,7 @@ export function usePrivateChat() {
     },
     removeAttachment: (index: number) => setAttachments((items) => items.filter((_, itemIndex) => itemIndex !== index)),
     submitMessage,
+    submitVoiceMessage,
     submitNewChat,
     toggleBurnAfterRead: () => setBurnAfterRead((current) => !current),
     updateDraft,

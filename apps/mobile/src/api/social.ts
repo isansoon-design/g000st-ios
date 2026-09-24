@@ -170,7 +170,7 @@ export async function updateSocialProfile(
   profile: Partial<
     Pick<
       SocialProfile,
-      "displayName" | "country" | "age" | "sex" | "hobby" | "bio"
+      "displayName" | "showDisplayName" | "country" | "age" | "sex" | "hobby" | "bio"
     >
   > & { avatarMedia?: PendingAvatarMedia },
 ) {

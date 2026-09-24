@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { sessionStorage } from "@/app/api/session-storage";
 import { logout } from "@/app/api/auth";
+import { sessionStorage } from "@/app/api/session-storage";
 import {
   getSocialProfile,
   updateSocialProfile,
@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 
 type ProfileFields = {
   displayName: string;
+  showDisplayName: boolean;
   country: string;
   age: string;
   sex: "male" | "female" | "";
@@ -23,7 +24,7 @@ type ProfileFields = {
   bio: string;
 };
 
-const EMPTY_FIELDS: ProfileFields = { age: "", bio: "", country: "", displayName: "", hobby: "", sex: "" };
+const EMPTY_FIELDS: ProfileFields = { age: "", bio: "", country: "", displayName: "", hobby: "", sex: "", showDisplayName: false };
 
 function toFields(profile: SocialProfile | null): ProfileFields {
   if (!profile) return EMPTY_FIELDS;
@@ -32,6 +33,7 @@ function toFields(profile: SocialProfile | null): ProfileFields {
     bio: profile.bio ?? "",
     country: profile.country ?? "",
     displayName: profile.displayName ?? "",
+    showDisplayName: profile.showDisplayName ?? false,
     hobby: profile.hobby ?? "",
     sex: profile.sex ?? "",
   };
@@ -117,6 +119,7 @@ export default function ProfilePage() {
         bio: fields.bio.trim() || undefined,
         country: fields.country.trim() || undefined,
         displayName: fields.displayName.trim() || undefined,
+        showDisplayName: fields.showDisplayName,
         hobby: fields.hobby.trim() || undefined,
         sex: fields.sex || undefined,
       });
@@ -187,14 +190,34 @@ export default function ProfilePage() {
                 {profile?.avatarUrl ? "Change photo" : "Add photo"}
               </button>
 
-              {/* Name */}
-              <input
-                className="mb-4 w-full bg-transparent text-center text-lg font-black text-[#111] outline-none placeholder:text-black/35"
-                maxLength={60}
-                onChange={(event) => setField("displayName", event.target.value)}
-                placeholder="Add your name"
-                value={fields.displayName}
-              />
+              {/* Name visibility */}
+              <div className="mb-4 w-full rounded-[18px] border border-white/60 bg-[#D0D0D0] p-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    className="h-12 min-w-0 flex-1 rounded-[12px] border border-black/10 bg-white px-3 text-[15px] font-black text-[#111] outline-none placeholder:text-black/35 focus:border-[#9A9A9A]"
+                    maxLength={60}
+                    onChange={(event) => setField("displayName", event.target.value)}
+                    placeholder="Add your name"
+                    value={fields.displayName}
+                  />
+                  <div className="flex shrink-0 flex-col items-center">
+                    <span className="mb-1 text-[10px] font-black text-black/55">Show name</span>
+                    <button
+                      aria-checked={fields.showDisplayName}
+                      aria-label="Show my name"
+                      className={`relative h-7 w-12 rounded-full transition-colors ${fields.showDisplayName ? "bg-[#C62828]" : "bg-[#9A9A9A]"}`}
+                      onClick={() => setField("showDisplayName", !fields.showDisplayName)}
+                      role="switch"
+                      type="button"
+                    >
+                      <span className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${fields.showDisplayName ? "translate-x-5" : "translate-x-0"}`} />
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-2 text-[11px] font-semibold leading-[16px] text-black/45">
+                  Show your name to other users, or turn this off to use your 8-character alias ({publicId.slice(-8)}).
+                </p>
+              </div>
 
               {/* Public ID */}
               <div className={`mb-3 w-full ${cardClass}`}>

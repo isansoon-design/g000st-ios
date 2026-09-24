@@ -23,6 +23,7 @@ export const chatConversationSummarySchema = z.object({
   lastReadAtMs: z.number().int().positive().optional(),
   lastReadMessageId: z.string().uuid().optional(),
   lastReadObservedAtMs: z.number().int().positive().optional(),
+  participantDisplayName: z.string().optional(),
   participantPublicId: g000stIdSchema,
   participantStatus: z.enum(['active', 'deleted']),
   unreadCount: z.number().int().nonnegative(),
@@ -35,9 +36,10 @@ export const chatMessageSchema = z.object({
       z.object({
         byteSize: z.number().int().positive(),
         contentType: z.string().min(1),
+        durationMs: z.number().int().min(1).max(5 * 60 * 1_000).optional(),
         fileName: z.string().min(1),
         id: z.string().uuid(),
-        kind: z.enum(['document', 'image', 'video']),
+        kind: z.enum(['audio', 'document', 'image', 'video']),
         objectKey: z.string().min(1),
       }),
     )
@@ -54,7 +56,7 @@ export const chatMessageSchema = z.object({
   locked: z.boolean(),
   readAtMs: z.number().int().positive().optional(),
   senderPublicId: g000stIdSchema,
-  type: z.literal('text'),
+  type: z.enum(['text', 'voice']),
 });
 
 export const chatConversationListSchema = z.object({

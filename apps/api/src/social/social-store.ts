@@ -12,6 +12,7 @@ import type {
 } from './social-types.js';
 
 export interface SocialStore {
+  getPublicDisplayName(publicId: string): Promise<string>;
   listPosts(viewerId: string, limit: number, cursor?: SocialCursor, ownerId?: string): Promise<SocialPage<SocialPost>>;
   findPost(viewerId: string, postId: string): Promise<SocialPost | null>;
   createPost(ownerId: string, postId: string, input: Omit<CreateSocialPostInput, 'media'> & { media?: readonly SocialMedia[] }, nowMs: number): Promise<SocialPost>;

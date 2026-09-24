@@ -18,8 +18,16 @@ const MAX_AVATAR_BYTES = 3 * 1024 * 1024;
 const UPLOAD_URL_TTL_SECONDS = 10 * 60;
 const DOWNLOAD_URL_TTL_SECONDS = 5 * 60;
 const MAX_ATTACHMENTS_PER_MESSAGE = 3;
+const MAX_VOICE_MESSAGE_DURATION_MS = 5 * 60 * 1_000;
 
 const supportedTypes: Readonly<Record<string, ChatAttachmentKind>> = {
+  'audio/aac': 'audio',
+  'audio/3gpp': 'audio',
+  'audio/mp4': 'audio',
+  'audio/mpeg': 'audio',
+  'audio/ogg': 'audio',
+  'audio/webm': 'audio',
+  'audio/x-m4a': 'audio',
   'application/msword': 'document',
   'application/pdf': 'document',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'document',
@@ -35,6 +43,7 @@ const supportedTypes: Readonly<Record<string, ChatAttachmentKind>> = {
 export type PendingAttachmentInput = Readonly<{
   byteSize: number;
   contentType: string;
+  durationMs?: number;
   fileName: string;
   id: string;
   objectKey: string;
@@ -45,6 +54,7 @@ type CreateUploadInput = Readonly<{
   clientMessageId: string;
   contentType: string;
   conversationId: string;
+  durationMs?: number;
   fileName: string;
   publicId: string;
 }>;
@@ -109,6 +119,9 @@ export class MediaService {
         'g000st-message-id': input.clientMessageId,
         'g000st-owner-id': input.publicId,
         'g000st-kind': kind,
+        ...(input.durationMs
+          ? { 'g000st-duration-ms': String(input.durationMs) }
+          : {}),
       },
     });
     const uploadUrl = await getSignedUrl(this.client, command, {
@@ -118,6 +131,7 @@ export class MediaService {
       attachment: {
         byteSize: input.byteSize,
         contentType: input.contentType,
+        ...(input.durationMs ? { durationMs: input.durationMs } : {}),
         fileName: this.safeFileName(input.fileName),
         id: attachmentId,
         objectKey,
@@ -242,7 +256,7 @@ export class MediaService {
       throw new ApiError(
         400,
         'INVALID_ATTACHMENT_BATCH',
-        'Videos and documents must be sent one at a time.',
+        'Audio, videos, and documents must be sent one at a time.',
       );
     }
 
@@ -277,6 +291,7 @@ export class MediaService {
         return {
           byteSize: attachment.byteSize,
           contentType: attachment.contentType,
+          ...(attachment.durationMs ? { durationMs: attachment.durationMs } : {}),
           fileName: this.safeFileName(attachment.fileName),
           id: attachment.id,
           kind,
@@ -326,20 +341,42 @@ export class MediaService {
         object.ContentType === attachment.contentType &&
         object.Metadata?.['g000st-owner-id'] === input.publicId &&
         object.Metadata?.['g000st-conversation-id'] === input.conversationId &&
-        object.Metadata?.['g000st-message-id'] === input.messageId
+        object.Metadata?.['g000st-message-id'] === input.messageId &&
+        object.Metadata?.['g000st-duration-ms'] ===
+          (attachment.durationMs === undefined ? undefined : String(attachment.durationMs))
       );
     } catch {
       return false;
     }
   }
 
-  private validateFile(input: Readonly<{ byteSize: number; contentType: string; fileName: string }>): ChatAttachmentKind {
+  private validateFile(input: Readonly<{
+    byteSize: number;
+    contentType: string;
+    durationMs?: number;
+    fileName: string;
+  }>): ChatAttachmentKind {
     const kind = supportedTypes[input.contentType.toLowerCase()];
+    const durationMs = input.durationMs;
     if (!kind || !Number.isSafeInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > MAX_ATTACHMENT_BYTES) {
-      throw new ApiError(400, 'UNSUPPORTED_ATTACHMENT', 'Attachments must be a supported image, video, PDF, or Word file up to 5 MB.');
+      throw new ApiError(400, 'UNSUPPORTED_ATTACHMENT', 'Attachments must be supported audio, image, video, PDF, or Word files up to 5 MB.');
     }
     if (!this.safeFileName(input.fileName)) {
       throw new ApiError(400, 'INVALID_ATTACHMENT', 'Attachment file name is invalid.');
+    }
+    if (
+      (kind === 'audio' &&
+        (!Number.isSafeInteger(durationMs) ||
+          durationMs === undefined ||
+          durationMs < 1 ||
+          durationMs > MAX_VOICE_MESSAGE_DURATION_MS)) ||
+      (kind !== 'audio' && durationMs !== undefined)
+    ) {
+      throw new ApiError(
+        400,
+        'INVALID_AUDIO_DURATION',
+        'Voice messages must include a duration between 1 ms and 5 minutes.',
+      );
     }
     return kind;
   }

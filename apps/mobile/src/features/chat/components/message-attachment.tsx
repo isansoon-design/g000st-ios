@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Linking from 'expo-linking';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { memo, useEffect, useState } from 'react';
@@ -25,6 +26,46 @@ function RemoteVideo({ uri }: Readonly<{ uri: string }>) {
       nativeControls
       player={player}
     />
+  );
+}
+
+function formatDuration(value: number): string {
+  const seconds = Math.max(0, Math.ceil(value / 1_000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+const waveform = [5, 11, 16, 9, 19, 13, 7, 15, 20, 10, 17, 8, 14, 6, 12, 18];
+
+function RemoteAudio({ durationMs, uri }: Readonly<{ durationMs?: number; uri: string }>) {
+  const player = useAudioPlayer(uri, { updateInterval: 100 });
+  const status = useAudioPlayerStatus(player);
+  const progress = status.duration > 0 ? Math.min(1, status.currentTime / status.duration) : 0;
+  const toggle = () => {
+    if (status.playing) {
+      player.pause();
+      return;
+    }
+    if (status.didJustFinish) void player.seekTo(0);
+    player.play();
+  };
+
+  return (
+    <View className="w-64 rounded-[18px] bg-black/10 px-3 py-3">
+      <View className="flex-row items-center">
+        <Pressable accessibilityLabel={status.playing ? 'Pause voice message' : 'Play voice message'} accessibilityRole="button" className="h-10 w-10 items-center justify-center rounded-full bg-g000st-black" onPress={toggle}>
+          <Text className="ml-px text-sm font-black text-white">{status.playing ? 'Ⅱ' : '▶'}</Text>
+        </Pressable>
+        <View className="ml-3 flex-1">
+          <View className="h-1.5 overflow-hidden rounded-full bg-black/10">
+            <View className="h-full rounded-full bg-g000st-red" style={{ width: `${progress * 100}%` }} />
+          </View>
+          <View className="mt-2 flex-row items-center">
+            {waveform.slice(0, 10).map((height, index) => <View className="mr-0.5 w-0.5 rounded-full bg-black/30" key={index} style={{ height: Math.max(3, height / 2) }} />)}
+            <Text className="ml-auto font-mono text-[10px] font-black text-black/45">{formatDuration(durationMs ?? status.duration * 1_000)}</Text>
+          </View>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -87,6 +128,10 @@ function MessageAttachmentComponent({
         </View>
       </Pressable>
     );
+  }
+
+  if (attachment.kind === 'audio') {
+    return <RemoteAudio durationMs={attachment.durationMs} uri={downloadUrl} />;
   }
 
   return (

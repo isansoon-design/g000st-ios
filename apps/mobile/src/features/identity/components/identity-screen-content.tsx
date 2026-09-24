@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { memo } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Switch, Text, TextInput, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { FeatureScreen } from '@/components/layout/feature-screen';
@@ -76,15 +76,33 @@ function IdentityScreenContentComponent({
           </Text>
         </Pressable>
 
-        {/* Name */}
-        <TextInput
-          className="mb-4 w-full text-center text-lg font-black text-g000st-black"
-          maxLength={60}
-          onChangeText={(value) => onSetField('displayName', value)}
-          placeholder="Add your name"
-          placeholderTextColor="rgba(0,0,0,0.35)"
-          value={fields.displayName}
-        />
+        {/* Name visibility */}
+        <View className="mb-4 w-full rounded-[18px] border border-white/60 bg-[#D0D0D0] p-3">
+          <View className="flex-row items-center gap-3">
+            <TextInput
+              className="h-12 min-w-0 flex-1 rounded-field border border-black/10 bg-white px-3 text-[15px] font-black text-g000st-black"
+              maxLength={60}
+              onChangeText={(value) => onSetField('displayName', value)}
+              placeholder="Add your name"
+              placeholderTextColor="rgba(0,0,0,0.35)"
+              value={fields.displayName}
+            />
+            <View className="items-center">
+              <Text className="mb-1 text-[10px] font-black text-black/55">Show name</Text>
+              <Switch
+                accessibilityLabel="Show my name"
+                accessibilityRole="switch"
+                onValueChange={(value) => onSetField('showDisplayName', value)}
+                thumbColor="#FFFFFF"
+                trackColor={{ false: '#9A9A9A', true: '#C62828' }}
+                value={fields.showDisplayName}
+              />
+            </View>
+          </View>
+          <Text className="mt-2 text-[11px] font-semibold leading-[16px] text-black/45">
+            Show your name to other users, or turn this off to use your 8-character alias ({publicId.slice(-8)}).
+          </Text>
+        </View>
 
         {/* Public ID */}
         <View className={`mb-3 w-full ${CARD}`}>

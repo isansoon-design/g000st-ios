@@ -4,6 +4,7 @@ import { FieldPath, FieldValue, type DocumentData, type Firestore } from 'fireba
 
 import type { MediaService } from '../media/media-service.js';
 import { encodeSocialCursor, type SocialCursor } from './social-cursor.js';
+import { publicDisplayName } from './social-identity.js';
 import type { SocialStore } from './social-store.js';
 import type {
   CreateSocialCommentInput,
@@ -44,6 +45,15 @@ export class FirestoreSocialStore implements SocialStore {
     private readonly prefix: string,
     private readonly mediaService?: MediaService,
   ) {}
+
+  async getPublicDisplayName(publicId: string): Promise<string> {
+    const profile = await this.profiles().doc(publicId).get();
+    const data = profile.data();
+    return publicDisplayName(publicId, {
+      displayName: data?.displayName as string | undefined,
+      showDisplayName: data?.showDisplayName === true,
+    });
+  }
 
   async listPosts(viewerId: string, limit: number, cursor?: SocialCursor, ownerId?: string): Promise<SocialPage<SocialPost>> {
     let query = this.posts().orderBy('createdAtMs', 'desc').orderBy(FieldPath.documentId(), 'desc');
@@ -176,13 +186,15 @@ export class FirestoreSocialStore implements SocialStore {
   async getProfile(viewerId: string, publicId: string): Promise<(SocialProfile & { campedByViewer: boolean }) | null> {
     const [profile, camp] = await Promise.all([this.profiles().doc(publicId).get(), this.camps(viewerId).doc(publicId).get()]);
     if (!profile.exists && viewerId !== publicId) return null;
-    return { publicId, ...(profile.data() as Omit<SocialProfile, 'publicId'> | undefined), updatedAtMs: (profile.data()?.updatedAtMs as number | undefined) ?? 0, campedByViewer: camp.exists };
+    const data = profile.data() as Omit<SocialProfile, 'publicId'> | undefined;
+    return { publicId, ...data, showDisplayName: data?.showDisplayName === true, updatedAtMs: data?.updatedAtMs ?? 0, campedByViewer: camp.exists };
   }
 
   async updateProfile(publicId: string, input: UpdateSocialProfileInput, nowMs: number): Promise<SocialProfile> {
-    const profile = { ...input, updatedAtMs: nowMs };
-    await this.profiles().doc(publicId).set(profile, { merge: true });
-    return { publicId, ...profile };
+    const reference = this.profiles().doc(publicId);
+    await reference.set({ ...input, updatedAtMs: nowMs }, { merge: true });
+    const data = (await reference.get()).data() as Omit<SocialProfile, 'publicId'>;
+    return { publicId, ...data, showDisplayName: data.showDisplayName === true };
   }
 
   async listAlerts(publicId: string, limit: number, cursor?: SocialCursor): Promise<SocialPage<SocialAlert>> {
@@ -228,7 +240,10 @@ export class FirestoreSocialStore implements SocialStore {
     const avatarUrl = avatarObjectKey ? await this.avatarUrl(avatarObjectKey) : undefined;
     return {
       publicId,
-      displayName: (data?.displayName as string | undefined) || publicId.slice(0, 12),
+      displayName: publicDisplayName(publicId, {
+        displayName: data?.displayName as string | undefined,
+        showDisplayName: data?.showDisplayName === true,
+      }),
       ...(avatarUrl ? { avatarUrl } : {}),
     };
   }

@@ -497,6 +497,12 @@ export class FirestoreChatStore implements ChatStore {
     const first = message.attachments?.[0];
     if (!first) return 'Message';
     if (message.attachments.length > 1) return `${message.attachments.length} attachments`;
-    return first.kind === 'image' ? 'Photo' : first.kind === 'video' ? 'Video' : 'Document';
+    return first.kind === 'image'
+      ? 'Photo'
+      : first.kind === 'video'
+        ? 'Video'
+        : first.kind === 'audio'
+          ? 'Voice message'
+          : 'Document';
   }
 }

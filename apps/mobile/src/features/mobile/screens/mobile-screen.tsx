@@ -17,10 +17,10 @@ const CHECKOUT_POLL_DELAY_MS = 2_000;
 
 /** Accepts "+", the "00" international trunk prefix (common outside the US), or bare digits. */
 function normalizeE164(input: string): string {
-  const trimmed = input.trim();
-  if (trimmed.startsWith('+')) return trimmed;
-  if (trimmed.startsWith('00')) return `+${trimmed.slice(2)}`;
-  return `+${trimmed}`;
+  const sanitized = input.replace(/[\s\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+  if (sanitized.startsWith('+')) return sanitized;
+  if (sanitized.startsWith('00')) return `+${sanitized.slice(2)}`;
+  return `+${sanitized}`;
 }
 
 export function MobileScreen() {
@@ -118,8 +118,11 @@ export function MobileScreen() {
 
   const handleSend = useCallback(async () => {
     const sent = await sms.send(smsTo ? normalizeE164(smsTo) : smsTo, smsBody);
-    if (sent) setSmsBody('');
-  }, [sms, smsBody, smsTo]);
+    if (sent) {
+      setSmsBody('');
+      await refreshBalance();
+    }
+  }, [refreshBalance, sms, smsBody, smsTo]);
 
   const loadSkus = useCallback(async () => {
     setSkusLoading(true);
@@ -141,9 +144,10 @@ export function MobileScreen() {
     if (skus.length === 0) void loadSkus();
   }, [loadSkus, skus.length]);
 
-  const handleBuy = useCallback(() => {
+  const handleBuy = useCallback(async () => {
     if (!selectedSkuId) return;
-    void checkout.buy(selectedSkuId);
+    const completed = await checkout.buy(selectedSkuId);
+    if (completed) setIsPlansOpen(false);
   }, [checkout, selectedSkuId]);
 
   return (

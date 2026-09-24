@@ -7,6 +7,7 @@ import { parseApiPayload } from '@/api/parse-api-payload';
 const pendingAttachmentSchema = z.object({
   byteSize: z.number().int().positive(),
   contentType: z.string().min(1),
+  durationMs: z.number().int().min(1).max(5 * 60 * 1_000).optional(),
   fileName: z.string().min(1),
   id: z.string().uuid(),
   objectKey: z.string().min(1),
@@ -27,6 +28,7 @@ export async function createChatAttachmentUpload(input: Readonly<{
   clientMessageId: string;
   contentType: string;
   conversationId: string;
+  durationMs?: number;
   fileName: string;
 }>) {
   const response = await axiosInstance.post('/media/uploads', input);

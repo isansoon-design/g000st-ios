@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
+import { ApiError } from "@/app/api/api-error";
 import {
   createCheckoutSession,
   getBalance,
@@ -10,7 +11,6 @@ import {
   listSms,
   sendSms as sendSmsRequest,
 } from "@/app/api/mobile";
-import { ApiError } from "@/app/api/api-error";
 import type { Balance, BillingSku, OutboundSms } from "@/features/mobile/types";
 import { useExternalCall } from "@/features/mobile/use-external-call";
 
@@ -24,10 +24,10 @@ function formatPrice(priceCents: number, currency: string): string {
 
 /** Accepts "+", the "00" international trunk prefix (common outside the US), or bare digits. */
 function normalizeE164(input: string): string {
-  const trimmed = input.trim();
-  if (trimmed.startsWith("+")) return trimmed;
-  if (trimmed.startsWith("00")) return `+${trimmed.slice(2)}`;
-  return `+${trimmed}`;
+  const sanitized = input.replace(/[\s\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, "");
+  if (sanitized.startsWith("+")) return sanitized;
+  if (sanitized.startsWith("00")) return `+${sanitized.slice(2)}`;
+  return `+${sanitized}`;
 }
 
 export default function MobilePage() {
@@ -89,7 +89,7 @@ export default function MobilePage() {
       // The redirect back from Stripe only means the *browser* returned — the balance only
       // becomes real once the signature-verified webhook lands, which can be a moment behind.
       // Poll briefly instead of trusting the redirect (see docs/API_CONTRACT_V1.md).
-      setTab("plans");
+      setTab("keypad");
       toast("Payment received — confirming your balance…");
       void pollBalanceAfterCheckout();
     } else if (checkoutResult === "cancel") {
@@ -202,6 +202,7 @@ export default function MobilePage() {
       const message = await sendSmsRequest(toE164, body);
       setSmsHistory((prev) => [message, ...prev]);
       setSmsText("");
+      await loadBalance();
       toast.success("SMS sent!");
     } catch (error) {
       const apiError = error instanceof ApiError ? error : null;

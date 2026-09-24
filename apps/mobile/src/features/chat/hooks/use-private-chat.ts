@@ -6,6 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { randomUUID } from "expo-crypto";
+import { File } from "expo-file-system";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -462,6 +463,59 @@ export function usePrivateChat(
     user,
   ]);
 
+  const submitVoiceMessage = useCallback(async (uri: string, durationMs: number) => {
+    if (
+      !activeConversation ||
+      activeConversation.participantStatus === "deleted" ||
+      !user?.publicId ||
+      sendMutation.isPending ||
+      isUploadingAttachments
+    ) {
+      return false;
+    }
+
+    const file = new File(uri);
+    const byteSize = file.size ?? 0;
+    if (!byteSize || byteSize > 5 * 1024 * 1024) {
+      setAttachmentUploadError("Voice messages must be 5 MB or smaller.");
+      return false;
+    }
+
+    const clientMessageId = randomUUID();
+    setIsUploadingAttachments(true);
+    setAttachmentUploadError(null);
+    try {
+      const upload = await createChatAttachmentUpload({
+        byteSize,
+        clientMessageId,
+        contentType: "audio/mp4",
+        conversationId: activeConversation.conversationId,
+        durationMs,
+        fileName: `voice-${Date.now()}.m4a`,
+      });
+      await uploadChatAttachment(uri, upload);
+      await sendMutation.mutateAsync({
+        attachments: [upload.attachment],
+        burn: burnAfterRead,
+        clientMessageId,
+        content: "",
+        conversationId: activeConversation.conversationId,
+      });
+      return true;
+    } catch (error) {
+      setAttachmentUploadError(errorMessage(error));
+      return false;
+    } finally {
+      setIsUploadingAttachments(false);
+    }
+  }, [
+    activeConversation,
+    burnAfterRead,
+    isUploadingAttachments,
+    sendMutation,
+    user?.publicId,
+  ]);
+
   const retryMessage = useCallback(
     (clientMessageId: string) => {
       const failed = outbox.find(
@@ -538,6 +592,7 @@ export function usePrivateChat(
     openBurnMessage,
     openConversation,
     participantAvatarUrl: participantProfileQuery.data?.avatarUrl,
+    participantDisplayName: participantProfileQuery.data?.displayName,
     openNewChat: () => setIsNewChatOpen(true),
     pickDocumentAttachment: chatAttachments.pickDocument,
     pickLibraryAttachment: chatAttachments.pickFromLibrary,
@@ -549,7 +604,9 @@ export function usePrivateChat(
     refreshMessages: messagesQuery.refetch,
     removeAttachment: chatAttachments.removeAttachment,
     retryMessage,
+    setVoiceError: setAttachmentUploadError,
     submitMessage,
+    submitVoiceMessage,
     submitNewChat,
     toggleBurnAfterRead: () => setBurnAfterRead((current) => !current),
     updateDraft,

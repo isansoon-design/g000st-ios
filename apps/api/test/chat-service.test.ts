@@ -28,6 +28,7 @@ import type {
   ChatReadState,
 } from '../src/chat/chat-types.js';
 import { ApiError } from '../src/http/api-error.js';
+import type { MediaService } from '../src/media/media-service.js';
 
 const USER_A = 'A'.repeat(50);
 const USER_B = 'B'.repeat(50);
@@ -314,7 +315,7 @@ function expectApiError(code: string) {
   return (error: unknown): boolean => error instanceof ApiError && error.code === code;
 }
 
-function createFixture() {
+function createFixture(mediaService?: MediaService) {
   let nowMs = NOW;
   const chatStore = new MemoryChatStore();
   const authStore = new ActiveUsersStore(new Set([USER_A, USER_B, USER_C]));
@@ -323,7 +324,7 @@ function createFixture() {
     async notifyNewMessage(input) {
       notifications.push(input);
     },
-  });
+  }, mediaService);
   return {
     advance: (milliseconds: number) => {
       nowMs += milliseconds;
@@ -401,6 +402,38 @@ describe('ChatService', () => {
     assert.deepEqual(notifications, [
       { conversationId: conversation.id, recipientPublicId: USER_B },
     ]);
+  });
+
+  it('stores an audio attachment as an explicit voice message', async () => {
+    const mediaService = {
+      async promoteAttachments(input: Readonly<{ attachments: readonly Readonly<{
+        byteSize: number;
+        contentType: string;
+        durationMs?: number;
+        fileName: string;
+        id: string;
+        objectKey: string;
+      }>[] }>) {
+        return input.attachments.map((attachment) => ({ ...attachment, kind: 'audio' as const }));
+      },
+    } as unknown as MediaService;
+    const { service } = createFixture(mediaService);
+    const conversation = await service.startConversation(USER_A, USER_B);
+    const message = await service.sendMessage(USER_A, conversation.id, {
+      attachments: [{
+        byteSize: 192_000,
+        contentType: 'audio/mp4',
+        durationMs: 24_000,
+        fileName: 'voice.m4a',
+        id: '018f6f5d-58e4-7a30-8df8-5f237c0666bd',
+        objectKey: 'pending/voice',
+      }],
+      content: '',
+    });
+
+    assert.equal(message.type, 'voice');
+    assert.equal(message.attachments?.[0]?.kind, 'audio');
+    assert.equal(message.attachments?.[0]?.durationMs, 24_000);
   });
 
   it('paginates deterministically when messages share the same timestamp', async () => {

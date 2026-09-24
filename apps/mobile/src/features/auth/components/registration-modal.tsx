@@ -41,10 +41,7 @@ function RegistrationModalComponent({
           {isConfirming ? (
             <>
               <Text className="text-center text-lg font-black text-g000st-black">
-                Create a new account?
-              </Text>
-              <Text className="mb-6 mt-2 text-center text-sm font-semibold leading-5 text-g000st-muted">
-                Are you sure you want to create a new account?
+                Create a new account
               </Text>
               <View className="flex-row gap-3">
                 <Pressable

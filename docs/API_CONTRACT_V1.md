@@ -100,6 +100,8 @@ Expected codes include `INVALID_RECOVERY_ID`, `PUBLIC_ID_UNAVAILABLE`, `RATE_LIM
 - Rotate refresh tokens and detect replay of an invalidated token family.
 - Require TLS and reject requests over plaintext HTTP outside local development.
 - Private-chat authorization must be enforced on the server for every read and write.
+- Private voice messages are single `audio` attachments with explicit `durationMs`; both upload
+  creation and message submission enforce the 5 MB and five-minute limits.
 
 ## Social API
 
@@ -124,6 +126,11 @@ uploaded directly to configured S3-compatible storage with a short-lived signed 
 only when the post is created, and returned through short-lived signed download URLs. A post accepts
 up to two images or exactly one video, never a mixed batch; every file is limited to 5 MB in both
 the route validation and media service.
+
+The profile field `showDisplayName` defaults to `false`. Unless it is explicitly `true` and a
+non-empty `displayName` exists, every public identity projection (posts, comments, alerts,
+contacts, chats, and calls) uses the last eight characters of `publicId` as the display alias.
+Only the profile owner receives their unmasked `displayName` from `GET /profiles/:publicId`.
 
 ## Mobile API
 

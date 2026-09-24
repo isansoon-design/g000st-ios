@@ -53,7 +53,6 @@ function IdGateFormComponent({
           placeholder="Enter your ID"
           placeholderTextColor="#C62828"
           returnKeyType="go"
-          secureTextEntry
           testID="account-id-input"
           value={recoveryId}
         />

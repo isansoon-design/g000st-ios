@@ -3,6 +3,7 @@ import { ApiError } from '../http/api-error.js';
 import { decodeSocialCursor } from './social-cursor.js';
 import type { MediaService } from '../media/media-service.js';
 import type { SocialStore } from './social-store.js';
+import { publicDisplayName } from './social-identity.js';
 import { validateSocialMediaBatch } from './social-policy.js';
 import type {
   CreateSocialCommentInput,
@@ -92,8 +93,22 @@ export class SocialService {
 
   async getProfile(viewerId: string, publicId: string) {
     if (!(await this.authStore.isUserActive(publicId))) throw new ApiError(404, 'USER_NOT_FOUND', 'User not found.');
-    const profile = (await this.store.getProfile(viewerId, publicId)) ?? { publicId, updatedAtMs: 0, campedByViewer: false };
-    return this.withProfileAvatar(profile);
+    const stored = await this.store.getProfile(viewerId, publicId);
+    const profile = {
+      publicId,
+      ...stored,
+      showDisplayName: stored?.showDisplayName === true,
+      updatedAtMs: stored?.updatedAtMs ?? 0,
+      campedByViewer: stored?.campedByViewer ?? false,
+    };
+    const safeProfile = viewerId === publicId
+      ? profile
+      : { ...profile, displayName: publicDisplayName(publicId, profile) };
+    return this.withProfileAvatar(safeProfile);
+  }
+
+  getPublicDisplayName(publicId: string): Promise<string> {
+    return this.store.getPublicDisplayName(publicId);
   }
 
   async updateProfile(publicId: string, input: UpdateSocialProfileInput) {
@@ -114,7 +129,7 @@ export class SocialService {
       { ...fields, ...(avatarObjectKey ? { avatarObjectKey } : {}) },
       this.now(),
     );
-    return this.withProfileAvatar(profile);
+    return this.withProfileAvatar({ ...profile, showDisplayName: profile.showDisplayName === true });
   }
 
   createAvatarUpload(publicId: string, input: Readonly<{ byteSize: number; contentType: string; fileName: string }>) {

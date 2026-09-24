@@ -17,6 +17,7 @@ export type ChatConversationSummary = Readonly<{
   lastReadAtMs?: number;
   lastReadMessageId?: string;
   lastReadObservedAtMs?: number;
+  participantDisplayName?: string;
   participantPublicId: string;
   participantStatus: "active" | "deleted";
   unreadCount: number;
@@ -36,15 +37,16 @@ export type ChatMessage = Readonly<{
   locked: boolean;
   readAtMs?: number;
   senderPublicId: string;
-  type: "text";
+  type: "text" | "voice";
 }>;
 
 export type ChatAttachment = Readonly<{
   byteSize: number;
   contentType: string;
+  durationMs?: number;
   fileName: string;
   id: string;
-  kind: "document" | "image" | "video";
+  kind: "audio" | "document" | "image" | "video";
   objectKey: string;
 }>;
 

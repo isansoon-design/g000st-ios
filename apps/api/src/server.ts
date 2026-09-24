@@ -46,18 +46,19 @@ async function main(): Promise<void> {
     new ExpoPushGateway(notificationStore, environment.expoPushAccessToken),
   );
   const mediaService = environment.media ? new MediaService(environment.media) : undefined;
+  const socialService = new SocialService(
+    new FirestoreSocialStore(firestore, environment.collectionPrefix, mediaService),
+    store,
+    Date.now,
+    mediaService,
+  );
   const chatService = new ChatService(
     chatStore,
     store,
     Date.now,
     notificationService,
     mediaService,
-  );
-  const socialService = new SocialService(
-    new FirestoreSocialStore(firestore, environment.collectionPrefix, mediaService),
-    store,
-    Date.now,
-    mediaService,
+    socialService,
   );
   const presenceService = new PresenceService(
     new FirestorePresenceStore(firestore, environment.collectionPrefix),

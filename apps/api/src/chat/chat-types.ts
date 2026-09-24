@@ -23,7 +23,7 @@ export type ChatConversationMemberSummary = Readonly<{
 }>;
 
 export type ChatConversationSummary = ChatConversationMemberSummary &
-  Readonly<{ participantStatus: 'active' | 'deleted' }>;
+  Readonly<{ participantDisplayName?: string; participantStatus: 'active' | 'deleted' }>;
 
 export type ChatMessage = Readonly<{
   attachments?: readonly ChatAttachment[];
@@ -38,14 +38,15 @@ export type ChatMessage = Readonly<{
   locked: boolean;
   readAtMs?: number;
   senderPublicId: string;
-  type: 'text';
+  type: 'text' | 'voice';
 }>;
 
-export type ChatAttachmentKind = 'document' | 'image' | 'video';
+export type ChatAttachmentKind = 'audio' | 'document' | 'image' | 'video';
 
 export type ChatAttachment = Readonly<{
   byteSize: number;
   contentType: string;
+  durationMs?: number;
   fileName: string;
   id: string;
   kind: ChatAttachmentKind;

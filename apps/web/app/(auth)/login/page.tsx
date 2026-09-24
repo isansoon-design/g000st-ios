@@ -30,15 +30,14 @@ export default function LoginPage() {
             autoCapitalize="none"
             autoComplete="off"
             autoCorrect="off"
-            className={`h-[50px] w-full rounded-[14px] border-2 bg-white px-[14px] font-extrabold text-[#C62828] outline-none ${
-              idGate.errors.recoveryId ? "border-red-600" : "border-[#C62828]"
-            }`}
+            className={`h-[50px] w-full rounded-[14px] border-2 bg-white px-[14px] font-extrabold text-[#C62828] outline-none ${idGate.errors.recoveryId ? "border-red-600" : "border-[#C62828]"
+              }`}
             disabled={isBusy}
             maxLength={50}
             onChange={(event) => idGate.changeRecoveryId(event.target.value)}
             placeholder="Enter your ID"
             spellCheck={false}
-            type="password"
+            type="text"
             value={idGate.recoveryId}
           />
           {idGate.errors.recoveryId && (
@@ -83,11 +82,9 @@ export default function LoginPage() {
             {idGate.registrationModalStage === "confirm" ? (
               <>
                 <h2 id="registration-modal-title" className="text-center text-lg font-black text-[#111]">
-                  Create a new account?
+                  Create a new account
                 </h2>
-                <p className="mb-6 mt-2 text-center text-sm font-semibold leading-5 text-[#555]">
-                  Are you sure you want to create a new account?
-                </p>
+
                 <div className="flex gap-3">
                   <button
                     className="h-12 flex-1 rounded-[14px] border-2 border-[#111] font-black text-[#111] active:opacity-70 disabled:opacity-60"
