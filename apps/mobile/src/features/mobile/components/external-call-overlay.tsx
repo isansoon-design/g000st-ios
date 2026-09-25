@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 
+import { G000stWordmark } from '@/components/brand/g000st-wordmark';
 import type { ExternalCallStatus } from '@/features/mobile/hooks/use-mobile-external-call';
 
 const STATUS_LABEL: Partial<Record<ExternalCallStatus, string>> = {
@@ -56,7 +57,7 @@ function ExternalCallOverlayComponent({
       <View className="flex-1 items-center justify-between bg-black/95 px-6 py-16">
         <View className="items-center gap-2">
           <Text className="text-xs font-black tracking-[1px] text-[#8FE39A]">{STATUS_LABEL[status]}</Text>
-          <Text className="text-2xl font-black text-white">{dialDisplay}</Text>
+          <Text className="text-2xl font-black text-white">{dialDisplay === "g000st" ? <G000stWordmark /> : dialDisplay}</Text>
           {status === 'active' ? (
             <Text className="text-sm font-semibold text-white/60">
               {minutes}:{seconds}

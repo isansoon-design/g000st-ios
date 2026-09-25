@@ -255,7 +255,13 @@ export default function MobilePage() {
     active: "In call",
     ended: "Call ended",
   };
-
+  function Brand() {
+    return (
+      <span className="text-[17px] font-black tracking-tight text-[#111]">
+        g<span className="text-[#C62828]">000</span>st
+      </span>
+    );
+  }
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#D8D8D8", overflow: "hidden", color: "#111", position: "relative" }}>
 
@@ -278,17 +284,17 @@ export default function MobilePage() {
       {/* Tab switcher */}
       <div style={{ display: "flex", gap: 8, padding: "8px 16px 0", flexShrink: 0 }}>
         <button style={tabBtnStyle(tab === "keypad")} onClick={() => setTab("keypad")}>Keypad</button>
-        <button style={tabBtnStyle(tab === "sms")}    onClick={() => setTab("sms")}>SMS</button>
-        <button style={tabBtnStyle(tab === "plans")}  onClick={() => setTab("plans")}>Plans £</button>
+        <button style={tabBtnStyle(tab === "sms")} onClick={() => setTab("sms")}>SMS</button>
+        <button style={tabBtnStyle(tab === "plans")} onClick={() => setTab("plans")}>Plans £</button>
       </div>
 
       {/* KEYPAD TAB */}
       {tab === "keypad" && (
         <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div style={{ textAlign: "center", fontSize: 30, fontWeight: 800, letterSpacing: "0.04em", color: "#111", minHeight: 44, padding: "10px 16px 4px" }}>
-            {dialDisplay}
+            {dialDisplay === "g000st" ? <Brand /> : dialDisplay}
           </div>
-          <div style={{ textAlign: "center", fontSize: 10, fontWeight: 800, color: "#666", marginBottom: 6 }}>
+          <div style={{ marginTop: 4, textAlign: "center", fontSize: 10, fontWeight: 800, color: "#666", marginBottom: 6 }}>
             PRIVATE NUMBER · NO RECORDING
           </div>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#333", textAlign: "center", marginBottom: 6 }}>
@@ -298,10 +304,10 @@ export default function MobilePage() {
           {/* Dial Pad */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 74px)", gap: "14px 26px", justifyContent: "center", margin: "4px auto 0" }}>
             {[
-              ["1",""],["2","ABC"],["3","DEF"],
-              ["4","GHI"],["5","JKL"],["6","MNO"],
-              ["7","PQRS"],["8","TUV"],["9","WXYZ"],
-              ["*",""],["0","+"],["#",""],
+              ["1", ""], ["2", "ABC"], ["3", "DEF"],
+              ["4", "GHI"], ["5", "JKL"], ["6", "MNO"],
+              ["7", "PQRS"], ["8", "TUV"], ["9", "WXYZ"],
+              ["*", ""], ["0", "+"], ["#", ""],
             ].map(([d, sub]) => (
               <button key={d} onClick={() => digit(d)} style={btnStyle}>
                 <b style={{ fontSize: 30, fontWeight: 500, lineHeight: 1 }}>{d}</b>
@@ -322,7 +328,7 @@ export default function MobilePage() {
               opacity: externalCall.status !== "idle" && externalCall.status !== "error" ? 0.5 : 1,
             }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff">
-                <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.2 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z"/>
+                <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.2 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z" />
               </svg>
             </button>
             <button onClick={backspace} style={{
@@ -385,17 +391,17 @@ export default function MobilePage() {
             {smsHistoryLoading
               ? <span style={{ color: "#888" }}>Loading…</span>
               : smsHistoryError
-              ? <span style={{ color: "#9b1c1c" }}>Could not load SMS history. <button onClick={() => void loadSmsHistory()} style={{ border: 0, background: "none", color: "#9b1c1c", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Retry</button></span>
-              : smsHistory.length === 0
-              ? <span style={{ color: "#888" }}>SMS log will appear here</span>
-              : smsHistory.map((message) => (
-                <div key={message.id} style={{ marginBottom: 6, fontWeight: 600 }}>
-                  → {message.toE164}: {message.body}
-                  <span style={{ marginLeft: 6, fontWeight: 700, fontSize: 11, color: message.status === "delivery_failed" || message.status === "sending_failed" ? "#C62828" : "#666" }}>
-                    [{message.status}]
-                  </span>
-                </div>
-              ))
+                ? <span style={{ color: "#9b1c1c" }}>Could not load SMS history. <button onClick={() => void loadSmsHistory()} style={{ border: 0, background: "none", color: "#9b1c1c", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Retry</button></span>
+                : smsHistory.length === 0
+                  ? <span style={{ color: "#888" }}>SMS log will appear here</span>
+                  : smsHistory.map((message) => (
+                    <div key={message.id} style={{ marginBottom: 6, fontWeight: 600 }}>
+                      → {message.toE164}: {message.body}
+                      <span style={{ marginLeft: 6, fontWeight: 700, fontSize: 11, color: message.status === "delivery_failed" || message.status === "sending_failed" ? "#C62828" : "#666" }}>
+                        [{message.status}]
+                      </span>
+                    </div>
+                  ))
             }
           </div>
         </div>
@@ -443,9 +449,11 @@ export default function MobilePage() {
           ))}
 
           {selectedPlan && (
-            <div style={{ textAlign: "center", margin: "8px auto 12px", display: "inline-block",
+            <div style={{
+              textAlign: "center", margin: "8px auto 12px", display: "inline-block",
               background: "#f3c7c7", color: "#9b1c1c", borderRadius: 999,
-              padding: "6px 12px", fontSize: 11, fontWeight: 700, width: "100%" }}>
+              padding: "6px 12px", fontSize: 11, fontWeight: 700, width: "100%"
+            }}>
               {skus.find((s) => s.id === selectedPlan)?.label} selected — tap Buy below
             </div>
           )}
@@ -462,8 +470,10 @@ export default function MobilePage() {
           </button>
 
           {!selectedPlan && !skusLoading && skus.length > 0 && (
-            <div style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: "#9b1c1c",
-              background: "#f3c7c7", borderRadius: 999, padding: "6px 12px", margin: "0 auto", display: "inline-block", width: "100%" }}>
+            <div style={{
+              textAlign: "center", fontSize: 11, fontWeight: 700, color: "#9b1c1c",
+              background: "#f3c7c7", borderRadius: 999, padding: "6px 12px", margin: "0 auto", display: "inline-block", width: "100%"
+            }}>
               Choose a bundle then Buy
             </div>
           )}
@@ -510,7 +520,7 @@ export default function MobilePage() {
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff" style={{ transform: "rotate(135deg)" }}>
-                  <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.2 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z"/>
+                  <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.2 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z" />
                 </svg>
               </button>
             </div>

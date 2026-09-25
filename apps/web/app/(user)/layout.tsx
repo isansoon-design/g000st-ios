@@ -12,7 +12,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     { href: "/social", label: "SOCIAL", icon: "◎" },
     { href: "/market", label: "MARKET", icon: "🛍" },
     { href: "/chat", label: "CHAT", icon: "💬" },
-    { href: "/contacts", label: "CONTACTS", icon: "👥" },
+    { href: "/contacts", label: "FRIENDS", icon: "👥" },
     { href: "/profile", label: "ID", icon: "🪪" },
     { href: "/mobile", label: "MOBILE", icon: "📞" },
   ];

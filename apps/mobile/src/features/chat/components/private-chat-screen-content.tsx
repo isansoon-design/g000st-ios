@@ -2,17 +2,17 @@ import { useFocusEffect, useNavigation } from 'expo-router';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 
-import { addContact, listContacts, updateContactNickname } from '@/api/contacts';
 import { editChatMessage } from '@/api/chat';
+import { addContact, listContacts, updateContactNickname } from '@/api/contacts';
 import { G000stWordmark } from '@/components/brand/g000st-wordmark';
 import { FeatureScreen } from '@/components/layout/feature-screen';
+import type { ChatMessage } from '@/domain/chat/types';
 import { useCalling } from '@/features/calling/hooks/use-calling';
 import { AttachmentPreviewModal } from '@/features/chat/components/attachment-preview-modal';
 import { ChatConversationList } from '@/features/chat/components/chat-conversation-list';
 import { ChatThread } from '@/features/chat/components/chat-thread';
 import { NewChatModal } from '@/features/chat/components/new-chat-modal';
 import { usePrivateChat } from '@/features/chat/hooks/use-private-chat';
-import type { ChatMessage } from '@/domain/chat/types';
 import Toast from 'react-native-toast-message';
 
 function OnlineSignal() {
