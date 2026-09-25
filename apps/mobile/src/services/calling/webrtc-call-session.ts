@@ -111,9 +111,9 @@ export class WebrtcCallSession {
   }
 
   async createAnswer(remoteOfferSdp: string): Promise<string> {
+    await this.ensureLocalMedia();
     await this.pc.setRemoteDescription(new RTCSessionDescription({ sdp: remoteOfferSdp, type: 'offer' }));
     await this.flushRemoteCandidates();
-    await this.ensureLocalMedia();
     const answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
     return this.pc.localDescription?.sdp ?? '';

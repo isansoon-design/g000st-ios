@@ -10,7 +10,9 @@ function VideoSurface({ stream, muted, mirrored }: { stream?: MediaStream; muted
   const ref = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (ref.current) ref.current.srcObject = stream ?? null;
+    if (!ref.current) return;
+    ref.current.srcObject = stream ?? null;
+    if (stream) void ref.current.play().catch(() => undefined);
   }, [stream]);
 
   return (
@@ -26,10 +28,13 @@ function VideoSurface({ stream, muted, mirrored }: { stream?: MediaStream; muted
 
 function RemoteAudio({ stream }: { stream?: MediaStream }) {
   const ref = useRef<HTMLAudioElement>(null);
+  const audioTrackIds = stream?.getAudioTracks().map((track) => track.id).join(",");
 
   useEffect(() => {
-    if (ref.current) ref.current.srcObject = stream ?? null;
-  }, [stream]);
+    if (!ref.current) return;
+    ref.current.srcObject = stream ?? null;
+    if (audioTrackIds) void ref.current.play().catch(() => undefined);
+  }, [stream, audioTrackIds]);
 
   return <audio autoPlay ref={ref} />;
 }
@@ -73,6 +78,22 @@ function initials(displayName: string | undefined): string {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("");
+}
+
+function CallDuration({ answeredAtMs }: { answeredAtMs: number }) {
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(timer);
+  }, [answeredAtMs]);
+
+  const totalSeconds = Math.max(0, Math.floor((now - answeredAtMs) / 1_000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const duration = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+  return <p className="text-sm font-bold text-white/70">{duration}</p>;
 }
 
 function CallOverlayComponent({
@@ -139,6 +160,7 @@ function CallOverlayComponent({
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-between px-6 py-10">
         <div className="pointer-events-auto text-center">
           <p className="text-lg font-black">{displayName || shortId(state.peerPublicId)}</p>
+          {state.phase === "in-call" ? <CallDuration answeredAtMs={state.answeredAtMs} /> : null}
           <p className="mt-1 text-sm font-bold text-white/60">
             {state.phase === "ringing-outgoing" && "Calling…"}
             {state.phase === "ringing-incoming" && (state.media === "video" ? "Incoming video call" : "Incoming call")}

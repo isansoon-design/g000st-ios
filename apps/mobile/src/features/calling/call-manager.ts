@@ -39,6 +39,7 @@ export type CallUiState =
       media: CallMedia;
       isMuted: boolean;
       isCameraOn: boolean;
+      answeredAtMs: number;
       remoteStreamUrl?: string;
     }>;
 
@@ -55,6 +56,7 @@ type ActiveCall = {
   pendingCandidates: unknown[];
   isMuted: boolean;
   isCameraOn: boolean;
+  answeredAtMs?: number;
   remoteStream?: MediaStream;
 };
 
@@ -134,9 +136,9 @@ export class CallManager {
     if (!this.call) return IDLE_STATE;
     const { peerPublicId, peerDisplayName, media, direction } = this.call;
 
-    if (direction === 'outgoing' && !this.call.session) return { phase: 'ringing-outgoing', peerPublicId, peerDisplayName, media };
+    if (direction === 'outgoing' && !this.call.answeredAtMs) return { phase: 'ringing-outgoing', peerPublicId, peerDisplayName, media };
     if (direction === 'incoming' && !this.call.requestId) return { phase: 'ringing-incoming', peerPublicId, peerDisplayName, media };
-    if (!this.call.session) return { phase: 'connecting', peerPublicId, peerDisplayName, media };
+    if (!this.call.session || !this.call.answeredAtMs) return { phase: 'connecting', peerPublicId, peerDisplayName, media };
 
     return {
       phase: 'in-call',
@@ -145,6 +147,7 @@ export class CallManager {
       media,
       isMuted: this.call.isMuted,
       isCameraOn: this.call.isCameraOn,
+      answeredAtMs: this.call.answeredAtMs,
       ...(this.call.remoteStream?.getVideoTracks().length
         ? { remoteStreamUrl: this.call.remoteStream.toURL() }
         : {}),
@@ -232,6 +235,7 @@ export class CallManager {
       if (this.call.requestId) await this.beginAnsweringMedia();
     } else if (message.type === 'call-answer' && message.sdp) {
       await this.call.session?.applyRemoteAnswer(message.sdp);
+      this.call.answeredAtMs = Date.now();
       await reportOutgoingCallConnected(this.call.nativeCallId);
       this.emit();
     } else if (message.type === 'ice-candidate' && message.candidate) {
@@ -300,6 +304,7 @@ export class CallManager {
     if (!this.call) return;
     this.call.nativeCallId = nativeCallId;
     this.call.requestId = requestId;
+    this.call.answeredAtMs = Date.now();
     this.emit();
 
     if (this.call.pendingOfferSdp) await this.beginAnsweringMedia();

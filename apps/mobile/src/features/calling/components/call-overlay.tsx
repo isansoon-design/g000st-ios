@@ -1,6 +1,6 @@
 import { RTCView } from '@livekit/react-native-webrtc';
 import { Image } from 'expo-image';
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { ImageBackground, Modal, Pressable, Text, View } from 'react-native';
 
 import type { CallUiState } from '@/features/calling/call-manager';
@@ -27,6 +27,22 @@ function initials(displayName: string | undefined): string {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('');
+}
+
+function CallDuration({ answeredAtMs }: Readonly<{ answeredAtMs: number }>) {
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(timer);
+  }, [answeredAtMs]);
+
+  const totalSeconds = Math.max(0, Math.floor((now - answeredAtMs) / 1_000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const duration = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+  return <Text className="text-sm font-bold text-white/70">{duration}</Text>;
 }
 
 function RoundButton({
@@ -95,6 +111,7 @@ function CallOverlayComponent({
             <Text className="text-center text-lg font-black text-white" numberOfLines={1}>
               {displayName || shortId(state.peerPublicId)}
             </Text>
+            {state.phase === 'in-call' ? <CallDuration answeredAtMs={state.answeredAtMs} /> : null}
             <Text className="text-sm font-bold text-white/60">
               {state.phase === 'ringing-outgoing' && 'Calling…'}
               {state.phase === 'ringing-incoming' && (state.media === 'video' ? 'Incoming video call' : 'Incoming call')}

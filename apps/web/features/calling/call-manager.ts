@@ -13,6 +13,7 @@ export type CallUiState =
       media: CallMedia;
       isMuted: boolean;
       isCameraOn: boolean;
+      answeredAtMs: number;
       localStream?: MediaStream;
       remoteStream?: MediaStream;
     };
@@ -28,6 +29,7 @@ type ActiveCall = {
   isMuted: boolean;
   isCameraOn: boolean;
   answered: boolean;
+  answeredAtMs?: number;
   remoteStream?: MediaStream;
 };
 
@@ -131,6 +133,7 @@ export class CallManager {
     if (!call || call.direction !== "incoming" || !call.pendingOfferSdp) return;
 
     try {
+      call.answeredAtMs = Date.now();
       const pendingLocalCandidates: RTCIceCandidateInit[] = [];
       let answerSent = false;
       const session = new WebrtcCallSession(call.media === "video", await this.safeTurnCredential(), {
@@ -212,6 +215,7 @@ export class CallManager {
     } else if (message.type === "call-answer" && message.sdp) {
       await this.call.session?.applyRemoteAnswer(message.sdp);
       this.call.answered = true;
+      this.call.answeredAtMs = Date.now();
       this.emit();
     } else if (message.type === "ice-candidate" && message.candidate) {
       const candidate = message.candidate as RTCIceCandidateInit;
@@ -238,10 +242,10 @@ export class CallManager {
 
   private computeSnapshot(): CallUiState {
     if (!this.call) return IDLE_STATE;
-    const { peerPublicId, media, direction, answered } = this.call;
+    const { peerPublicId, media, direction, answered, answeredAtMs } = this.call;
 
-    if (direction === "outgoing" && !answered) return { phase: "ringing-outgoing", peerPublicId, media };
-    if (direction === "incoming" && !answered) return { phase: "ringing-incoming", peerPublicId, media };
+    if (direction === "outgoing" && (!answered || !answeredAtMs)) return { phase: "ringing-outgoing", peerPublicId, media };
+    if (direction === "incoming" && (!answered || !answeredAtMs)) return { phase: "ringing-incoming", peerPublicId, media };
 
     return {
       phase: "in-call",
@@ -249,6 +253,7 @@ export class CallManager {
       media,
       isMuted: this.call.isMuted,
       isCameraOn: this.call.isCameraOn,
+      answeredAtMs: answeredAtMs!,
       localStream: this.call.session?.getLocalStream() ?? undefined,
       remoteStream: this.call.remoteStream,
     };
