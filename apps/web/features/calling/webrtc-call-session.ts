@@ -22,27 +22,28 @@ export type WebrtcCallSessionCallbacks = {
 
 /**
  * Browser counterpart of `apps/mobile/src/services/calling/webrtc-call-session.ts` — same
- * design (explicit upfront transceivers + replaceTrack, never addTrack after
- * setRemoteDescription) for consistency, even though native browser WebRTC implementations
- * are generally less prone to the transceiver-reuse bug found on the mobile binding.
+ * design for attaching local tracks directly to negotiated transceivers.
  */
 export class WebrtcCallSession {
   private readonly pc: RTCPeerConnection;
-  private readonly audioTransceiver: RTCRtpTransceiver;
-  private readonly videoTransceiver: RTCRtpTransceiver | null;
+  private audioTransceiver: RTCRtpTransceiver | null;
+  private videoTransceiver: RTCRtpTransceiver | null;
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
   private pendingRemoteCandidates: RTCIceCandidateInit[] = [];
 
   constructor(
     private readonly hasVideo: boolean,
+    private readonly role: "offerer" | "answerer",
     turnCredential: TurnCredential | undefined,
     private readonly callbacks: WebrtcCallSessionCallbacks,
   ) {
     this.pc = new RTCPeerConnection({ iceServers: buildIceServers(turnCredential) });
 
-    this.audioTransceiver = this.pc.addTransceiver("audio", { direction: "sendrecv" });
-    this.videoTransceiver = hasVideo ? this.pc.addTransceiver("video", { direction: "sendrecv" }) : null;
+    this.audioTransceiver = role === "offerer" ? this.pc.addTransceiver("audio", { direction: "sendrecv" }) : null;
+    this.videoTransceiver = role === "offerer" && hasVideo
+      ? this.pc.addTransceiver("video", { direction: "sendrecv" })
+      : null;
 
     this.pc.onicecandidate = (event) => {
       if (event.candidate) this.callbacks.onLocalCandidate(event.candidate.toJSON());
@@ -64,15 +65,29 @@ export class WebrtcCallSession {
   async ensureLocalMedia(): Promise<MediaStream> {
     if (this.localStream) return this.localStream;
 
+    if (this.role === "answerer") {
+      const transceivers = this.pc.getTransceivers();
+      this.audioTransceiver = transceivers.find((transceiver) => transceiver.receiver.track?.kind === "audio") ?? null;
+      this.videoTransceiver = transceivers.find((transceiver) => transceiver.receiver.track?.kind === "video") ?? null;
+    }
+    if (!this.audioTransceiver || (this.hasVideo && !this.videoTransceiver)) {
+      throw new Error("The call offer is missing a required media transceiver.");
+    }
+
+    this.audioTransceiver.direction = "sendrecv";
+    if (this.videoTransceiver) this.videoTransceiver.direction = "sendrecv";
+
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: true,
       video: this.hasVideo ? { facingMode: "user" } : false,
     });
 
     const audioTrack = stream.getAudioTracks()[0];
-    if (audioTrack) await this.audioTransceiver.sender.replaceTrack(audioTrack);
+    if (!audioTrack) throw new Error("Microphone track is unavailable.");
+    await this.audioTransceiver.sender.replaceTrack(audioTrack);
 
     const videoTrack = stream.getVideoTracks()[0];
+    if (this.hasVideo && !videoTrack) throw new Error("Camera track is unavailable.");
     if (videoTrack && this.videoTransceiver) await this.videoTransceiver.sender.replaceTrack(videoTrack);
 
     this.localStream = stream;
@@ -87,9 +102,9 @@ export class WebrtcCallSession {
   }
 
   async createAnswer(remoteOfferSdp: string): Promise<string> {
-    await this.ensureLocalMedia();
     await this.pc.setRemoteDescription({ type: "offer", sdp: remoteOfferSdp });
     await this.flushRemoteCandidates();
+    await this.ensureLocalMedia();
     const answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
     return this.pc.localDescription?.sdp ?? "";

@@ -45,26 +45,26 @@ export type WebrtcCallSessionCallbacks = Readonly<{
  */
 export class WebrtcCallSession {
   private readonly pc: RTCPeerConnection;
-  private readonly audioTransceiver: RTCRtpTransceiver;
-  private readonly videoTransceiver: RTCRtpTransceiver | null;
+  private audioTransceiver: RTCRtpTransceiver | null;
+  private videoTransceiver: RTCRtpTransceiver | null;
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
   private pendingRemoteCandidates: RemoteCandidateInit[] = [];
 
   constructor(
     private readonly hasVideo: boolean,
+    private readonly role: 'offerer' | 'answerer',
     turnCredential: TurnCredential | undefined,
     private readonly callbacks: WebrtcCallSessionCallbacks,
   ) {
     this.pc = new RTCPeerConnection({ iceServers: buildIceServers(turnCredential) });
 
-    // Transceivers are created explicitly, upfront, on both the offering and answering
-    // side — never left to addTrack()'s implicit "reuse a transceiver created by
-    // setRemoteDescription" behavior. That implicit path is a known source of m-line
-    // mismatches between offer and answer in mobile WebRTC bindings once a video m-line
-    // is involved, which breaks the whole session (audio included), not just video.
-    this.audioTransceiver = this.pc.addTransceiver('audio', { direction: 'sendrecv' });
-    this.videoTransceiver = hasVideo ? this.pc.addTransceiver('video', { direction: 'sendrecv' }) : null;
+    // The answerer must use the transceivers created by the remote offer. Creating
+    // separate ones ahead of that offer can leave its answer m-lines recvonly.
+    this.audioTransceiver = role === 'offerer' ? this.pc.addTransceiver('audio', { direction: 'sendrecv' }) : null;
+    this.videoTransceiver = role === 'offerer' && hasVideo
+      ? this.pc.addTransceiver('video', { direction: 'sendrecv' })
+      : null;
 
     this.pc.addEventListener('icecandidate', (event) => {
       if (event.candidate) this.callbacks.onLocalCandidate(event.candidate.toJSON());
@@ -88,15 +88,29 @@ export class WebrtcCallSession {
   async ensureLocalMedia(): Promise<MediaStream> {
     if (this.localStream) return this.localStream;
 
+    if (this.role === 'answerer') {
+      const transceivers = this.pc.getTransceivers();
+      this.audioTransceiver = transceivers.find((transceiver) => transceiver.receiver.track?.kind === 'audio') ?? null;
+      this.videoTransceiver = transceivers.find((transceiver) => transceiver.receiver.track?.kind === 'video') ?? null;
+    }
+    if (!this.audioTransceiver || (this.hasVideo && !this.videoTransceiver)) {
+      throw new Error('The call offer is missing a required media transceiver.');
+    }
+
+    this.audioTransceiver.direction = 'sendrecv';
+    if (this.videoTransceiver) this.videoTransceiver.direction = 'sendrecv';
+
     const stream = await mediaDevices.getUserMedia({
       audio: true,
       video: this.hasVideo ? { facingMode: 'user' } : false,
     });
 
     const audioTrack = stream.getAudioTracks()[0];
-    if (audioTrack) await this.audioTransceiver.sender.replaceTrack(audioTrack);
+    if (!audioTrack) throw new Error('Microphone track is unavailable.');
+    await this.audioTransceiver.sender.replaceTrack(audioTrack);
 
     const videoTrack = stream.getVideoTracks()[0];
+    if (this.hasVideo && !videoTrack) throw new Error('Camera track is unavailable.');
     if (videoTrack && this.videoTransceiver) await this.videoTransceiver.sender.replaceTrack(videoTrack);
 
     this.localStream = stream;
@@ -111,9 +125,9 @@ export class WebrtcCallSession {
   }
 
   async createAnswer(remoteOfferSdp: string): Promise<string> {
-    await this.ensureLocalMedia();
     await this.pc.setRemoteDescription(new RTCSessionDescription({ sdp: remoteOfferSdp, type: 'offer' }));
     await this.flushRemoteCandidates();
+    await this.ensureLocalMedia();
     const answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
     return this.pc.localDescription?.sdp ?? '';

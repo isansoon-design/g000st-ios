@@ -277,7 +277,7 @@ export class CallManager {
 
     const pendingLocalCandidates: unknown[] = [];
     let offerSent = false;
-    const session = new WebrtcCallSession(call.media === 'video', await this.safeTurnCredential(), {
+    const session = new WebrtcCallSession(call.media === 'video', 'offerer', await this.safeTurnCredential(), {
       onLocalCandidate: (candidate) => {
         if (!offerSent) pendingLocalCandidates.push(candidate);
         else this.signaling.send({ type: 'ice-candidate', callId: call.callId, toPublicId: call.peerPublicId, candidate });
@@ -319,7 +319,7 @@ export class CallManager {
     try {
       const pendingLocalCandidates: unknown[] = [];
       let answerSent = false;
-      const session = new WebrtcCallSession(call.media === 'video', await this.safeTurnCredential(), {
+      const session = new WebrtcCallSession(call.media === 'video', 'answerer', await this.safeTurnCredential(), {
         onLocalCandidate: (candidate) => {
           if (!answerSent) pendingLocalCandidates.push(candidate);
           else this.signaling.send({ type: 'ice-candidate', callId: call.callId, toPublicId: call.peerPublicId, candidate });
