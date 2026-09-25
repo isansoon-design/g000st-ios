@@ -31,6 +31,8 @@ export class WebrtcCallSession {
   private readonly audioTransceiver: RTCRtpTransceiver;
   private readonly videoTransceiver: RTCRtpTransceiver | null;
   private localStream: MediaStream | null = null;
+  private remoteStream: MediaStream | null = null;
+  private pendingRemoteCandidates: RTCIceCandidateInit[] = [];
 
   constructor(
     private readonly hasVideo: boolean,
@@ -46,8 +48,13 @@ export class WebrtcCallSession {
       if (event.candidate) this.callbacks.onLocalCandidate(event.candidate.toJSON());
     };
     this.pc.ontrack = (event) => {
-      const [stream] = event.streams;
-      if (stream) this.callbacks.onRemoteStream(stream);
+      // replaceTrack on a transceiver does not attach an msid, so streams can be empty.
+      // Build a stream from the tracks for both audio playback and video rendering.
+      if (!this.remoteStream) this.remoteStream = new MediaStream();
+      if (!this.remoteStream.getTracks().some((track) => track.id === event.track.id)) {
+        this.remoteStream.addTrack(event.track);
+      }
+      this.callbacks.onRemoteStream(this.remoteStream);
     };
     this.pc.onconnectionstatechange = () => {
       this.callbacks.onConnectionStateChange(this.pc.connectionState);
@@ -81,6 +88,7 @@ export class WebrtcCallSession {
 
   async createAnswer(remoteOfferSdp: string): Promise<string> {
     await this.pc.setRemoteDescription({ type: "offer", sdp: remoteOfferSdp });
+    await this.flushRemoteCandidates();
     await this.ensureLocalMedia();
     const answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
@@ -89,14 +97,25 @@ export class WebrtcCallSession {
 
   async applyRemoteAnswer(remoteAnswerSdp: string): Promise<void> {
     await this.pc.setRemoteDescription({ type: "answer", sdp: remoteAnswerSdp });
+    await this.flushRemoteCandidates();
   }
 
   async addRemoteCandidate(candidate: RTCIceCandidateInit): Promise<void> {
     if (!candidate.candidate) return;
+    if (!this.pc.remoteDescription) {
+      this.pendingRemoteCandidates.push(candidate);
+      return;
+    }
     try {
       await this.pc.addIceCandidate(candidate);
     } catch {
       // A candidate can legitimately arrive after the connection is already torn down.
+    }
+  }
+
+  private async flushRemoteCandidates(): Promise<void> {
+    for (const candidate of this.pendingRemoteCandidates.splice(0)) {
+      await this.addRemoteCandidate(candidate);
     }
   }
 
@@ -118,6 +137,7 @@ export class WebrtcCallSession {
 
   close(): void {
     this.localStream?.getTracks().forEach((track) => track.stop());
+    this.pendingRemoteCandidates = [];
     this.pc.close();
   }
 }

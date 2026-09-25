@@ -145,7 +145,9 @@ export class CallManager {
       media,
       isMuted: this.call.isMuted,
       isCameraOn: this.call.isCameraOn,
-      ...(this.call.remoteStream ? { remoteStreamUrl: this.call.remoteStream.toURL() } : {}),
+      ...(this.call.remoteStream?.getVideoTracks().length
+        ? { remoteStreamUrl: this.call.remoteStream.toURL() }
+        : {}),
     };
   }
 
@@ -269,9 +271,12 @@ export class CallManager {
     const call = this.call;
     if (!call || call.nativeCallId !== nativeCallId) return;
 
+    const pendingLocalCandidates: unknown[] = [];
+    let offerSent = false;
     const session = new WebrtcCallSession(call.media === 'video', await this.safeTurnCredential(), {
       onLocalCandidate: (candidate) => {
-        this.signaling.send({ type: 'ice-candidate', callId: call.callId, toPublicId: call.peerPublicId, candidate });
+        if (!offerSent) pendingLocalCandidates.push(candidate);
+        else this.signaling.send({ type: 'ice-candidate', callId: call.callId, toPublicId: call.peerPublicId, candidate });
       },
       onRemoteStream: (stream) => {
         call.remoteStream = stream;
@@ -284,6 +289,10 @@ export class CallManager {
     const sdp = await session.createOffer();
     this.signaling.send({ type: 'call-invite', callId: call.callId, toPublicId: call.peerPublicId, media: call.media });
     this.signaling.send({ type: 'call-offer', callId: call.callId, toPublicId: call.peerPublicId, sdp });
+    offerSent = true;
+    for (const candidate of pendingLocalCandidates) {
+      this.signaling.send({ type: 'ice-candidate', callId: call.callId, toPublicId: call.peerPublicId, candidate });
+    }
     this.emit();
   }
 
@@ -303,9 +312,12 @@ export class CallManager {
     if (!call || !offerSdp || !requestId) return;
 
     try {
+      const pendingLocalCandidates: unknown[] = [];
+      let answerSent = false;
       const session = new WebrtcCallSession(call.media === 'video', await this.safeTurnCredential(), {
         onLocalCandidate: (candidate) => {
-          this.signaling.send({ type: 'ice-candidate', callId: call.callId, toPublicId: call.peerPublicId, candidate });
+          if (!answerSent) pendingLocalCandidates.push(candidate);
+          else this.signaling.send({ type: 'ice-candidate', callId: call.callId, toPublicId: call.peerPublicId, candidate });
         },
         onRemoteStream: (stream) => {
           call.remoteStream = stream;
@@ -320,6 +332,10 @@ export class CallManager {
       call.pendingCandidates = [];
 
       this.signaling.send({ type: 'call-answer', callId: call.callId, toPublicId: call.peerPublicId, sdp: answerSdp });
+      answerSent = true;
+      for (const candidate of pendingLocalCandidates) {
+        this.signaling.send({ type: 'ice-candidate', callId: call.callId, toPublicId: call.peerPublicId, candidate });
+      }
       await fulfillIncomingCallConnected(requestId);
       this.emit();
     } catch {

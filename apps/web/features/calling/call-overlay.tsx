@@ -24,6 +24,16 @@ function VideoSurface({ stream, muted, mirrored }: { stream?: MediaStream; muted
   );
 }
 
+function RemoteAudio({ stream }: { stream?: MediaStream }) {
+  const ref = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    if (ref.current) ref.current.srcObject = stream ?? null;
+  }, [stream]);
+
+  return <audio autoPlay ref={ref} />;
+}
+
 function RoundButton({
   accessibilityLabel,
   label,
@@ -85,12 +95,13 @@ function CallOverlayComponent({
   if (state.phase === "idle") return null;
 
   const isVideo = state.media === "video";
-  const hasRemoteVideo = state.phase === "in-call" && isVideo && state.remoteStream;
+  const hasRemoteVideo = state.phase === "in-call" && isVideo && Boolean(state.remoteStream?.getVideoTracks().length);
   const displayName = peerProfile?.displayName;
   const avatarUrl = peerProfile?.avatarUrl;
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-black text-white">
+      {state.phase === "in-call" ? <RemoteAudio stream={state.remoteStream} /> : null}
       {avatarUrl && !hasRemoteVideo ? (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -105,7 +116,7 @@ function CallOverlayComponent({
       ) : null}
 
       {hasRemoteVideo ? (
-        <VideoSurface muted={false} stream={state.remoteStream} />
+        <VideoSurface muted stream={state.remoteStream} />
       ) : (
         <div className="relative flex flex-1 items-center justify-center">
           <div className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-2 border-white/30 bg-white/10 text-4xl shadow-2xl sm:h-40 sm:w-40">
