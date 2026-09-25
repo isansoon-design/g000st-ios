@@ -101,7 +101,7 @@ export class CallManager {
     const call = this.call;
     const pendingLocalCandidates: RTCIceCandidateInit[] = [];
     let offerSent = false;
-    const session = new WebrtcCallSession(media === "video", "offerer", await this.safeTurnCredential(), {
+    const session = new WebrtcCallSession(media === "video", await this.safeTurnCredential(), {
       onLocalCandidate: (candidate) => {
         if (!offerSent) pendingLocalCandidates.push(candidate);
         else this.signaling.send({ type: "ice-candidate", callId, toPublicId: peerPublicId, candidate });
@@ -136,7 +136,7 @@ export class CallManager {
       call.answeredAtMs = Date.now();
       const pendingLocalCandidates: RTCIceCandidateInit[] = [];
       let answerSent = false;
-      const session = new WebrtcCallSession(call.media === "video", "answerer", await this.safeTurnCredential(), {
+      const session = new WebrtcCallSession(call.media === "video", await this.safeTurnCredential(), {
         onLocalCandidate: (candidate) => {
           if (!answerSent) pendingLocalCandidates.push(candidate);
           else this.signaling.send({ type: "ice-candidate", callId: call.callId, toPublicId: call.peerPublicId, candidate });
@@ -146,7 +146,7 @@ export class CallManager {
           this.emit();
         },
         onConnectionStateChange: () => this.emit(),
-      });
+      }, call.media === "video");
       call.session = session;
 
       const answerSdp = await session.createAnswer(call.pendingOfferSdp);
