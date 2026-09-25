@@ -3,6 +3,7 @@
 import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { Mic, Send, Square, Trash2, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { useCalling } from "@/features/calling/use-calling";
 import { getChatAttachmentDownload } from "@/features/chat/api";
@@ -267,7 +268,9 @@ function ConversationList({
 }
 
 export default function PrivateChatPage() {
-  const chat = usePrivateChat();
+  const searchParams = useSearchParams();
+  const requestedConversationId = searchParams.get("conversationId") ?? undefined;
+  const chat = usePrivateChat(requestedConversationId);
   const [blurMessages, setBlurMessages] = useState(false);
   const [fontSize, setFontSize] = useState(14);
   const voiceRecorder = useVoiceRecorder();

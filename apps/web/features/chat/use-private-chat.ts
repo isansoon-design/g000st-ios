@@ -43,7 +43,7 @@ function mergeMessages(
   );
 }
 
-export function usePrivateChat() {
+export function usePrivateChat(initialConversationId?: string) {
   const [activeConversation, setActiveConversation] = useState<ActiveConversation | null>(null);
   const [burnAfterRead, setBurnAfterRead] = useState(true);
   const [clockMs, setClockMs] = useState(Date.now);
@@ -66,6 +66,7 @@ export function usePrivateChat() {
   const [sendError, setSendError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<readonly File[]>([]);
   const hasLoadedConversationsRef = useRef(false);
+  const handledInitialConversationRef = useRef<string | undefined>(undefined);
   const unreadCountsRef = useRef(new Map<string, number>());
   const userPublicId = sessionStorage.get()?.user.publicId ?? "";
 
@@ -401,6 +402,16 @@ export function usePrivateChat() {
     setDraft("");
     setSendError(null);
   }, []);
+
+  useEffect(() => {
+    if (!initialConversationId || handledInitialConversationRef.current === initialConversationId) return;
+    const requested = conversations.find(
+      (conversation) => conversation.conversationId === initialConversationId,
+    );
+    if (!requested) return;
+    handledInitialConversationRef.current = initialConversationId;
+    openConversation(requested);
+  }, [conversations, initialConversationId, openConversation]);
 
   const updateDraft = useCallback((value: string) => {
     setDraft(value);

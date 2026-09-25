@@ -332,7 +332,64 @@ function PostCard({ post, onChat, onEdit, onDelete, onReport, onLike, onCamp, on
 function SocialCommentsModal({ post, visibility, onClose, onCountChange }: { post: SocialPost; visibility: SocialVisibility; onClose: () => void; onCountChange: (postId: string, delta: number) => void }) {
   const [comments, setComments] = useState<SocialComment[]>([]); const [cursor, setCursor] = useState<string>(); const [value, setValue] = useState(''); const [loading, setLoading] = useState(false);
   useEffect(() => { void Promise.resolve().then(async () => { setLoading(true); try { const page = await listSocialComments(post.id); setComments(page.items); setCursor(page.nextCursor); } catch { Toast.show({ type: 'error', text1: 'Comments', text2: 'Could not load comments.' }); } finally { setLoading(false); } }); }, [post.id]);
-  return <Modal visible transparent animationType="slide" onRequestClose={onClose}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 justify-end bg-black/50"><View className="h-[75%] rounded-t-[28px] bg-white p-4"><View className="mb-3 flex-row justify-between"><Text className="text-lg font-black">Comments</Text><Pressable onPress={onClose}><Text className="text-2xl">×</Text></Pressable></View><FlatList data={comments} keyExtractor={(item) => item.id} contentContainerClassName="gap-3 py-2" renderItem={({ item }) => <View className="flex-row rounded-xl bg-black/[.04] p-3"><Text className="min-w-0 flex-1"><Text className="font-black">{item.author.displayName} </Text>{item.content}</Text>{item.ownedByViewer && <Pressable onPress={async () => { await deleteSocialComment(post.id, item.id); setComments((current) => current.filter((comment) => comment.id !== item.id)); onCountChange(post.id, -1); }}><Text className="text-xs font-black text-[#C62828]">Delete</Text></Pressable>}</View>} ListEmptyComponent={!loading ? <Text className="py-16 text-center text-black/40">No comments yet.</Text> : null} ListFooterComponent={cursor ? <Pressable disabled={loading} onPress={async () => { setLoading(true); try { const page = await listSocialComments(post.id, cursor); setComments((current) => [...current, ...page.items]); setCursor(page.nextCursor); } finally { setLoading(false); } }} className="p-3"><Text className="text-center font-black">{loading ? 'Loading…' : 'Load more'}</Text></Pressable> : null} /><View className="flex-row gap-2 border-t border-black/10 pt-3"><TextInput value={value} onChangeText={setValue} placeholder="Write a comment…" maxLength={1000} className="min-w-0 flex-1 rounded-xl border border-black/15 px-3 py-2" /><Pressable onPress={async () => { const content = value.trim(); if (!content) return; const item = await createSocialComment(post.id, content, visibility); setComments((current) => [...current, item]); setValue(''); onCountChange(post.id, 1); }} className="rounded-xl bg-black px-4 py-3"><Text className="text-white">➤</Text></Pressable></View></View></KeyboardAvoidingView></Modal>;
+  return (
+    <Modal
+      visible
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1 justify-end bg-black/50"
+      >
+        <View className="h-[75%] rounded-t-[28px] bg-white p-4 pb-16">
+          <View className="mb-3 flex-row justify-between">
+            <Text className="text-lg font-black">Comments</Text>
+            <Pressable onPress={onClose}>
+              <Text className="text-2xl">×</Text>
+            </Pressable>
+          </View>
+          <FlatList
+            data={comments}
+            keyExtractor={(item) => item.id}
+            contentContainerClassName="gap-3 py-2"
+            renderItem={({ item }) =>
+              <View className="flex-row rounded-xl bg-black/[.04] p-3">
+                <Text className="min-w-0 flex-1">
+                  <Text className="font-black">
+                    {item.author.displayName}
+                  </Text>
+                  {item.content}
+                </Text>
+                {item.ownedByViewer &&
+                  <Pressable onPress={async () => {
+                    await deleteSocialComment(post.id, item.id);
+                    setComments((current) => current.filter((comment) => comment.id !== item.id));
+                    onCountChange(post.id, -1);
+                  }}
+                  >
+                    <Text className="text-xs font-black text-[#C62828]">Delete</Text>
+                  </Pressable>
+                }
+              </View>
+            }
+            ListEmptyComponent={!loading ?
+              <Text className="py-16 text-center text-black/40">  No comments yet.</Text> : null}
+            ListFooterComponent={cursor ?
+              <Pressable
+                disabled={loading}
+                onPress={async () => {
+                  setLoading(true);
+                  try { const page = await listSocialComments(post.id, cursor); setComments((current) => [...current, ...page.items]); setCursor(page.nextCursor); } finally { setLoading(false); }
+                }}
+                className="p-3">
+                <Text className="text-center font-black">{loading ? 'Loading…' : 'Load more'}</Text>
+              </Pressable>
+              : null}
+          />
+          <View className="flex-row gap-2 border-t border-black/10 pt-3 ">
+            <TextInput value={value} onChangeText={setValue} placeholder="Write a comment…" maxLength={1000} className="min-w-0 flex-1 rounded-xl border border-black/15 px-3 py-2" /><Pressable onPress={async () => { const content = value.trim(); if (!content) return; const item = await createSocialComment(post.id, content, visibility); setComments((current) => [...current, item]); setValue(''); onCountChange(post.id, 1); }} className="rounded-xl bg-black px-4 py-3"><Text className="text-white">➤</Text></Pressable></View></View></KeyboardAvoidingView></Modal>);
 }
 function EditSocialPostModal({ post, onClose, onSave }: { post: SocialPost; onClose: () => void; onSave: (postId: string, content: string) => Promise<void> }) { const [content, setContent] = useState(post.content); return <Modal visible transparent animationType="fade" onRequestClose={onClose}><View className="flex-1 justify-center bg-black/50 p-5"><View className="gap-3 rounded-[24px] bg-white p-5"><Text className="text-lg font-black">Edit post</Text><TextInput value={content} onChangeText={setContent} multiline maxLength={4000} className="min-h-28 rounded-xl border border-black/15 p-3" textAlignVertical="top" /><View className="flex-row gap-2"><Pressable onPress={onClose} className="flex-1 rounded-xl bg-[#DDD] p-3"><Text className="text-center font-black">Cancel</Text></Pressable><Pressable onPress={() => { const next = content.trim(); if (next) void onSave(post.id, next); }} className="flex-1 rounded-xl bg-black p-3"><Text className="text-center font-black text-white">Save</Text></Pressable></View></View></View></Modal>; }
 function SocialVideo({ uri }: { uri: string }) { const player = useVideoPlayer(uri); return <VideoView className="h-80 w-full bg-black" contentFit="contain" fullscreenOptions={{ enable: true }} nativeControls player={player} />; }

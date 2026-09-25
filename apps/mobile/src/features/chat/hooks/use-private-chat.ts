@@ -362,10 +362,11 @@ export function usePrivateChat(
   );
 
   useEffect(() => {
+    const openKey = openRequestId ?? initialConversationId;
     if (
       !initialConversationId ||
-      !openRequestId ||
-      handledOpenRequestRef.current === openRequestId
+      !openKey ||
+      handledOpenRequestRef.current === openKey
     ) {
       return;
     }
@@ -374,7 +375,7 @@ export function usePrivateChat(
     );
     if (!requested) return;
 
-    handledOpenRequestRef.current = openRequestId;
+    handledOpenRequestRef.current = openKey;
     const timer = setTimeout(() => openConversation(requested), 0);
     return () => clearTimeout(timer);
   }, [

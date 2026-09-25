@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { FieldPath, FieldValue, type Firestore } from 'firebase-admin/firestore';
+import { FieldPath, FieldValue, type DocumentData, type Firestore } from 'firebase-admin/firestore';
 
 import type { MediaService } from '../media/media-service.js';
 import { encodeSocialCursor, type SocialCursor } from '../social/social-cursor.js';
@@ -19,11 +19,28 @@ export class FirestoreMarketStore implements MarketStore {
     let query = this.posts().orderBy('createdAtMs', 'desc').orderBy(FieldPath.documentId(), 'desc');
     if (ownerId) query = query.where('ownerPublicId', '==', ownerId);
     if (cursor) query = query.startAfter(cursor.createdAtMs, cursor.id);
-    const snapshot = await query.limit(limit + 1).get();
-    const documents = snapshot.docs.slice(0, limit);
+    let documents;
+    let hasMore: boolean;
+    try {
+      const snapshot = await query.limit(limit + 1).get();
+      documents = snapshot.docs.slice(0, limit);
+      hasMore = snapshot.size > limit;
+    } catch (error) {
+      if (!ownerId || !isMissingFirestoreIndex(error)) throw error;
+      // Keep "My Listings" available while a newly declared composite index is still
+      // building. This fallback reads only the authenticated owner's listings and applies
+      // the same deterministic cursor locally. Firestore resumes the indexed path above
+      // automatically as soon as the index is ready.
+      const snapshot = await this.posts().where('ownerPublicId', '==', ownerId).get();
+      const ordered = [...snapshot.docs]
+        .sort((left, right) => comparePostDocuments(right, left))
+        .filter((document) => !cursor || isAfterCursor(document.id, document.data() as StoredPost, cursor));
+      documents = ordered.slice(0, limit);
+      hasMore = ordered.length > limit;
+    }
     const items = await Promise.all(documents.map((document) => this.toPost(viewerId, document.id, document.data() as StoredPost)));
     const last = documents.at(-1);
-    return { items, ...(snapshot.size > limit && last ? { nextCursor: encodeSocialCursor({ createdAtMs: (last.data() as StoredPost).createdAtMs, id: last.id }) } : {}) };
+    return { items, ...(hasMore && last ? { nextCursor: encodeSocialCursor({ createdAtMs: (last.data() as StoredPost).createdAtMs, id: last.id }) } : {}) };
   }
 
   async findPost(viewerId: string, postId: string) {
@@ -145,4 +162,24 @@ export class FirestoreMarketStore implements MarketStore {
   private profiles() { return this.collection('social_profiles'); }
   private comments(postId: string) { return this.posts().doc(postId).collection('comments'); }
   private reactions(postId: string) { return this.posts().doc(postId).collection('reactions'); }
+}
+
+function isMissingFirestoreIndex(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { code?: number | string; message?: string };
+  return (candidate.code === 9 || candidate.code === 'failed-precondition')
+    && candidate.message?.toLowerCase().includes('index') === true;
+}
+
+function comparePostDocuments(
+  left: Readonly<{ id: string; data(): DocumentData }>,
+  right: Readonly<{ id: string; data(): DocumentData }>,
+): number {
+  const timeDifference = (left.data() as StoredPost).createdAtMs - (right.data() as StoredPost).createdAtMs;
+  return timeDifference || left.id.localeCompare(right.id);
+}
+
+function isAfterCursor(id: string, post: StoredPost, cursor: SocialCursor): boolean {
+  return post.createdAtMs < cursor.createdAtMs
+    || (post.createdAtMs === cursor.createdAtMs && id < cursor.id);
 }
