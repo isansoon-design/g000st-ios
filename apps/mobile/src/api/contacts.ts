@@ -14,3 +14,7 @@ export async function addContact(publicId: string) {
 export async function removeContact(publicId: string) {
   await axiosInstance.delete(`/contacts/${publicId}`);
 }
+
+export async function updateContactNickname(publicId: string, nickname: string) {
+  await axiosInstance.patch(`/contacts/${publicId}`, { nickname });
+}

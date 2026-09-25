@@ -186,6 +186,18 @@ export class ChatService {
     return stored;
   }
 
+  async editMessage(publicId: string, conversationId: string, messageId: string, content: string): Promise<ChatMessage> {
+    await this.requireParticipant(publicId, conversationId);
+    const trimmed = content.trim();
+    if (!trimmed || trimmed.length > MAX_MESSAGE_LENGTH) throw new ApiError(400, 'INVALID_MESSAGE', 'Message text must be 1 to 4000 characters.');
+    const result = await this.store.editMessage(conversationId, messageId, publicId, trimmed, this.now());
+    if (result.status === 'updated') return result.message;
+    if (result.status === 'not_found') throw new ApiError(404, 'MESSAGE_NOT_FOUND', 'Message not found or already expired.');
+    if (result.status === 'forbidden') throw new ApiError(403, 'MESSAGE_NOT_OWNED', 'Only the sender can edit this message.');
+    if (result.status === 'not_editable') throw new ApiError(400, 'MESSAGE_NOT_EDITABLE', 'Burn messages and messages with attachments cannot be edited.');
+    throw new ApiError(400, 'MESSAGE_NOT_EDITABLE', 'This message cannot be edited.');
+  }
+
   async createUpload(
     publicId: string,
     input: Readonly<{

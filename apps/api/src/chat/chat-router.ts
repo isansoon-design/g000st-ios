@@ -33,6 +33,7 @@ const createMessageBody = z
     content: z.string().max(4_000).default(''),
   })
   .strict();
+const editMessageBody = z.object({ content: z.string().trim().min(1).max(4_000) }).strict();
 const listConversationsQuery = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(30),
 });
@@ -116,6 +117,12 @@ export function createChatRouter(authService: AuthService, chatService: ChatServ
       });
     }),
   );
+
+  router.patch('/conversations/:conversationId/messages/:messageId', chatRateLimit(30), asyncRoute(async (request, response) => {
+    const id = conversationId.parse(request.params.conversationId);
+    const parsedMessageId = messageId.parse(request.params.messageId);
+    response.json({ message: await chatService.editMessage(request.authenticatedPublicId, id, parsedMessageId, editMessageBody.parse(request.body).content) });
+  }));
 
   router.get(
     '/conversations/:conversationId/messages/:messageId/attachments/:attachmentId',

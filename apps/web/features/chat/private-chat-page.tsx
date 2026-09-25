@@ -4,10 +4,12 @@ import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { Mic, Send, Square, Trash2, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { addContact, listContacts, updateContactNickname } from "@/app/api/contacts";
+import toast from "react-hot-toast";
 
 import { useCalling } from "@/features/calling/use-calling";
-import { getChatAttachmentDownload } from "@/features/chat/api";
-import type { ChatConversationSummary } from "@/features/chat/types";
+import { editChatMessage, getChatAttachmentDownload } from "@/features/chat/api";
+import type { ChatConversationSummary, ChatMessage } from "@/features/chat/types";
 import { usePrivateChat } from "@/features/chat/use-private-chat";
 import { useVoiceRecorder } from "@/features/chat/use-voice-recorder";
 import Image from "next/image";
@@ -159,6 +161,7 @@ function MessageAttachment({ attachment, conversationId, messageId }: MessageAtt
 
 type ConversationListProps = Readonly<{
   conversations: readonly ChatConversationSummary[];
+  namesByPublicId: Readonly<Record<string, string>>;
   error: string | null;
   isLoading: boolean;
   onOpen: (conversation: ChatConversationSummary) => void;
@@ -168,6 +171,7 @@ type ConversationListProps = Readonly<{
 
 function ConversationList({
   conversations,
+  namesByPublicId,
   error,
   isLoading,
   onOpen,
@@ -245,7 +249,7 @@ function ConversationList({
             <span className="block font-mono text-[12px] font-black text-[#111]">
               {conversation.participantStatus === "deleted"
                 ? "Deleted account"
-                : conversation.participantDisplayName || shortId(conversation.participantPublicId)}
+                : namesByPublicId[conversation.participantPublicId] || conversation.participantDisplayName || shortId(conversation.participantPublicId)}
             </span>
             <span className="mt-1 block truncate text-xs font-semibold text-black/45">
               {conversation.lastMessagePreview || "Private conversation"}
@@ -273,6 +277,11 @@ export default function PrivateChatPage() {
   const chat = usePrivateChat(requestedConversationId);
   const [blurMessages, setBlurMessages] = useState(false);
   const [fontSize, setFontSize] = useState(14);
+  const [namesByPublicId, setNamesByPublicId] = useState<Record<string, string>>({});
+  const [isNameOpen, setIsNameOpen] = useState(false);
+  const [nickname, setNickname] = useState("");
+  const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
+  const [messageDraft, setMessageDraft] = useState("");
   const voiceRecorder = useVoiceRecorder();
   const { confirm } = useConfirmModal();
   const { callUser } = useCalling();
@@ -280,6 +289,28 @@ export default function PrivateChatPage() {
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const didScrollToUnreadRef = useRef<string | null>(null);
+
+  useEffect(() => { void listContacts().then((contacts) => setNamesByPublicId(Object.fromEntries(contacts.filter((contact) => contact.nickname).map((contact) => [contact.publicId, contact.nickname!])))).catch(() => undefined); }, []);
+
+  async function saveName(publicId: string) {
+    try {
+      const next = nickname.trim();
+      if (!next && !namesByPublicId[publicId]) { setIsNameOpen(false); return; }
+      if (next && !(await listContacts()).some((contact) => contact.publicId === publicId)) await addContact(publicId);
+      await updateContactNickname(publicId, next);
+      setNamesByPublicId((current) => ({ ...current, [publicId]: next }));
+      setIsNameOpen(false);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not save name."); }
+  }
+
+  async function saveMessage() {
+    if (!editingMessage || !messageDraft.trim()) return;
+    try {
+      await editChatMessage(editingMessage.conversationId, editingMessage.id, messageDraft.trim());
+      setEditingMessage(null);
+      await Promise.all([chat.refreshMessages(), chat.refreshConversations()]);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not edit message."); }
+  }
 
   useEffect(() => {
     if (!chat.isSending && chat.activeConversation) {
@@ -394,14 +425,14 @@ export default function PrivateChatPage() {
                 <UserRound size={16} />
               )}
             </div>
-            <div className="ml-2 min-w-0 flex-1">
+            <button className="ml-2 min-w-0 flex-1 text-left" type="button" aria-label="Edit friend's name" onClick={() => { setNickname(namesByPublicId[chat.activeConversation!.participantPublicId] ?? ""); setIsNameOpen(true); }}>
               <p className="text-[10px] font-bold text-black/45">PRIVATE CHAT</p>
               <p className="truncate font-mono text-[12px] font-black text-[#111]">
                 {participantDeleted
                   ? "Deleted account"
-                  : chat.participantDisplayName || shortId(chat.activeConversation.participantPublicId)}
+                  : namesByPublicId[chat.activeConversation.participantPublicId] || chat.participantDisplayName || shortId(chat.activeConversation.participantPublicId)}
               </p>
-            </div>
+            </button>
             <div className="mr-1 flex shrink-0 items-center gap-1.5">
               <span className="text-[9px] font-black text-black/45">BLUR</span>
               <button
@@ -549,8 +580,10 @@ export default function PrivateChatPage() {
                               </span>
                             ) : null}
                             {formatTime(message.createdAtMs)}
+                            {message.editedAtMs ? " · edited" : null}
                             {deliveryLabel ? ` · ${deliveryLabel}` : null}
                           </p>
+                          {mine && !message.locked && !message.burnAfterReadSeconds && !message.attachments?.length && message.type === "text" && message.content ? <button type="button" className="mt-1 text-[10px] font-bold text-[#C62828]" onClick={() => { setEditingMessage(message); setMessageDraft(message.content); }}>Edit</button> : null}
                         </div>
                       </div>
                     </div>
@@ -680,6 +713,7 @@ export default function PrivateChatPage() {
       ) : (
         <ConversationList
           conversations={chat.conversations}
+          namesByPublicId={namesByPublicId}
           error={chat.conversationsError}
           isLoading={chat.isLoadingConversations}
           onOpen={chat.openConversation}
@@ -688,6 +722,8 @@ export default function PrivateChatPage() {
         />
       )}
 
+      {editingMessage ? <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-5"><div className="w-full max-w-[400px] space-y-3 rounded-2xl bg-white p-5"><h2 className="text-lg font-black">Edit message</h2><textarea value={messageDraft} maxLength={4000} onChange={(event) => setMessageDraft(event.target.value)} className="min-h-24 w-full rounded-xl border border-black/15 p-3" /><div className="flex gap-2"><button onClick={() => setEditingMessage(null)} className="flex-1 rounded-xl bg-[#ddd] p-3 font-bold">Cancel</button><button disabled={!messageDraft.trim()} onClick={() => void saveMessage()} className="flex-1 rounded-xl bg-black p-3 font-bold text-white disabled:opacity-40">Save</button></div></div></div> : null}
+      {isNameOpen && chat.activeConversation ? <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-5"><div className="w-full max-w-[400px] space-y-3 rounded-2xl bg-white p-5"><h2 className="text-lg font-black">Friend's name</h2><input value={nickname} maxLength={80} onChange={(event) => setNickname(event.target.value)} placeholder="Name shown only to you" className="w-full rounded-xl border border-black/15 p-3" /><div className="flex gap-2"><button onClick={() => setIsNameOpen(false)} className="flex-1 rounded-xl bg-[#ddd] p-3 font-bold">Cancel</button><button onClick={() => void saveName(chat.activeConversation!.participantPublicId)} className="flex-1 rounded-xl bg-black p-3 font-bold text-white">Save</button></div></div></div> : null}
       {chat.isNewChatOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5">
           <form

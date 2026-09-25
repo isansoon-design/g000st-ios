@@ -5,7 +5,7 @@ import type { AuthenticationResult, AuthenticatedUser } from '@/domain/auth/type
 export type AuthStatus = 'loading' | 'anonymous' | 'authenticated';
 
 export type AuthContextValue = Readonly<{
-  completeAuthentication: (result: AuthenticationResult) => Promise<void>;
+  completeAuthentication: (result: AuthenticationResult, recoveryId: string) => Promise<void>;
   signOut: () => Promise<void>;
   status: AuthStatus;
   user: AuthenticatedUser | null;

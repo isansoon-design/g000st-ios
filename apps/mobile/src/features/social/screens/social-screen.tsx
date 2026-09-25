@@ -1,11 +1,11 @@
 import { randomUUID } from 'expo-crypto';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { cssInterop } from 'nativewind';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 
@@ -18,6 +18,7 @@ import { useConfirmModal } from '@/providers/confirm-modal-provider';
 
 type ViewName = 'home' | 'mine' | 'alerts';
 cssInterop(VideoView, { className: 'style' });
+cssInterop(Image, { className: 'style' });
 
 export function SocialScreen() {
   const router = useRouter();
@@ -27,8 +28,12 @@ export function SocialScreen() {
   const [alerts, setAlerts] = useState<SocialAlert[]>([]);
   const [commentsPost, setCommentsPost] = useState<SocialPost>();
   const [editingPost, setEditingPost] = useState<SocialPost>();
+  const [sharingPost, setSharingPost] = useState<SocialPost>();
+  const [shareDraft, setShareDraft] = useState('');
+  const [shareVisibility, setShareVisibility] = useState<SocialVisibility>('anonymous');
+  const [sharing, setSharing] = useState(false);
   const [draft, setDraft] = useState('');
-  const [visibility] = useState<SocialVisibility>('anonymous');
+  const [visibility, setVisibility] = useState<SocialVisibility>('anonymous');
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<readonly ImagePicker.ImagePickerAsset[]>([]);
@@ -51,9 +56,11 @@ export function SocialScreen() {
     } catch (error) { Toast.show({ type: 'error', text1: 'Social', text2: error instanceof Error ? error.message : 'Could not load Social.' }); }
     finally { setLoading(false); }
   }, [userPublicId, view]);
-  useEffect(() => {
-    void Promise.resolve().then(load);
-  }, [load]);
+  useFocusEffect(useCallback(() => {
+    void load();
+    const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') void load(); });
+    return () => subscription.remove();
+  }, [load]));
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMoreRef.current || view === 'alerts') return;
@@ -128,6 +135,20 @@ export function SocialScreen() {
     catch (error) { Toast.show({ type: 'error', text1: 'Chat', text2: error instanceof Error ? error.message : 'Could not open chat.' }); }
   }
 
+  async function publishShare() {
+    if (!sharingPost || sharing) return;
+    setSharing(true);
+    try {
+      const post = await createSocialPost(randomUUID(), shareDraft.trim(), shareVisibility, undefined, sharingPost.sharedPostId ?? sharingPost.id);
+      setPosts((items) => [post, ...items]);
+      setSharingPost(undefined);
+      setShareDraft('');
+      Toast.show({ type: 'success', text1: 'Shared to Social' });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Share', text2: error instanceof Error ? error.message : 'Could not share post.' });
+    } finally { setSharing(false); }
+  }
+
   return (
     <FeatureScreen
       rightAction={
@@ -185,11 +206,11 @@ export function SocialScreen() {
               >
                 <Text className="text-xs font-black">{selectedMedia.length ? `✓ ${selectedMedia.length}` : '📎 Media'}</Text>
               </Pressable>
-              {/* <Switch
+              <Switch
                 value={visibility === 'public'}
                 onValueChange={(value) => setVisibility(value ? 'public' : 'anonymous')}
               />
-              <Text className="ml-2 flex-1 text-xs font-bold">Show identity</Text> */}
+              <Text className="ml-2 flex-1 text-xs font-bold">Show identity</Text>
               <Pressable disabled={!draft.trim() || posting} onPress={() => void publish()} className="rounded-xl bg-[#222] px-5 py-3 disabled:opacity-40">
                 <Text className="font-black text-white">{posting ? 'Posting…' : 'Post'}</Text>
               </Pressable>
@@ -227,6 +248,7 @@ export function SocialScreen() {
               <PostCard
                 post={post}
                 onChat={openChat}
+                onShare={() => { setShareDraft(''); setShareVisibility('anonymous'); setSharingPost(post); }}
                 onEdit={() => setEditingPost(post)}
                 onDelete={async () => { await deleteSocialPost(post.id); setPosts((items) => items.filter((item) => item.id !== post.id)); }}
                 onReport={() => reportSocialPost(post.id)} onLike={async () => { const result = await toggleSocialLike(post.id); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, ...result, likedByViewer: result.liked } : item)); }}
@@ -253,14 +275,25 @@ export function SocialScreen() {
           </View>
         </Pressable>
       </Modal>
+      <Modal visible={!!sharingPost} transparent animationType="slide" onRequestClose={() => setSharingPost(undefined)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 justify-end bg-black/50">
+          <View className="gap-3 rounded-t-[28px] bg-white p-5 pb-12">
+            <Text className="text-lg font-black">Share to Social</Text>
+            {sharingPost && <SharedPostPreview compact sharedPost={sharingPost.sharedPost ?? { id: sharingPost.id, author: sharingPost.author, content: sharingPost.content, media: sharingPost.media, createdAtMs: sharingPost.createdAtMs }} />}
+            <TextInput value={shareDraft} onChangeText={setShareDraft} placeholder="Add a note (optional)" maxLength={4000} multiline className="min-h-20 rounded-xl border border-black/15 p-3" textAlignVertical="top" />
+            <View className="flex-row items-center"><Switch value={shareVisibility === 'public'} onValueChange={(value) => setShareVisibility(value ? 'public' : 'anonymous')} /><Text className="ml-2 flex-1 text-sm font-bold">Show my identity</Text></View>
+            <View className="flex-row gap-2"><Pressable onPress={() => setSharingPost(undefined)} className="flex-1 rounded-xl bg-[#DDD] p-3"><Text className="text-center font-black">Cancel</Text></Pressable><Pressable disabled={sharing} onPress={() => void publishShare()} className="flex-1 rounded-xl bg-black p-3 disabled:opacity-40"><Text className="text-center font-black text-white">{sharing ? 'Sharing…' : 'Share'}</Text></Pressable></View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
       {commentsPost && <SocialCommentsModal post={commentsPost} visibility={visibility} onClose={() => setCommentsPost(undefined)} onCountChange={(postId, delta) => setPosts((items) => items.map((item) => item.id === postId ? { ...item, commentCount: Math.max(0, item.commentCount + delta) } : item))} />}
       {editingPost && <EditSocialPostModal post={editingPost} onClose={() => setEditingPost(undefined)} onSave={async (postId, content) => { const updated = await updateSocialPost(postId, content); setPosts((items) => items.map((item) => item.id === postId ? updated : item)); setEditingPost(undefined); }} />}
     </FeatureScreen>
   );
 }
 
-type PostCardProps = { post: SocialPost; onChat: (id?: string) => Promise<void>; onEdit: () => void; onDelete: () => Promise<void>; onReport: () => Promise<void>; onLike: () => Promise<void>; onCamp: () => Promise<void>; onComments: () => void };
-function PostCard({ post, onChat, onEdit, onDelete, onReport, onLike, onCamp, onComments }: PostCardProps) {
+type PostCardProps = { post: SocialPost; onChat: (id?: string) => Promise<void>; onShare: () => void; onEdit: () => void; onDelete: () => Promise<void>; onReport: () => Promise<void>; onLike: () => Promise<void>; onCamp: () => Promise<void>; onComments: () => void };
+function PostCard({ post, onChat, onShare, onEdit, onDelete, onReport, onLike, onCamp, onComments }: PostCardProps) {
   const { confirm } = useConfirmModal();
   return (
     <View className="overflow-hidden rounded-2xl border border-black/10 bg-white">
@@ -300,13 +333,14 @@ function PostCard({ post, onChat, onEdit, onDelete, onReport, onLike, onCamp, on
           <Text className="text-xs font-black">{post.ownedByViewer ? 'Delete' : 'Report'}</Text>
         </Pressable>
       </View>
-      <Text className="px-4 pb-4 text-[15px] leading-6">{post.content}</Text>
+      {!!post.content && <Text className="px-4 pb-4 text-[15px] leading-6">{post.content}</Text>}
+      {post.sharedPostId && <View className="mx-4 mb-4">{post.sharedPost ? <SharedPostPreview sharedPost={post.sharedPost} /> : <View className="rounded-xl border border-black/10 p-4"><Text className="text-black/50">Original post unavailable</Text></View>}</View>}
       {post.media?.map((item) => item.kind === 'video' ? <SocialVideo key={item.id} uri={item.url} /> :
         <Image
           key={item.id}
           source={{ uri: item.url }}
           contentFit="cover"
-          className={`w-full ${post.media?.length === 2 ? 'h-56' : 'h-80'}`}
+          style={{ width: '100%', height: post.media?.length === 2 ? 224 : 320 }}
         />
       )}
       <View className="flex-row border-t border-black/10 p-2">
@@ -321,12 +355,24 @@ function PostCard({ post, onChat, onEdit, onDelete, onReport, onLike, onCamp, on
         />
         {post.ownerPublicId && !post.ownedByViewer &&
           <Action
-            label={post.campedByViewer ? 'Camped' : 'Camp'}
+            label={post.campedByViewer ? 'Following' : '+ Follow'}
             onPress={onCamp}
           />}
       </View>
+      <View className="flex-row border-t border-black/10 p-2">
+        <Action label="Share" onPress={onShare} />
+        {post.ownerPublicId && !post.ownedByViewer && <Action label="Chat" onPress={() => onChat(post.ownerPublicId)} />}
+      </View>
     </View>
   );
+}
+
+function SharedPostPreview({ sharedPost, compact = false }: { sharedPost: NonNullable<SocialPost['sharedPost']>; compact?: boolean }) {
+  return <View className="overflow-hidden rounded-xl border border-black/15 bg-black/[.03]">
+    <View className="p-3"><Text className="text-xs font-black">{sharedPost.author.displayName}</Text><Text numberOfLines={compact ? 3 : undefined} className="mt-1 text-sm leading-5">{sharedPost.content}</Text></View>
+    {!compact && sharedPost.media?.map((item) => item.kind === 'video' ? <SocialVideo key={item.id} uri={item.url} /> : <Image key={item.id} source={{ uri: item.url }} contentFit="cover" style={{ width: '100%', height: sharedPost.media?.length === 2 ? 180 : 260 }} />)}
+    {compact && !!sharedPost.media?.length && <Text className="px-3 pb-3 text-xs text-black/50">{sharedPost.media.length} media attachment{sharedPost.media.length === 1 ? '' : 's'}</Text>}
+  </View>;
 }
 
 function SocialCommentsModal({ post, visibility, onClose, onCountChange }: { post: SocialPost; visibility: SocialVisibility; onClose: () => void; onCountChange: (postId: string, delta: number) => void }) {
@@ -442,7 +488,7 @@ function AlertList({ alerts }: { alerts: SocialAlert[] }) {
               ? 'liked your post.'
               : item.kind === 'comment'
                 ? 'commented on your post.'
-                : 'camped your profile.'}
+                : 'started following you.'}
           </Text>
           <Text className="mt-1 text-[10px] text-black/40">
             {new Date(item.createdAtMs).toLocaleString()}
@@ -452,7 +498,7 @@ function AlertList({ alerts }: { alerts: SocialAlert[] }) {
     </>
   );
 }
-function Action({ label, active, onPress }: { label: string; active?: boolean; onPress: () => Promise<void> }) {
+function Action({ label, active, onPress }: { label: string; active?: boolean; onPress: () => void | Promise<void> }) {
   return (
     <Pressable
       onPress={() => void onPress()}

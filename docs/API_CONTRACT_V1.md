@@ -10,7 +10,8 @@ before implementation, but the security semantics below must remain the same.
 - `recoveryId`: exactly 50 characters, secret, and used only to recover/sign in to the account.
 - The two IDs must never be equal.
 - The backend returns the plaintext `recoveryId` only once, immediately after registration.
-- The mobile app stores session tokens in SecureStore. It does not persist the Recovery ID.
+- The mobile app stores session tokens and the Recovery ID separately in SecureStore while signed in.
+- Clients save the Recovery ID entered at each successful sign-in, associate it with the current Public ID, and delete it on sign-out or session clearance. Existing sessions created before this behavior have no saved Recovery ID until the next sign-in.
 
 ## `POST /auth/register`
 
@@ -118,7 +119,7 @@ All Social routes require `Authorization: Bearer <accessToken>` and are rooted a
 `/api/v1/social`. The server, not the client, enforces ownership and anonymous-author privacy.
 
 - `GET /posts?limit=20&cursor=...&ownerId=...`: cursor-paginated feed or one user's posts.
-- `POST /posts`: creates a post from `{ clientPostId, content, visibility, media? }`.
+- `POST /posts`: creates a post from `{ clientPostId, content, visibility, media?, sharedPostId? }`.
 - `GET|PATCH|DELETE /posts/:postId`: reads or changes a post; mutation requires ownership.
 - `POST /posts/:postId/like`: atomically toggles the current user's reaction.
 - `GET|POST /posts/:postId/comments`: lists or creates comments.
@@ -136,10 +137,33 @@ only when the post is created, and returned through short-lived signed download 
 up to two images or exactly one video, never a mixed batch; every file is limited to 5 MB in both
 the route validation and media service.
 
+For an in-app share, send `sharedPostId` with optional text in `content` and no new media. The
+server resolves shares of shares to the original post. Feed responses include `sharedPostId` and
+an optional `sharedPost` preview with the original author's public projection, text, and media.
+If the original was deleted, `sharedPost` is omitted and clients show an unavailable placeholder.
+Anonymous original authors remain anonymous to viewers of the shared post.
+
 The profile field `showDisplayName` defaults to `false`. Unless it is explicitly `true` and a
 non-empty `displayName` exists, every public identity projection (posts, comments, alerts,
 contacts, chats, and calls) uses the last eight characters of `publicId` as the display alias.
 Only the profile owner receives their unmasked `displayName` from `GET /profiles/:publicId`.
+
+## Chat API
+
+`PATCH /api/v1/chat/conversations/:conversationId/messages/:messageId` accepts
+`{ content: string }` and returns `{ message }` with `editedAtMs`. Only the sender may edit a
+live plain text message. Burn messages and messages with attachments cannot be edited. The
+message keeps its original creation and expiry times; conversation previews continue to hide
+text content.
+
+## Contacts API
+
+All routes are rooted at `/api/v1/contacts` and require authentication. `GET /` returns the
+current user's friends with `publicId`, public profile fields, online status, and an optional
+private `nickname`. `POST /` adds a friend from `{ publicId }`. `PATCH /:publicId` accepts
+`{ nickname?: string }` to set or clear a private name of at most 80 characters; it returns
+`404 CONTACT_NOT_FOUND` if the user has not added that friend. `DELETE /:publicId` removes a
+friend. A nickname is visible only to the friend list owner.
 
 ## Market API
 
@@ -149,17 +173,19 @@ with the seller. The server derives the seller from the authenticated session an
 owner-only mutations.
 
 - `GET /posts?limit=20&cursor=...&ownerId=...`: cursor-paginated listings or one seller's listings.
-- `POST /posts`: creates a listing from `{ clientPostId, content, price, currency, quantity, city, media? }`.
+- `POST /posts`: creates a listing from `{ clientPostId, content, price, currency, quantity, city, allowCalls?, allowVideoCalls?, media? }`.
 - `GET|PATCH|DELETE /posts/:postId`: reads or changes a listing; mutations require ownership.
 - `POST /posts/:postId/like`: atomically toggles the current user's heart reaction.
 - `GET|POST /posts/:postId/comments`: cursor-paginates or creates comments.
 - `DELETE /posts/:postId/comments/:commentId`: owner-only comment deletion.
 - `POST /uploads`: creates a signed upload using the same media limits as Social.
 
-`price` is a non-negative finite decimal, `currency` is a three-letter ISO-style code (currently
-the clients submit `USD`), `quantity` is a positive integer, and `city` is required. Clients open
-chat through the existing `/chat` API and in-app audio calls through the existing `/calling`
-signaling channel; Market does not duplicate either communication system.
+`price` is a non-negative finite decimal, `currency` is a three-letter code defaulting to `GBP`
+(current clients submit `GBP`), `quantity` is a positive integer,
+and `city` is required. `allowCalls` defaults to `true` and `allowVideoCalls` defaults to `false`.
+The listing response includes both settings, allowing clients to show the seller's preferred contact
+buttons. Existing listings without these fields use the same defaults. Clients open chat through the
+existing `/chat` API and in-app calls through the existing `/calling` signaling channel.
 
 Creating or editing a listing is rejected with `422 PROHIBITED_MARKET_CONTENT` when any of its textual
 content contains a configured prohibited English keyword or phrase. Matching is case-insensitive,

@@ -11,6 +11,7 @@ import type {
   CreateSocialReportInput,
   SocialMediaView,
   SocialPost,
+  SharedSocialPostView,
   SocialProfile,
   UpdateSocialProfileInput,
 } from './social-types.js';
@@ -25,30 +26,41 @@ export class SocialService {
 
   async listPosts(viewerId: string, limit: number, cursor?: string, ownerId?: string) {
     const page = await this.store.listPosts(viewerId, limit, decodeSocialCursor(cursor), ownerId);
-    return { ...page, items: await Promise.all(page.items.map((post) => this.withMediaUrls(post))) };
+    return { ...page, items: await Promise.all(page.items.map((post) => this.withMediaUrls(post, viewerId))) };
   }
 
   async getPost(viewerId: string, postId: string) {
     const post = await this.store.findPost(viewerId, postId);
     if (!post) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found.');
-    return this.withMediaUrls(post);
+    return this.withMediaUrls(post, viewerId);
   }
 
   async createPost(ownerId: string, input: CreateSocialPostInput, clientPostId: string) {
     const { media: pendingMedia, ...postInput } = input;
+    if (!input.content.trim() && !input.sharedPostId) throw new ApiError(400, 'INVALID_POST', 'A post must contain text or share another post.');
+    if (input.sharedPostId && pendingMedia?.length) throw new ApiError(400, 'INVALID_SHARED_POST', 'A shared post cannot include new media.');
+    let sharedPostId = input.sharedPostId;
+    if (sharedPostId) {
+      const source = await this.store.findPost(ownerId, sharedPostId);
+      if (!source) throw new ApiError(404, 'POST_NOT_FOUND', 'Original post not found.');
+      sharedPostId = source.sharedPostId ?? source.id;
+      if (sharedPostId !== source.id && !(await this.store.findPost(ownerId, sharedPostId))) {
+        throw new ApiError(404, 'POST_NOT_FOUND', 'Original post not found.');
+      }
+    }
     const incoming = pendingMedia ?? [];
     validateSocialMediaBatch(incoming);
     const media = incoming.length
       ? await Promise.all(incoming.map((item) => this.requireMedia().promoteSocialMedia({ media: item, postId: clientPostId, publicId: ownerId })))
       : undefined;
-    const post = await this.store.createPost(ownerId, clientPostId, { ...postInput, ...(media ? { media } : {}), content: input.content.trim() }, this.now());
-    return this.withMediaUrls(post);
+    const post = await this.store.createPost(ownerId, clientPostId, { ...postInput, ...(sharedPostId ? { sharedPostId } : {}), ...(media ? { media } : {}), content: input.content.trim() }, this.now());
+    return this.withMediaUrls(post, ownerId);
   }
 
   async updatePost(viewerId: string, postId: string, content: string) {
     const post = await this.store.updatePost(viewerId, postId, content.trim(), this.now());
     if (!post) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found.');
-    return this.withMediaUrls(post);
+    return this.withMediaUrls(post, viewerId);
   }
 
   async deletePost(viewerId: string, postId: string) {
@@ -153,16 +165,27 @@ export class SocialService {
     return this.requireMedia().createSocialUpload({ ...input, publicId });
   }
 
-  private async withMediaUrls(post: SocialPost): Promise<Omit<SocialPost, 'media'> & { media?: readonly SocialMediaView[] }> {
+  private async withMediaUrls(post: SocialPost, viewerId: string): Promise<Omit<SocialPost, 'media'> & { media?: readonly SocialMediaView[]; sharedPost?: SharedSocialPostView }> {
     const { media, ...safe } = post;
-    if (!media?.length) return safe;
+    const original = post.sharedPostId ? await this.store.findPost(viewerId, post.sharedPostId) : null;
     return {
       ...safe,
-      media: await Promise.all(media.map(async ({ objectKey, ...item }) => ({
+      ...(media?.length ? { media: await this.mediaUrls(media) } : {}),
+      ...(original ? { sharedPost: {
+        id: original.id,
+        author: original.author,
+        content: original.content,
+        ...(original.media?.length ? { media: await this.mediaUrls(original.media) } : {}),
+        createdAtMs: original.createdAtMs,
+      } } : {}),
+    };
+  }
+
+  private mediaUrls(media: NonNullable<SocialPost['media']>): Promise<readonly SocialMediaView[]> {
+    return Promise.all(media.map(async ({ objectKey, ...item }) => ({
         ...item,
         url: (await this.requireMedia().getDownloadUrl({ ...item, objectKey }, 30 * 60)).downloadUrl,
-      }))),
-    };
+      })));
   }
 
   private async withProfileAvatar<T extends Partial<Pick<SocialProfile, 'avatarObjectKey'>>>(

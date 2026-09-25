@@ -20,8 +20,12 @@ export default function SocialPage() {
   const [alerts, setAlerts] = useState<SocialAlert[]>([]);
   const [commentsPost, setCommentsPost] = useState<SocialPost>();
   const [editingPost, setEditingPost] = useState<SocialPost>();
+  const [sharingPost, setSharingPost] = useState<SocialPost>();
+  const [shareDraft, setShareDraft] = useState('');
+  const [shareVisibility, setShareVisibility] = useState<SocialVisibility>('anonymous');
+  const [sharing, setSharing] = useState(false);
   const [draft, setDraft] = useState('');
-  const [visibility] = useState<SocialVisibility>('anonymous');
+  const [visibility, setVisibility] = useState<SocialVisibility>('anonymous');
   const [busy, setBusy] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
@@ -83,6 +87,19 @@ export default function SocialPage() {
     catch (error) { toast.error(error instanceof Error ? error.message : 'Could not open chat.'); }
   }
 
+  async function publishShare() {
+    if (!sharingPost || sharing) return;
+    setSharing(true);
+    try {
+      const post = await createSocialPost(crypto.randomUUID(), shareDraft.trim(), shareVisibility, undefined, sharingPost.sharedPostId ?? sharingPost.id);
+      setPosts((items) => [post, ...items]);
+      setSharingPost(undefined);
+      setShareDraft('');
+      toast.success('Shared to Social');
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not share post.'); }
+    finally { setSharing(false); }
+  }
+
   return <div className="flex h-full flex-col bg-[#e7e7e9] text-[#171717]">
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-black/10 bg-gradient-to-b from-white to-[#c9c9cb] px-4 shadow-sm">
       <h1 className="text-lg font-black">
@@ -130,12 +147,12 @@ export default function SocialPage() {
                 }} />
               {mediaFiles.length ? `${mediaFiles.length} selected` : 'Media'}
             </label>
-            {/* <label className="flex flex-1 items-center gap-2 text-xs font-bold">
+            <label className="flex flex-1 items-center gap-2 text-xs font-bold">
             <input
               type="checkbox"
               checked={visibility === 'public'}
               onChange={(event) => setVisibility(event.target.checked ? 'public' : 'anonymous')} /> Show my identity
-          </label> */}
+          </label>
             <button
               disabled={busy || !draft.trim()}
               onClick={() => void publish()}
@@ -170,8 +187,8 @@ export default function SocialPage() {
             >
               <div className="flex items-center gap-3 p-4">
                 <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-full bg-[#ddd]">{post.author.avatarUrl ? <img src={post.author.avatarUrl} alt="" className="h-full w-full object-cover" /> : <UserRound size={20} />}</div><button className="min-w-0 flex-1 text-left" onClick={() => void openChat(post.ownerPublicId)}><div className="truncate font-black">{post.author.displayName}</div><div className="text-xs text-black/45">{new Date(post.createdAtMs).toLocaleString()}{post.editedAtMs ? ' · edited' : ''}</div></button>{post.ownedByViewer && <button aria-label="Edit post" onClick={() => setEditingPost(post)} className="rounded-full border border-black/15 p-2"><Pencil size={15} /></button>}<button className="text-xs font-black" onClick={async () => { if (post.ownedByViewer) { const confirmed = await confirm({ title: 'Delete post?', message: 'Are you sure you want to delete this post?', confirmLabel: 'Delete', isDangerous: true }); if (confirmed) { await deleteSocialPost(post.id); setPosts((items) => items.filter((item) => item.id !== post.id)); } } else { await reportSocialPost(post.id, 'other'); toast.success('Report sent'); } }}>{post.ownedByViewer ? 'Delete' : 'Report'}</button></div>
-              <p className="whitespace-pre-wrap px-4 pb-4 text-[15px] leading-6">{post.content}</p>{post.media?.length ? <div className={`grid gap-1 ${post.media.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>{post.media.map((item) => item.kind === 'video' ? <video key={item.id} src={item.url} controls playsInline preload="metadata" className="max-h-[32rem] w-full bg-black object-contain" /> : <img key={item.id} src={item.url} alt="" className="max-h-[32rem] h-full w-full object-cover" />)}</div> : null}
-              <div className="flex border-t border-black/10 p-2"><button onClick={async () => { const result = await toggleSocialLike(post.id); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, likedByViewer: result.liked, likeCount: result.likeCount } : item)); }} className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-sm font-bold ${post.likedByViewer ? 'text-[#c62828]' : ''}`}><Heart size={18} fill={post.likedByViewer ? 'currentColor' : 'none'} />{post.likeCount}</button><button onClick={() => setCommentsPost(post)} className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-sm font-bold"><MessageCircle size={18} />{post.commentCount}</button>{post.ownerPublicId && !post.ownedByViewer && <button onClick={async () => { const result = await toggleSocialCamp(post.ownerPublicId!); setPosts((items) => items.map((item) => item.ownerPublicId === post.ownerPublicId ? { ...item, campedByViewer: result.camped } : item)); }} className="flex-1 rounded-xl py-2 text-sm font-black">{post.campedByViewer ? 'Camped' : 'Camp'}</button>}</div>
+              {!!post.content && <p className="whitespace-pre-wrap px-4 pb-4 text-[15px] leading-6">{post.content}</p>}{post.sharedPostId && <div className="mx-4 mb-4">{post.sharedPost ? <SharedPostPreview post={post.sharedPost} /> : <div className="rounded-xl border border-black/10 p-4 text-black/50">Original post unavailable</div>}</div>}{post.media?.length ? <div className={`grid gap-1 ${post.media.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>{post.media.map((item) => item.kind === 'video' ? <video key={item.id} src={item.url} controls playsInline preload="metadata" className="max-h-[32rem] w-full bg-black object-contain" /> : <img key={item.id} src={item.url} alt="" className="max-h-[32rem] h-full w-full object-cover" />)}</div> : null}
+              <div className="flex border-t border-black/10 p-2"><button onClick={async () => { const result = await toggleSocialLike(post.id); setPosts((items) => items.map((item) => item.id === post.id ? { ...item, likedByViewer: result.liked, likeCount: result.likeCount } : item)); }} className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-sm font-bold ${post.likedByViewer ? 'text-[#c62828]' : ''}`}><Heart size={18} fill={post.likedByViewer ? 'currentColor' : 'none'} />{post.likeCount}</button><button onClick={() => setCommentsPost(post)} className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-sm font-bold"><MessageCircle size={18} />{post.commentCount}</button>{post.ownerPublicId && !post.ownedByViewer && <button onClick={async () => { const result = await toggleSocialCamp(post.ownerPublicId!); setPosts((items) => items.map((item) => item.ownerPublicId === post.ownerPublicId ? { ...item, campedByViewer: result.camped } : item)); }} className="flex-1 rounded-xl py-2 text-sm font-black">{post.campedByViewer ? 'Following' : '+ Follow'}</button>}</div><div className="flex border-t border-black/10 p-2"><button className="flex-1 py-2 text-sm font-bold" onClick={() => { setShareDraft(''); setShareVisibility('anonymous'); setSharingPost(post); }}>Share</button>{post.ownerPublicId && !post.ownedByViewer && <button className="flex-1 py-2 text-sm font-bold" onClick={() => void openChat(post.ownerPublicId)}>Chat</button>}</div>
             </article>
           )}
           <div ref={loadMoreRef} className="h-1" aria-hidden="true" />
@@ -199,7 +216,12 @@ export default function SocialPage() {
     </nav>
     <SocialCommentsModal post={commentsPost} visibility={visibility} onClose={() => setCommentsPost(undefined)} onCountChange={(postId, delta) => setPosts((items) => items.map((item) => item.id === postId ? { ...item, commentCount: Math.max(0, item.commentCount + delta) } : item))} />
     <EditSocialPostModal post={editingPost} onClose={() => setEditingPost(undefined)} onSave={async (postId, content) => { const updated = await updateSocialPost(postId, content); setPosts((items) => items.map((item) => item.id === postId ? updated : item)); setEditingPost(undefined); }} />
+    {sharingPost && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-5 sm:items-center" role="dialog" aria-modal="true" aria-label="Share to Social"><div className="w-full max-w-lg space-y-3 rounded-[24px] bg-white p-5"><h2 className="text-lg font-black">Share to Social</h2><SharedPostPreview compact post={sharingPost.sharedPost ?? { id: sharingPost.id, author: sharingPost.author, content: sharingPost.content, media: sharingPost.media, createdAtMs: sharingPost.createdAtMs }} /><textarea value={shareDraft} onChange={(event) => setShareDraft(event.target.value)} maxLength={4000} placeholder="Add a note (optional)" className="min-h-20 w-full rounded-xl border border-black/15 p-3" /><label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={shareVisibility === 'public'} onChange={(event) => setShareVisibility(event.target.checked ? 'public' : 'anonymous')} />Show my identity</label><div className="flex gap-2"><button onClick={() => setSharingPost(undefined)} className="flex-1 rounded-xl bg-[#ddd] p-3 font-black">Cancel</button><button disabled={sharing} onClick={() => void publishShare()} className="flex-1 rounded-xl bg-black p-3 font-black text-white disabled:opacity-40">{sharing ? 'Sharing…' : 'Share'}</button></div></div></div>}
   </div>;
+}
+
+function SharedPostPreview({ post, compact = false }: { post: NonNullable<SocialPost['sharedPost']>; compact?: boolean }) {
+  return <div className="overflow-hidden rounded-xl border border-black/15 bg-black/[.03]"><div className="p-3"><p className="text-xs font-black">{post.author.displayName}</p><p className={`mt-1 whitespace-pre-wrap text-sm ${compact ? 'line-clamp-3' : ''}`}>{post.content}</p></div>{!compact && post.media?.length ? <div className={`grid gap-1 ${post.media.length === 2 ? 'grid-cols-2' : ''}`}>{post.media.map((item) => item.kind === 'video' ? <video key={item.id} src={item.url} controls playsInline className="max-h-80 w-full bg-black object-contain" /> : <img key={item.id} src={item.url} alt="" className="max-h-80 w-full object-cover" />)}</div> : null}{compact && !!post.media?.length && <p className="px-3 pb-3 text-xs text-black/50">{post.media.length} media attachment{post.media.length === 1 ? '' : 's'}</p>}</div>;
 }
 
 function SocialCommentsModal({ post, visibility, onClose, onCountChange }: { post?: SocialPost; visibility: SocialVisibility; onClose: () => void; onCountChange: (postId: string, delta: number) => void }) { const [comments, setComments] = useState<SocialComment[]>([]); const [cursor, setCursor] = useState<string>(); const [value, setValue] = useState(''); const [loading, setLoading] = useState(false); useEffect(() => { if (!post) return; setLoading(true); setComments([]); void listSocialComments(post.id).then((page) => { setComments(page.items); setCursor(page.nextCursor); }).catch(() => toast.error('Could not load comments.')).finally(() => setLoading(false)); }, [post]); if (!post) return null; return <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-5" role="dialog" aria-modal="true"><div className="flex h-[75dvh] w-full max-w-xl flex-col rounded-t-[28px] bg-white p-4 shadow-2xl sm:rounded-[28px]"><div className="flex items-center justify-between border-b pb-3"><h2 className="text-lg font-black">Comments</h2><button aria-label="Close" onClick={onClose}><X /></button></div><div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-3">{comments.map((item) => <div key={item.id} className="flex gap-2 rounded-xl bg-black/[.04] p-3"><p className="min-w-0 flex-1 text-sm"><b>{item.author.displayName}</b> {item.content}</p>{item.ownedByViewer && <button onClick={async () => { await deleteSocialComment(post.id, item.id); setComments((current) => current.filter((comment) => comment.id !== item.id)); onCountChange(post.id, -1); }} className="text-xs font-black text-[#c62828]">Delete</button>}</div>)}{!loading && !comments.length && <div className="py-16 text-center text-black/40">No comments yet.</div>}{cursor && <button disabled={loading} onClick={async () => { setLoading(true); try { const page = await listSocialComments(post.id, cursor); setComments((current) => [...current, ...page.items]); setCursor(page.nextCursor); } finally { setLoading(false); } }} className="w-full py-3 text-sm font-black">{loading ? 'Loading…' : 'Load more'}</button>}</div><form className="flex gap-2 border-t pt-3" onSubmit={(event) => { event.preventDefault(); const content = value.trim(); if (!content) return; void createSocialComment(post.id, content, visibility).then((item) => { setComments((current) => [...current, item]); setValue(''); onCountChange(post.id, 1); }).catch(() => toast.error('Could not add comment.')); }}><input value={value} onChange={(event) => setValue(event.target.value)} className="min-w-0 flex-1 rounded-xl border border-black/15 px-3 py-2" placeholder="Write a comment…" maxLength={1000} /><button aria-label="Send" className="rounded-xl bg-black px-4 text-white"><Send size={17} /></button></form></div></div>; }
@@ -217,7 +239,7 @@ function Alerts({ alerts }: { alerts: SocialAlert[] }) {
             <b>
               {alert.actor.displayName}
             </b>
-            {alert.kind === 'like' ? 'liked your post.' : alert.kind === 'comment' ? 'commented on your post.' : 'camped your profile.'}
+            {alert.kind === 'like' ? 'liked your post.' : alert.kind === 'comment' ? 'commented on your post.' : 'started following you.'}
             <div className="mt-1 text-xs text-black/45">
               {new Date(alert.createdAtMs).toLocaleString()}
             </div>

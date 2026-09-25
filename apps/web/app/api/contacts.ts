@@ -4,6 +4,7 @@ export type Contact = {
   addedAtMs: number;
   avatarUrl?: string;
   displayName?: string;
+  nickname?: string;
   online: boolean;
   publicId: string;
 };
@@ -19,4 +20,8 @@ export async function addContact(publicId: string): Promise<void> {
 
 export async function removeContact(publicId: string): Promise<void> {
   await axios.delete(`/contacts/${publicId}`);
+}
+
+export async function updateContactNickname(publicId: string, nickname: string): Promise<void> {
+  await axios.patch(`/contacts/${publicId}`, { nickname });
 }

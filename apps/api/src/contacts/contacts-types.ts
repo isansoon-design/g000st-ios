@@ -1,6 +1,7 @@
 export type Contact = Readonly<{
   contactPublicId: string;
   addedAtMs: number;
+  nickname?: string;
 }>;
 
 export type ContactView = Readonly<{
@@ -9,4 +10,5 @@ export type ContactView = Readonly<{
   avatarUrl?: string;
   online: boolean;
   addedAtMs: number;
+  nickname?: string;
 }>;

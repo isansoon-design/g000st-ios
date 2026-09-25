@@ -17,9 +17,14 @@ export type CreateTextMessageResult = Readonly<{
   message: ChatMessage;
 }>;
 
+export type EditMessageResult =
+  | Readonly<{ status: 'updated'; message: ChatMessage }>
+  | Readonly<{ status: 'not_found' | 'forbidden' | 'not_editable' }>;
+
 export interface ChatStore {
   createTextMessage(message: ChatMessage): Promise<CreateTextMessageResult>;
   findMessage(conversationId: string, messageId: string): Promise<ChatMessage | null>;
+  editMessage(conversationId: string, messageId: string, senderPublicId: string, content: string, nowMs: number): Promise<EditMessageResult>;
   findConversation(conversationId: string): Promise<ChatConversation | null>;
   findConversationMember(
     publicId: string,

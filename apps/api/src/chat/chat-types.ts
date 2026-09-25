@@ -33,6 +33,7 @@ export type ChatMessage = Readonly<{
   content: string;
   conversationId: string;
   createdAtMs: number;
+  editedAtMs?: number;
   expiresAtMs: number;
   id: string;
   locked: boolean;

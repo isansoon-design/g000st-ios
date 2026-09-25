@@ -164,7 +164,7 @@ export function MobileScreen() {
 
   const handlePressDigit = useCallback((digit: string) => {
     if (digit === '0' && (!balance || (balance.voiceSecondsRemaining === 0 && balance.smsRemaining === 0))) {
-      Toast.show({ text1: 'Balance', text2: 'عليك شحن رصيدك', type: 'error' });
+      Toast.show({ text1: 'Balance', text2: 'Please top up your balance.', type: 'error' });
       return;
     }
     dialer.pressDigit(digit);

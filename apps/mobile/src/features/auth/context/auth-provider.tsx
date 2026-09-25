@@ -10,6 +10,7 @@ import {
 import { subscribeToSessionCleared } from '@/services/session/session-events';
 import { getPushDeviceId } from '@/services/notifications/device-id';
 import { sessionStorage } from '@/services/session/session-storage';
+import { recoveryIdStorage } from '@/services/session/recovery-id-storage';
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<AuthStatus>('loading');
@@ -46,8 +47,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  const completeAuthentication = useCallback(async (result: AuthenticationResult) => {
+  const completeAuthentication = useCallback(async (result: AuthenticationResult, recoveryId: string) => {
     await sessionStorage.save({ tokens: result.session, user: result.user });
+    try {
+      await recoveryIdStorage.save(result.user.publicId, recoveryId);
+    } catch (error) {
+      await sessionStorage.clear();
+      throw error;
+    }
     setUser(result.user);
     setStatus('authenticated');
   }, []);

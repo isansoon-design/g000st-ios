@@ -13,6 +13,7 @@ import type { SocialProfile } from "@/domain/social/types";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useConfirmModal } from "@/providers/confirm-modal-provider";
 import { copyText } from "@/services/device/clipboard";
+import { recoveryIdStorage } from "@/services/session/recovery-id-storage";
 
 export type IdentityProfileFields = Readonly<{
   displayName: string;
@@ -56,6 +57,21 @@ export function useIdentityScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [storedRecoveryId, setStoredRecoveryId] = useState<{ publicId: string; value: string | null } | null>(null);
+  const recoveryId = storedRecoveryId && storedRecoveryId.publicId === user?.publicId ? storedRecoveryId.value : null;
+
+  useEffect(() => {
+    let active = true;
+    if (user?.publicId) {
+      const publicId = user.publicId;
+      void recoveryIdStorage.get(publicId).then((stored) => {
+        if (active) setStoredRecoveryId({ publicId, value: stored });
+      }).catch(() => {
+        if (active) setStoredRecoveryId({ publicId, value: null });
+      });
+    }
+    return () => { active = false; };
+  }, [user?.publicId]);
 
   useEffect(() => {
     if (!user?.publicId) return;
@@ -105,6 +121,16 @@ export function useIdentityScreen() {
       type: "success",
     });
   }, [user]);
+
+  const copyRecoveryId = useCallback(async () => {
+    if (!recoveryId) return;
+    try {
+      await copyText(recoveryId);
+      Toast.show({ text1: "Copied", text2: "Recovery ID copied. Keep it private.", type: "success" });
+    } catch {
+      Toast.show({ text1: "Copy failed", text2: "Could not copy your Recovery ID.", type: "error" });
+    }
+  }, [recoveryId]);
 
   const changePhoto = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -241,10 +267,12 @@ export function useIdentityScreen() {
     avatarUrl: profile?.avatarUrl,
     changePhoto,
     copyPublicId,
+    copyRecoveryId,
     deleting,
     fields,
     loading,
     publicId: user?.publicId ?? "",
+    recoveryId,
     requestSignOut,
     requestDeleteAccount,
     save,

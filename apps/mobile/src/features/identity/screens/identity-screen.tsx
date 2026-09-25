@@ -12,11 +12,13 @@ export function IdentityScreen() {
       loading={identity.loading}
       onChangePhoto={identity.changePhoto}
       onCopyPublicId={identity.copyPublicId}
+      onCopyRecoveryId={identity.copyRecoveryId}
       onDeleteAccount={identity.requestDeleteAccount}
       onSave={identity.save}
       onSetField={identity.setField}
       onSignOut={identity.requestSignOut}
       publicId={identity.publicId}
+      recoveryId={identity.recoveryId}
       saving={identity.saving}
       uploadingPhoto={identity.uploadingPhoto}
     />

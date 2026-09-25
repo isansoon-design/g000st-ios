@@ -13,11 +13,13 @@ type IdentityScreenContentProps = Readonly<{
   loading: boolean;
   onChangePhoto: () => void;
   onCopyPublicId: () => void;
+  onCopyRecoveryId: () => void;
   onDeleteAccount: () => void;
   onSave: () => void;
   onSetField: <K extends keyof IdentityProfileFields>(key: K, value: IdentityProfileFields[K]) => void;
   onSignOut: () => void;
   publicId: string;
+  recoveryId: string | null;
   saving: boolean;
   uploadingPhoto: boolean;
 }>;
@@ -33,11 +35,13 @@ function IdentityScreenContentComponent({
   loading,
   onChangePhoto,
   onCopyPublicId,
+  onCopyRecoveryId,
   onDeleteAccount,
   onSave,
   onSetField,
   onSignOut,
   publicId,
+  recoveryId,
   saving,
   uploadingPhoto,
 }: IdentityScreenContentProps) {
@@ -201,11 +205,40 @@ function IdentityScreenContentComponent({
         </Pressable>
 
         {/* Recovery ID */}
-        <View className={`my-3 w-full ${CARD}`}>
-          <Text className={LABEL}>My ID</Text>
-          <Text className="text-[13px] font-bold leading-[18px] text-black/60">
-            If you forget your account number, you will not be able to log in again.
-          </Text>
+        <View className="my-3 w-full overflow-hidden rounded-[22px] border border-[#C62828]/35 bg-[#191919] p-4">
+          <View className="mb-3 flex-row items-center justify-between">
+            <View>
+              <Text className="text-[10px] font-black uppercase tracking-[1.5px] text-[#FFB9B9]">PRIVATE KEY</Text>
+              <Text className="mt-1 text-[19px] font-black text-white">My ID</Text>
+            </View>
+            <View className="rounded-full border border-[#FFB9B9]/40 bg-[#C62828]/20 px-3 py-1">
+              <Text className="text-[10px] font-black uppercase text-[#FFB9B9]">Recovery ID</Text>
+            </View>
+          </View>
+          {recoveryId ? (
+            <>
+              <Text selectable className="rounded-[14px] border border-white/15 bg-white/10 p-3 font-mono text-[13px] font-bold leading-[21px] text-white">
+                {recoveryId}
+              </Text>
+              <Pressable
+                accessibilityLabel="Copy private Recovery ID"
+                accessibilityRole="button"
+                className="mt-3 h-11 items-center justify-center rounded-[12px] bg-white active:opacity-75"
+                onPress={onCopyRecoveryId}
+              >
+                <Text className="text-[13px] font-black text-[#191919]">Copy my ID</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Text className="rounded-[14px] border border-white/15 bg-white/10 p-3 text-[13px] font-bold leading-[19px] text-white/75">
+              Your Recovery ID is not saved on this device yet. It will appear here after your next sign in.
+            </Text>
+          )}
+          <View className="mt-3 rounded-[12px] border border-[#FFB9B9]/25 bg-[#C62828]/15 p-3">
+            <Text className="text-[12px] font-bold leading-[18px] text-[#FFE0E0]">
+              Keep this key secret. Never share it with anyone. You need it to sign in again.
+            </Text>
+          </View>
         </View>
         {/* Sign out */}
         <Pressable

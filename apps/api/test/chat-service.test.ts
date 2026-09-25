@@ -131,6 +131,18 @@ class MemoryChatStore implements ChatStore {
     return (this.messages.get(conversationId) ?? []).find((message) => message.id === messageId) ?? null;
   }
 
+  async editMessage(conversationId: string, messageId: string, senderPublicId: string, content: string, nowMs: number) {
+    const messages = this.messages.get(conversationId) ?? [];
+    const index = messages.findIndex((message) => message.id === messageId);
+    const message = messages[index];
+    if (!message || message.expiresAtMs <= nowMs) return { status: 'not_found' as const };
+    if (message.senderPublicId !== senderPublicId) return { status: 'forbidden' as const };
+    if (message.burnAfterReadSeconds || message.attachments?.length || message.type !== 'text') return { status: 'not_editable' as const };
+    const updated = { ...message, content, editedAtMs: nowMs };
+    messages[index] = updated;
+    return { status: 'updated' as const, message: updated };
+  }
+
   async listConversations(
     publicId: string,
     limit: number,
@@ -341,6 +353,27 @@ function createFixture(mediaService?: MediaService) {
 }
 
 describe('ChatService', () => {
+  it('lets only the sender edit a live plain text message', async () => {
+    const { service, advance } = createFixture();
+    const conversation = await service.startConversation(USER_A, USER_B);
+    const sent = await service.sendTextMessage(USER_A, conversation.id, { content: 'Original' });
+    await assert.rejects(() => service.editMessage(USER_B, conversation.id, sent.id, 'Changed'), expectApiError('MESSAGE_NOT_OWNED'));
+    await assert.rejects(() => service.editMessage(USER_C, conversation.id, sent.id, 'Changed'), expectApiError('CONVERSATION_NOT_FOUND'));
+    const edited = await service.editMessage(USER_A, conversation.id, sent.id, '  Changed  ');
+    assert.equal(edited.content, 'Changed');
+    assert.equal(edited.editedAtMs, NOW);
+    assert.equal((await service.listMessages(USER_B, conversation.id, 50)).messages[0]?.content, 'Changed');
+    advance(CHAT_MESSAGE_RETENTION_MS);
+    await assert.rejects(() => service.editMessage(USER_A, conversation.id, sent.id, 'Too late'), expectApiError('MESSAGE_NOT_FOUND'));
+  });
+
+  it('does not edit burn messages', async () => {
+    const { service } = createFixture();
+    const conversation = await service.startConversation(USER_A, USER_B);
+    const sent = await service.sendTextMessage(USER_A, conversation.id, { content: 'Private', burnAfterRead: true });
+    await assert.rejects(() => service.editMessage(USER_A, conversation.id, sent.id, 'Changed'), expectApiError('MESSAGE_NOT_EDITABLE'));
+  });
+
   it('creates one private conversation for the same two users', async () => {
     const { service } = createFixture();
     const first = await service.startConversation(USER_A, USER_B);

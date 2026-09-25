@@ -51,6 +51,7 @@ export const chatMessageSchema = z.object({
   content: z.string().max(4_000),
   conversationId: conversationIdSchema,
   createdAtMs: z.number().int().positive(),
+  editedAtMs: z.number().int().positive().optional(),
   expiresAtMs: z.number().int().positive(),
   id: z.string().uuid(),
   locked: z.boolean(),

@@ -30,6 +30,12 @@ export class ContactsService {
     }
   }
 
+  async updateNickname(ownerPublicId: string, contactPublicId: string, nickname: string | undefined): Promise<void> {
+    if (!(await this.store.updateNickname(ownerPublicId, contactPublicId, nickname?.trim()))) {
+      throw new ApiError(404, 'CONTACT_NOT_FOUND', 'Contact not found.');
+    }
+  }
+
   async listContacts(ownerPublicId: string): Promise<readonly ContactView[]> {
     const contacts = await this.store.listContacts(ownerPublicId);
     const online = await this.presenceService.isOnlineMany(
@@ -42,6 +48,7 @@ export class ContactsService {
           return {
             addedAtMs: contact.addedAtMs,
             displayName: 'Deleted account',
+            nickname: contact.nickname,
             online: false,
             publicId: contact.contactPublicId,
           };
@@ -53,6 +60,7 @@ export class ContactsService {
           addedAtMs: contact.addedAtMs,
           avatarUrl: profile?.avatarUrl,
           displayName: profile?.displayName,
+          nickname: contact.nickname,
           online: online.get(contact.contactPublicId) ?? false,
           publicId: contact.contactPublicId,
         };

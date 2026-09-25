@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
-import { addContact, listContacts, removeContact, type Contact } from "@/app/api/contacts";
+import { addContact, listContacts, removeContact, updateContactNickname, type Contact } from "@/app/api/contacts";
 import { sessionStorage } from "@/app/api/session-storage";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { startChatConversation } from "@/features/chat/api";
@@ -31,6 +31,8 @@ export default function ContactsPage() {
   const [addValue, setAddValue] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [nickname, setNickname] = useState("");
 
   const load = useCallback(async (options?: { silent?: boolean }) => {
     try {
@@ -89,6 +91,7 @@ export default function ContactsPage() {
       if (!normalizedQuery) return true;
       return (
         contact.displayName?.toLowerCase().includes(normalizedQuery) ||
+        contact.nickname?.toLowerCase().includes(normalizedQuery) ||
         contact.publicId.toLowerCase().includes(normalizedQuery)
       );
     });
@@ -115,7 +118,7 @@ export default function ContactsPage() {
       setIsAddOpen(false);
       setAddValue("");
       await load();
-      toast.success("Contact added.");
+      toast.success("Friend added.");
     } catch (error) {
       setAddError(errorMessage(error));
     } finally {
@@ -125,8 +128,8 @@ export default function ContactsPage() {
 
   const onRemove = async (contact: Contact) => {
     const confirmed = await confirm({
-      title: "Remove contact?",
-      message: `Remove ${contact.displayName || "this contact"} from your contacts?`,
+      title: "Remove friend?",
+      message: `Remove ${contact.displayName || "this friend"} from your friends?`,
       confirmLabel: "Remove",
       isDangerous: true,
     });
@@ -169,7 +172,7 @@ export default function ContactsPage() {
         boxShadow: "inset 0 2px 0 rgba(255,255,255,.9),0 6px 16px rgba(0,0,0,.12)",
         borderBottom: "1px solid rgba(0,0,0,.12)",
       }}>
-        <span style={{ fontWeight: 900, fontSize: 16 }}>Contacts</span>
+        <span style={{ fontWeight: 900, fontSize: 16 }}>Friends</span>
         <button style={{ ...btnSmStyle, background: "linear-gradient(180deg,#B8B8B8,#9A9A9A)", color: "#fff", border: "1px solid #9A9A9A" }}
           onClick={() => { setAddValue(""); setAddError(null); setIsAddOpen(true); }}>+ Add</button>
       </div>
@@ -210,7 +213,7 @@ export default function ContactsPage() {
           </p>
         ) : visibleContacts.length === 0 ? (
           <p style={{ textAlign: "center", fontSize: 13, fontWeight: 600, color: "rgba(0,0,0,.45)", marginTop: 40 }}>
-            {tab === "online" ? "No contacts online right now." : "No contacts yet. Add someone by their Public ID."}
+            {tab === "online" ? "No friends online right now." : "No friends yet. Add someone by their Public ID."}
           </p>
         ) : (
           visibleContacts.map((contact) => (
@@ -239,13 +242,14 @@ export default function ContactsPage() {
                     <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4CAF50", flexShrink: 0 }} />
                   ) : null}
                   <span style={{ fontWeight: 900, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {contact.displayName || contact.publicId.slice(0, 12)}
+                    {contact.nickname || contact.displayName || contact.publicId.slice(0, 12)}
                   </span>
                 </div>
                 <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: "rgba(0,0,0,.4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {contact.publicId}
                 </div>
               </div>
+              <button aria-label="Edit friend name" onClick={(event) => { event.stopPropagation(); setEditingContact(contact); setNickname(contact.nickname ?? ""); }} style={{ width: 32, height: 32, border: "none", background: "transparent", cursor: "pointer" }}>✎</button>
               <button
                 aria-label="Call"
                 onClick={(event) => { event.stopPropagation(); void callUser(contact.publicId, "audio"); }}
@@ -272,6 +276,7 @@ export default function ContactsPage() {
         )}
       </div>
 
+      {editingContact ? <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-5"><div className="w-full max-w-[400px] space-y-3 rounded-2xl bg-white p-5"><h2 className="text-lg font-black">Friend's name</h2><input value={nickname} maxLength={80} onChange={(event) => setNickname(event.target.value)} placeholder="Name shown only to you" className="w-full rounded-xl border border-black/15 p-3" /><div className="flex gap-2"><button onClick={() => setEditingContact(null)} className="flex-1 rounded-xl bg-[#ddd] p-3 font-bold">Cancel</button><button onClick={async () => { try { const next = nickname.trim(); await updateContactNickname(editingContact.publicId, next); setContacts((current) => current.map((item) => item.publicId === editingContact.publicId ? { ...item, nickname: next || undefined } : item)); setEditingContact(null); } catch (error) { toast.error(errorMessage(error)); } }} className="flex-1 rounded-xl bg-black p-3 font-bold text-white">Save</button></div></div></div> : null}
       {isAddOpen ? (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 }}>
           <div style={{ width: "100%", maxWidth: 400, borderRadius: 22, border: "1px solid rgba(255,255,255,.7)", background: "#F2F2F2", padding: 20 }}>

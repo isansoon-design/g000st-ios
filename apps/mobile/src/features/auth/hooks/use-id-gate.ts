@@ -18,7 +18,7 @@ export type BusyAction = "create" | "restore" | null;
 export type RegistrationModalStage = "closed" | "confirm" | "credentials";
 
 type UseIdGateOptions = Readonly<{
-  onAuthenticated: (result: AuthenticationResult) => Promise<void>;
+  onAuthenticated: (result: AuthenticationResult, recoveryId: string) => Promise<void>;
 }>;
 
 export function useIdGate({ onAuthenticated }: UseIdGateOptions) {
@@ -91,7 +91,7 @@ export function useIdGate({ onAuthenticated }: UseIdGateOptions) {
         const result = await recoverAccount({
           recoveryId: normalizeId(idToUse),
         });
-        await onAuthenticated(result);
+        await onAuthenticated(result, normalizeId(idToUse));
       } catch (error) {
         showToast(toApiError(error).message);
       } finally {

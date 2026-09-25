@@ -9,6 +9,8 @@ export type MarketPost = Readonly<{
   currency: string;
   quantity: number;
   city: string;
+  allowCalls: boolean;
+  allowVideoCalls: boolean;
   media?: readonly SocialMedia[];
   createdAtMs: number;
   updatedAtMs: number;
@@ -39,6 +41,8 @@ export type CreateMarketPostInput = Readonly<{
   currency: string;
   quantity: number;
   city: string;
+  allowCalls: boolean;
+  allowVideoCalls: boolean;
   media?: readonly Omit<SocialMedia, 'kind'>[];
 }>;
 
@@ -48,4 +52,6 @@ export type UpdateMarketPostInput = Readonly<{
   currency: string;
   quantity: number;
   city: string;
+  allowCalls?: boolean;
+  allowVideoCalls?: boolean;
 }>;

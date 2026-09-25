@@ -5,6 +5,7 @@ import type { ChatConversationSummary } from '@/domain/chat/types';
 
 type ChatConversationListProps = Readonly<{
   conversations: readonly ChatConversationSummary[];
+  namesByPublicId: Readonly<Record<string, string>>;
   error: string | null;
   isLoading: boolean;
   onOpen: (conversation: ChatConversationSummary) => void;
@@ -22,6 +23,7 @@ function formatTime(value: number): string {
 
 function ChatConversationListComponent({
   conversations,
+  namesByPublicId,
   error,
   isLoading,
   onOpen,
@@ -91,7 +93,7 @@ function ChatConversationListComponent({
             <Text className="font-mono text-[12px] font-black text-g000st-black">
               {item.participantStatus === 'deleted'
                 ? 'Deleted account'
-                : item.participantDisplayName || shortId(item.participantPublicId)}
+                : namesByPublicId[item.participantPublicId] || item.participantDisplayName || shortId(item.participantPublicId)}
             </Text>
             <Text className="mt-1" numberOfLines={1}>
               <Text className="text-xs font-semibold text-black/45">

@@ -42,12 +42,14 @@ export async function createSocialPost(
   content: string,
   visibility: SocialVisibility,
   media?: PendingSocialMedia[],
+  sharedPostId?: string,
 ) {
   const response = await axiosInstance.post("/social/posts", {
     clientPostId,
     content,
     visibility,
     ...(media?.length ? { media } : {}),
+    ...(sharedPostId ? { sharedPostId } : {}),
   });
   return parseApiPayload(socialPostResultSchema, response.data).post;
 }

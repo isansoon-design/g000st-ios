@@ -2,11 +2,13 @@ import * as SecureStore from 'expo-secure-store';
 
 import { persistedSessionSchema, type PersistedSession } from '@/domain/auth/types';
 import { emitSessionCleared } from '@/services/session/session-events';
+import { recoveryIdStorage } from '@/services/session/recovery-id-storage';
 
 const SESSION_KEY = 'g000st.session.v1';
 
 async function clearPersistedSession(): Promise<void> {
   await SecureStore.deleteItemAsync(SESSION_KEY);
+  await recoveryIdStorage.clear();
   emitSessionCleared();
 }
 

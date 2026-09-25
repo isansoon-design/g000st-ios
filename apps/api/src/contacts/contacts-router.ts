@@ -9,6 +9,7 @@ import { ContactsService } from './contacts-service.js';
 
 const publicId = z.string().length(G000ST_ID_LENGTH).regex(/^[A-Za-z0-9]+$/);
 const addContactBody = z.object({ publicId }).strict();
+const nicknameBody = z.object({ nickname: z.string().trim().max(80).optional() }).strict();
 
 function bearerToken(request: Request): string {
   const [scheme, token] = (request.header('authorization') ?? '').split(' ', 2);
@@ -36,6 +37,10 @@ export function createContactsRouter(authService: AuthService, service: Contacts
   router.delete('/:publicId', limiter(30), asyncRoute(async (request, response) => {
     await service.removeContact(request.authenticatedPublicId, publicId.parse(request.params.publicId));
     response.status(204).send();
+  }));
+  router.patch('/:publicId', limiter(30), asyncRoute(async (request, response) => {
+    await service.updateNickname(request.authenticatedPublicId, publicId.parse(request.params.publicId), nicknameBody.parse(request.body).nickname);
+    response.json({ ok: true });
   }));
 
   return router;

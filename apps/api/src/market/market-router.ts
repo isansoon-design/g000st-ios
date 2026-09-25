@@ -13,9 +13,9 @@ const publicId = z.string().length(G000ST_ID_LENGTH).regex(/^[A-Za-z0-9]+$/);
 const cursorQuery = z.object({ cursor: z.string().min(1).max(256).optional(), limit: z.coerce.number().int().min(1).max(50).default(20) });
 const mediaType = z.enum(['image/gif', 'image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime', 'video/webm']);
 const pendingMedia = z.object({ byteSize: z.number().int().positive().max(MAX_SOCIAL_MEDIA_BYTES), contentType: mediaType, fileName: z.string().min(1).max(255), id: uuid, objectKey: z.string().min(1).max(600) }).strict();
-const fields = { content: z.string().trim().min(1).max(4_000), price: z.number().finite().nonnegative().max(1_000_000_000), currency: z.string().trim().length(3).regex(/^[A-Za-z]{3}$/).default('USD'), quantity: z.number().int().positive().max(1_000_000), city: z.string().trim().min(1).max(100) };
+const fields = { content: z.string().trim().min(1).max(4_000), price: z.number().finite().nonnegative().max(1_000_000_000), currency: z.string().trim().length(3).regex(/^[A-Za-z]{3}$/).default('GBP'), quantity: z.number().int().positive().max(1_000_000), city: z.string().trim().min(1).max(100), allowCalls: z.boolean().default(true), allowVideoCalls: z.boolean().default(false) };
 const createBody = z.object({ clientPostId: uuid, ...fields, media: z.array(pendingMedia).max(MAX_SOCIAL_IMAGES).optional() }).strict().superRefine((value, context) => { const videos = value.media?.filter((item) => item.contentType.startsWith('video/')).length ?? 0; if (videos && (videos !== 1 || value.media?.length !== 1)) context.addIssue({ code: 'custom', message: 'A post can contain up to two images or one video.', path: ['media'] }); });
-const updateBody = z.object(fields).strict();
+const updateBody = z.object({ ...fields, allowCalls: z.boolean().optional(), allowVideoCalls: z.boolean().optional() }).strict();
 const uploadBody = z.object({ byteSize: z.number().int().positive().max(MAX_SOCIAL_MEDIA_BYTES), clientPostId: uuid, contentType: mediaType, fileName: z.string().min(1).max(255) }).strict();
 const commentBody = z.object({ content: z.string().trim().min(1).max(1_000) }).strict();
 function bearerToken(request: Request) { const [scheme, token] = (request.header('authorization') ?? '').split(' ', 2); return scheme?.toLowerCase() === 'bearer' ? token ?? '' : ''; }

@@ -14,7 +14,7 @@ const ACTIVE_COLOR = '#9A9A9A';
 const INACTIVE_COLOR = 'rgba(0,0,0,0.45)';
 const INDICATOR_WIDTH = 42;
 
-/** حساب الأنيميشن لكل تاب منفرد */
+/** Animation for each tab */
 function AnimatedTab({
   focused,
   label,
@@ -50,14 +50,14 @@ function AnimatedTab({
       <Animated.View style={[styles.tabInner, animatedStyle]}>
         {icon}
         <Text numberOfLines={1} style={styles.label}>
-          {label}
+          {label === 'MOBILE' ? <><Text style={{ color: '#1A1A1A' }}>g</Text><Text style={{ color: '#C62828' }}>000</Text><Text style={{ color: '#1A1A1A' }}>st</Text></> : label}
         </Text>
       </Animated.View>
     </Pressable>
   );
 }
 
-/** شريط التابات المخصص مع أنيميشن المؤشر والضغط */
+/** Custom tab bar with animated indicator */
 export default function AnimatedTabBar({
   state,
   descriptors,
@@ -68,11 +68,10 @@ export default function AnimatedTabBar({
   const indicatorX = useSharedValue(0);
   const indicatorOpacity = useSharedValue(0);
   const indicatorReady = useRef(false);
-  const screenWidth = Dimensions.get('window').width;
 
   const slotCount = state.routes.length;
 
-  /** مركز أي خانة بناءً على فهرسها ضمن الشريط */
+  /** Center of each tab slot */
   const slotCenterX = (index: number) => (barWidth / slotCount) * (index + 0.5);
 
   useEffect(() => {
@@ -97,7 +96,7 @@ export default function AnimatedTabBar({
       style={[styles.container, { paddingBottom: insets.bottom }]}
       onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
     >
-      {/* المؤشر المتحرك في أعلى الشريط */}
+      {/* Animated indicator at the top of the tab bar */}
       <Animated.View style={[styles.indicator, indicatorStyle]} />
 
       <View style={styles.row}>
@@ -185,4 +184,3 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
 });
-

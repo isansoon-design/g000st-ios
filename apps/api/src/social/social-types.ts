@@ -45,6 +45,7 @@ export type SocialPost = Readonly<{
   ownerPublicId?: string;
   author: SocialAuthor;
   content: string;
+  sharedPostId?: string;
   media?: readonly SocialMedia[];
   visibility: SocialVisibility;
   createdAtMs: number;
@@ -55,6 +56,14 @@ export type SocialPost = Readonly<{
   likedByViewer: boolean;
   campedByViewer: boolean;
   ownedByViewer: boolean;
+}>;
+
+export type SharedSocialPostView = Readonly<{
+  id: string;
+  author: SocialAuthor;
+  content: string;
+  media?: readonly SocialMediaView[];
+  createdAtMs: number;
 }>;
 
 export type SocialComment = Readonly<{
@@ -84,6 +93,7 @@ export type SocialPage<T> = Readonly<{ items: readonly T[]; nextCursor?: string 
 
 export type CreateSocialPostInput = Readonly<{
   content: string;
+  sharedPostId?: string;
   media?: readonly Omit<SocialMedia, 'kind'>[];
   visibility: SocialVisibility;
 }>;

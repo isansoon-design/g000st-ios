@@ -1,6 +1,7 @@
 import type { PersistedSession } from "@/features/auth/types";
 
 const SESSION_KEY = "g000st.session.v1";
+const RECOVERY_ID_KEY = "g000st.recovery-id.v1";
 const SESSION_HINT_COOKIE = "g000st_session_hint";
 
 function isAuthTokens(value: unknown): value is PersistedSession["tokens"] {
@@ -61,8 +62,34 @@ export const sessionStorage = {
     setCookie("user_role", session.user.role);
   },
 
+  getRecoveryId(publicId: string): string | null {
+    if (typeof window === "undefined") return null;
+    const serialized = window.localStorage.getItem(RECOVERY_ID_KEY);
+    if (!serialized) return null;
+    try {
+      const stored: unknown = JSON.parse(serialized);
+      if (stored && typeof stored === "object") {
+        const candidate = stored as { publicId?: unknown; recoveryId?: unknown };
+        if (candidate.publicId === publicId && typeof candidate.recoveryId === "string" && /^[A-Za-z0-9]{50}$/.test(candidate.recoveryId)) {
+          return candidate.recoveryId;
+        }
+      }
+    } catch {
+      // Invalid data cannot be displayed as a Recovery ID.
+    }
+    return null;
+  },
+
+  saveRecoveryId(publicId: string, recoveryId: string): void {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(RECOVERY_ID_KEY, JSON.stringify({ publicId, recoveryId }));
+  },
+
   clear(): void {
-    if (typeof window !== "undefined") window.localStorage.removeItem(SESSION_KEY);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(SESSION_KEY);
+      window.localStorage.removeItem(RECOVERY_ID_KEY);
+    }
     setCookie(SESSION_HINT_COOKIE, null);
     setCookie("user_role", null);
   },

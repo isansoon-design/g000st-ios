@@ -227,6 +227,21 @@ export class FirestoreChatStore implements ChatStore {
     });
   }
 
+  async editMessage(conversationId: string, messageId: string, senderPublicId: string, content: string, nowMs: number) {
+    const messageRef = this.messages(conversationId).doc(messageId);
+    return this.db.runTransaction(async (transaction) => {
+      const messageSnapshot = await transaction.get(messageRef);
+      if (!messageSnapshot.exists) return { status: 'not_found' as const };
+      const message = this.toMessage(messageSnapshot.id, messageSnapshot.data());
+      if (message.expiresAtMs <= nowMs) return { status: 'not_found' as const };
+      if (message.senderPublicId !== senderPublicId) return { status: 'forbidden' as const };
+      if (message.type !== 'text' || message.attachments?.length || message.burnAfterReadSeconds || message.locked) return { status: 'not_editable' as const };
+      const next = { ...message, content, editedAtMs: nowMs };
+      transaction.update(messageRef, { content, editedAtMs: nowMs });
+      return { status: 'updated' as const, message: next };
+    });
+  }
+
   async openBurnMessage(
     conversationId: string,
     messageId: string,

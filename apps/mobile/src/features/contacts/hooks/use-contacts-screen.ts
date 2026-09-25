@@ -4,7 +4,7 @@ import { AppState } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import { startChatConversation } from '@/api/chat';
-import { addContact, listContacts, removeContact } from '@/api/contacts';
+import { addContact, listContacts, removeContact, updateContactNickname } from '@/api/contacts';
 import type { Contact } from '@/domain/contacts/types';
 import { G000ST_ID_LENGTH } from '@/domain/identity/constants';
 import { useAuth } from '@/features/auth/hooks/use-auth';
@@ -34,13 +34,15 @@ export function useContactsScreen() {
   const [addValue, setAddValue] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [nickname, setNickname] = useState('');
 
   const load = useCallback(async (options?: { silent?: boolean }) => {
     try {
       setContacts(await listContacts());
     } catch (error) {
       if (!options?.silent) {
-        Toast.show({ text1: 'Contacts', text2: errorMessage(error), type: 'error' });
+        Toast.show({ text1: 'Friends', text2: errorMessage(error), type: 'error' });
       }
     } finally {
       if (!options?.silent) setLoading(false);
@@ -89,6 +91,7 @@ export function useContactsScreen() {
       if (!normalizedQuery) return true;
       return (
         contact.displayName?.toLowerCase().includes(normalizedQuery) ||
+        contact.nickname?.toLowerCase().includes(normalizedQuery) ||
         contact.publicId.toLowerCase().includes(normalizedQuery)
       );
     });
@@ -116,7 +119,7 @@ export function useContactsScreen() {
       return;
     }
     if (contacts.some((contact) => contact.publicId === publicId)) {
-      setAddError('This contact is already in your list.');
+      setAddError('This friend is already in your list.');
       return;
     }
 
@@ -125,7 +128,7 @@ export function useContactsScreen() {
       await addContact(publicId);
       setIsAddOpen(false);
       await load();
-      Toast.show({ text1: 'Contacts', text2: 'Contact added.', type: 'success' });
+      Toast.show({ text1: 'Friends', text2: 'Friend added.', type: 'success' });
     } catch (error) {
       setAddError(errorMessage(error));
     } finally {
@@ -139,8 +142,8 @@ export function useContactsScreen() {
         cancelLabel: 'Cancel',
         confirmLabel: 'Remove',
         isDangerous: true,
-        message: `Remove ${contact.displayName || 'this contact'} from your contacts?`,
-        title: 'Remove contact?',
+        message: `Remove ${contact.displayName || 'this friend'} from your friends?`,
+        title: 'Remove friend?',
       });
       if (!confirmed) return;
 
@@ -148,7 +151,7 @@ export function useContactsScreen() {
         await removeContact(contact.publicId);
         setContacts((current) => current.filter((item) => item.publicId !== contact.publicId));
       } catch (error) {
-        Toast.show({ text1: 'Contacts', text2: errorMessage(error), type: 'error' });
+        Toast.show({ text1: 'Friends', text2: errorMessage(error), type: 'error' });
       }
     },
     [confirm],
@@ -163,7 +166,7 @@ export function useContactsScreen() {
           pathname: '/(app)/(tabs)/chat',
         });
       } catch (error) {
-        Toast.show({ text1: 'Contacts', text2: errorMessage(error), type: 'error' });
+        Toast.show({ text1: 'Friends', text2: errorMessage(error), type: 'error' });
       }
     },
     [router],
@@ -178,6 +181,23 @@ export function useContactsScreen() {
     [callUser],
   );
 
+  const editNickname = useCallback((contact: Contact) => {
+    setEditingContact(contact);
+    setNickname(contact.nickname ?? '');
+  }, []);
+
+  const saveNickname = useCallback(async () => {
+    if (!editingContact) return;
+    try {
+      const next = nickname.trim();
+      await updateContactNickname(editingContact.publicId, next);
+      setContacts((current) => current.map((contact) => contact.publicId === editingContact.publicId ? { ...contact, nickname: next || undefined } : contact));
+      setEditingContact(null);
+    } catch (error) {
+      Toast.show({ text1: 'Friends', text2: errorMessage(error), type: 'error' });
+    }
+  }, [editingContact, nickname]);
+
   return {
     addError,
     addValue,
@@ -185,17 +205,23 @@ export function useContactsScreen() {
     callVideo,
     closeAdd,
     contacts: visibleContacts,
+    editingContact,
+    editNickname,
     isAddOpen,
     isAdding,
     loading,
     openAdd,
     openChat,
     query,
+    nickname,
     requestRemove,
     setAddValue,
+    setEditingContact,
+    setNickname,
     setQuery,
     setTab,
     submitAdd,
+    saveNickname,
     tab,
   };
 }

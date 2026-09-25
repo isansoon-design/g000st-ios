@@ -4,6 +4,7 @@ export const contactSchema = z.object({
   addedAtMs: z.number(),
   avatarUrl: z.url().optional(),
   displayName: z.string().optional(),
+  nickname: z.string().optional(),
   online: z.boolean(),
   publicId: z.string(),
 });

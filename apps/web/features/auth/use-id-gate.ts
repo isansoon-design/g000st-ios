@@ -84,6 +84,12 @@ export function useIdGate() {
         });
         const result = parseAuthenticationResult(response.data);
         sessionStorage.save({ tokens: result.session, user: result.user });
+        try {
+          sessionStorage.saveRecoveryId(result.user.publicId, normalizeId(idToUse));
+        } catch (error) {
+          sessionStorage.clear();
+          throw error;
+        }
         router.replace("/social");
       } catch (error) {
         toast.error(toApiError(error).message);

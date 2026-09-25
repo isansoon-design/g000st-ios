@@ -85,6 +85,11 @@ export async function openChatBurnMessage(
   return response.data.message;
 }
 
+export async function editChatMessage(conversationId: string, messageId: string, content: string): Promise<ChatMessage> {
+  const response = await axios.patch<{ message: ChatMessage }>(`/chat/conversations/${conversationId}/messages/${messageId}`, { content });
+  return response.data.message;
+}
+
 export async function markChatConversationRead(conversationId: string): Promise<void> {
   await axios.post(`/chat/conversations/${conversationId}/read`);
 }

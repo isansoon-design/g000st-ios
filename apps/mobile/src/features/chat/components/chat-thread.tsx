@@ -40,6 +40,8 @@ type ChatThreadProps = Readonly<{
   messages: readonly ChatThreadMessage[];
   nowMs: number;
   onBack: () => void;
+  onEditName: () => void;
+  onEditMessage: (message: ChatMessage) => void;
   onCallAudio: () => void;
   onCallVideo: () => void;
   onCaptureAttachment: () => Promise<void>;
@@ -89,6 +91,7 @@ type MessageBubbleProps = Readonly<{
   mine: boolean;
   nowMs: number;
   onOpenBurn: (messageId: string) => void;
+  onEdit: (message: ChatMessage) => void;
   onRetry: (clientMessageId: string) => void;
   fontSize: number;
 }>;
@@ -100,12 +103,14 @@ function MessageBubbleComponent({
   mine,
   nowMs,
   onOpenBurn,
+  onEdit,
   onRetry,
   fontSize,
 }: MessageBubbleProps) {
   const failed = hasStatus(message) && message.status === 'failed';
   const pending = hasStatus(message) && message.status === 'pending';
   const canPress = failed || message.locked;
+  const canEdit = mine && !failed && !pending && !message.locked && !message.burnAfterReadSeconds && !message.attachments?.length && message.type === 'text' && !!message.content;
   const burnSecondsLeft = message.burnStartedAtMs
     ? Math.max(0, Math.ceil((message.expiresAtMs - nowMs) / 1_000))
     : null;
@@ -127,15 +132,16 @@ function MessageBubbleComponent({
   const bubble = (
     <View className={`mb-2 flex-row ${mine ? 'justify-end' : 'justify-start'}`}>
       <Pressable
-        accessibilityHint={message.locked ? 'Opens this message for five seconds' : undefined}
-        accessibilityRole={canPress ? 'button' : undefined}
+        accessibilityHint={message.locked ? 'Opens this message for five seconds' : canEdit ? 'Long press to edit message' : undefined}
+        accessibilityRole={canPress || canEdit ? 'button' : undefined}
         className={`max-w-[78%] px-3 py-2 ${mine
           ? `rounded-[18px] rounded-br border bg-[#E0E0E0] ${failed ? 'border-2 border-g000st-red' : 'border-g000st-silver'
           }`
           : 'rounded-[18px] rounded-bl border-2 border-g000st-silver bg-[#A8A8A8]'
           } ${pending ? 'opacity-60' : ''}`}
-        disabled={!canPress}
+        disabled={!canPress && !canEdit}
         onPress={handlePress}
+        onLongPress={canEdit ? () => onEdit(message) : undefined}
       >
         {message.locked ? (
           <Text className="font-black text-white" style={{ fontSize, lineHeight: Math.round(fontSize * 1.4) }}>
@@ -170,7 +176,7 @@ function MessageBubbleComponent({
             <Text className={`text-[10px] font-bold ${mine ? 'text-black/40' : 'text-white/75'}`}>
               {pending
                 ? 'Sending…'
-                : `${formatTime(message.createdAtMs)}${deliveryLabel ? ` · ${deliveryLabel}` : ''}`}
+                : `${formatTime(message.createdAtMs)}${message.editedAtMs ? ' · edited' : ''}${deliveryLabel ? ` · ${deliveryLabel}` : ''}${canEdit ? ' · hold to edit' : ''}`}
             </Text>
           </View>
         )}
@@ -199,6 +205,8 @@ function ChatThreadComponent({
   messages,
   nowMs,
   onBack,
+  onEditName,
+  onEditMessage,
   onCallAudio,
   onCallVideo,
   onCaptureAttachment,
@@ -325,13 +333,14 @@ function ChatThreadComponent({
             mine={item.senderPublicId === userPublicId}
             nowMs={nowMs}
             onOpenBurn={onOpenBurn}
+            onEdit={onEditMessage}
             onRetry={onRetry}
             fontSize={fontSize}
           />
         </View>
       );
     },
-    [blurMessages, firstUnreadMessageId, nowMs, onOpenBurn, onRetry, userPublicId, fontSize],
+    [blurMessages, firstUnreadMessageId, nowMs, onOpenBurn, onEditMessage, onRetry, userPublicId, fontSize],
   );
 
   return (
@@ -354,12 +363,12 @@ function ChatThreadComponent({
           )}
         </View>
 
-        <View className="ml-2 min-w-0 flex-1">
+        <Pressable className="ml-2 min-w-0 flex-1" onPress={onEditName} accessibilityRole="button" accessibilityLabel="Edit friend's name">
           <Text className="text-[11px] font-bold text-black/45">PRIVATE CHAT</Text>
           <Text className="font-mono text-[12px] font-black text-g000st-black" numberOfLines={1}>
             {isParticipantDeleted ? 'Deleted account' : participantDisplayName || shortId(participantPublicId)}
           </Text>
-        </View>
+        </Pressable>
         {/* Start Increase & Decrease Font Size & Blur */}
         <View className=" flex-row items-center gap-1">
           {/* Start Increase & Decrease Font Size */}

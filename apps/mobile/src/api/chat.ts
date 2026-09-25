@@ -53,6 +53,11 @@ export async function openChatBurnMessage(conversationId: string, messageId: str
   return parseApiPayload(sendChatMessageResultSchema, response.data).message;
 }
 
+export async function editChatMessage(conversationId: string, messageId: string, content: string) {
+  const response = await axiosInstance.patch(`/chat/conversations/${conversationId}/messages/${messageId}`, { content });
+  return parseApiPayload(sendChatMessageResultSchema, response.data).message;
+}
+
 export async function markChatConversationRead(conversationId: string): Promise<void> {
   await axiosInstance.post(`/chat/conversations/${conversationId}/read`);
 }

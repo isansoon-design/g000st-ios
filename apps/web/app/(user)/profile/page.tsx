@@ -48,6 +48,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { confirm } = useConfirmModal();
   const publicId = sessionStorage.get()?.user.publicId ?? "";
+  const recoveryId = sessionStorage.getRecoveryId(publicId);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
   const [fields, setFields] = useState<ProfileFields>(EMPTY_FIELDS);
   const [loading, setLoading] = useState(true);
@@ -85,6 +86,14 @@ export default function ProfilePage() {
       ?.writeText(publicId)
       .then(() => toast.success("Public ID copied."))
       .catch(() => toast.error("Could not copy ID."));
+  };
+
+  const copyRecoveryId = () => {
+    if (!recoveryId) return;
+    if (!navigator.clipboard) return toast.error("Clipboard is unavailable.");
+    navigator.clipboard.writeText(recoveryId)
+      .then(() => toast.success("Recovery ID copied. Keep it private."))
+      .catch(() => toast.error("Could not copy your Recovery ID."));
   };
 
   const shareId = () => {
@@ -330,10 +339,37 @@ export default function ProfilePage() {
               </button>
 
               {/* Recovery ID */}
-              <div className={`mb-3 w-full ${cardClass}`}>
-                <div className={labelClass}>My ID</div>
-                <p className="text-[13px] font-bold leading-[18px] text-black/60">
-                  If you forget your account number, you will not be able to log in again.
+              <div className="mb-3 w-full overflow-hidden rounded-[22px] border border-[#C62828]/35 bg-[#191919] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.15em] text-[#FFB9B9]">Private key</div>
+                    <h2 className="mt-1 text-[19px] font-black text-white">My ID</h2>
+                  </div>
+                  <span className="rounded-full border border-[#FFB9B9]/40 bg-[#C62828]/20 px-3 py-1 text-[10px] font-black uppercase text-[#FFB9B9]">
+                    Recovery ID
+                  </span>
+                </div>
+                {recoveryId ? (
+                  <>
+                    <div className="break-all rounded-[14px] border border-white/15 bg-white/10 p-3 font-mono text-[13px] font-bold leading-[21px] text-white" dir="ltr">
+                      {recoveryId}
+                    </div>
+                    <button
+                      aria-label="Copy private Recovery ID"
+                      className="mt-3 h-11 w-full rounded-[12px] bg-white text-[13px] font-black text-[#191919] transition hover:bg-[#FFE9E9]"
+                      onClick={copyRecoveryId}
+                      type="button"
+                    >
+                      Copy my ID
+                    </button>
+                  </>
+                ) : (
+                  <p className="rounded-[14px] border border-white/15 bg-white/10 p-3 text-[13px] font-bold leading-[19px] text-white/75">
+                    Your Recovery ID is not saved on this device yet. It will appear here after your next sign in.
+                  </p>
+                )}
+                <p className="mt-3 rounded-[12px] border border-[#FFB9B9]/25 bg-[#C62828]/15 p-3 text-[12px] font-bold leading-[18px] text-[#FFE0E0]">
+                  Keep this key secret. Never share it with anyone. You need it to sign in again.
                 </p>
               </div>
 

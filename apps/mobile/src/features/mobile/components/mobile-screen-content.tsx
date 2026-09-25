@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { G000stWordmark } from '@/components/brand/g000st-wordmark';
 import { FeatureScreen } from '@/components/layout/feature-screen';
 import type { Balance, BillingSku, OutboundSms } from '@/domain/mobile/types';
 import { ExternalCallOverlay } from '@/features/mobile/components/external-call-overlay';
@@ -80,7 +81,6 @@ function MobileScreenContentComponent({
   smsTo,
 }: MobileScreenContentProps) {
   const dialDisplay = dialValue || 'g000st';
-
   return (
     <FeatureScreen
       rightAction={
@@ -96,7 +96,7 @@ function MobileScreenContentComponent({
       title="g000st Mobile"
     >
       <View className="flex-1 px-5 py-4">
-        <Text className="text-center text-[34px] font-black tracking-[2px] text-g000st-black">{dialDisplay}</Text>
+        {dialValue ? <Text className="text-center text-[34px] font-black tracking-[2px] text-g000st-black">{dialValue}</Text> : <G000stWordmark className="text-center text-[34px] tracking-[2px]" />}
         <Text className="mt-1 text-center text-[10px] font-black tracking-[1px] text-black/45">
           PRIVATE NUMBER · NO RECORDING
         </Text>

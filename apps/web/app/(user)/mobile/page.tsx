@@ -173,7 +173,7 @@ export default function MobilePage() {
 
   const digit = (d: string) => {
     if (d === "0" && (!balance || (balance.voiceSecondsRemaining === 0 && balance.smsRemaining === 0))) {
-      toast.error("عليك شحن رصيدك");
+      toast.error("Please top up your balance.");
       return;
     }
     const newNum = dialNumber + d;
