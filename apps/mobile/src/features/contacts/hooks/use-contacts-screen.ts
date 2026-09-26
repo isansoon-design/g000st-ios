@@ -1,10 +1,10 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import { startChatConversation } from '@/api/chat';
-import { addContact, listContacts, removeContact, updateContactNickname } from '@/api/contacts';
+import { followByPublicId, listContacts, unfollowContact, updateContactNickname } from '@/api/contacts';
 import type { Contact } from '@/domain/contacts/types';
 import { G000ST_ID_LENGTH } from '@/domain/identity/constants';
 import { useAuth } from '@/features/auth/hooks/use-auth';
@@ -53,6 +53,10 @@ export function useContactsScreen() {
     void Promise.resolve().then(() => load());
   }, [load]);
 
+  useFocusEffect(useCallback(() => {
+    void load({ silent: true });
+  }, [load]));
+
   // Presence is heartbeat-based, not push-based, so the "online" dot only reflects
   // whatever the server returned at fetch time. Refetch periodically while the app
   // is foregrounded so it doesn't go stale for the whole time the screen is open.
@@ -97,6 +101,11 @@ export function useContactsScreen() {
     });
   }, [contacts, query, tab]);
 
+  const changeTab = useCallback((nextTab: ContactsTab) => {
+    setTab(nextTab);
+    if (nextTab === 'online') void load({ silent: true });
+  }, [load]);
+
   const openAdd = useCallback(() => {
     setAddValue('');
     setAddError(null);
@@ -125,10 +134,10 @@ export function useContactsScreen() {
 
     setIsAdding(true);
     try {
-      await addContact(publicId);
+      await followByPublicId(publicId);
       setIsAddOpen(false);
       await load();
-      Toast.show({ text1: 'Friends', text2: 'Friend added.', type: 'success' });
+      Toast.show({ text1: 'Friends', text2: 'Following.', type: 'success' });
     } catch (error) {
       setAddError(errorMessage(error));
     } finally {
@@ -140,15 +149,15 @@ export function useContactsScreen() {
     async (contact: Contact) => {
       const confirmed = await confirm({
         cancelLabel: 'Cancel',
-        confirmLabel: 'Remove',
+        confirmLabel: 'Unfollow',
         isDangerous: true,
-        message: `Remove ${contact.displayName || 'this friend'} from your friends?`,
-        title: 'Remove friend?',
+        message: `Unfollow ${contact.displayName || 'this friend'}? They will leave your Friends list.`,
+        title: 'Unfollow?',
       });
       if (!confirmed) return;
 
       try {
-        await removeContact(contact.publicId);
+        await unfollowContact(contact.publicId);
         setContacts((current) => current.filter((item) => item.publicId !== contact.publicId));
       } catch (error) {
         Toast.show({ text1: 'Friends', text2: errorMessage(error), type: 'error' });
@@ -219,7 +228,7 @@ export function useContactsScreen() {
     setEditingContact,
     setNickname,
     setQuery,
-    setTab,
+    setTab: changeTab,
     submitAdd,
     saveNickname,
     tab,

@@ -7,7 +7,7 @@ import {
   type AuthContextValue,
   type AuthStatus,
 } from '@/features/auth/context/auth-context';
-import { subscribeToSessionCleared } from '@/services/session/session-events';
+import { emitSessionChanged, subscribeToSessionCleared } from '@/services/session/session-events';
 import { getPushDeviceId } from '@/services/notifications/device-id';
 import { sessionStorage } from '@/services/session/session-storage';
 import { recoveryIdStorage } from '@/services/session/recovery-id-storage';
@@ -55,6 +55,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       await sessionStorage.clear();
       throw error;
     }
+    emitSessionChanged();
     setUser(result.user);
     setStatus('authenticated');
   }, []);

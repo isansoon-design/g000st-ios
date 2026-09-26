@@ -174,13 +174,21 @@ export class MediaService {
     headers: Readonly<{ 'Content-Type': string }>;
     uploadUrl: string;
   }>> {
+    return this.createProfileImageUpload(input, 'avatar');
+  }
+
+  async createCoverUpload(input: CreateAvatarUploadInput) {
+    return this.createProfileImageUpload(input, 'cover');
+  }
+
+  private async createProfileImageUpload(input: CreateAvatarUploadInput, purpose: 'avatar' | 'cover') {
     const kind = this.validateFile(input);
     if (kind !== 'image') throw new ApiError(400, 'UNSUPPORTED_AVATAR', 'Profile photos must be an image.');
     if (input.byteSize > MAX_AVATAR_BYTES) {
       throw new ApiError(400, 'UNSUPPORTED_AVATAR', 'Profile photo must be 3 MB or smaller.');
     }
     const mediaId = randomUUID();
-    const objectKey = `pending-avatar/${input.publicId}/${mediaId}`;
+    const objectKey = `pending-${purpose}/${input.publicId}/${mediaId}`;
     const command = new PutObjectCommand({
       Bucket: this.config.bucket,
       ContentLength: input.byteSize,
@@ -200,13 +208,21 @@ export class MediaService {
   }
 
   async promoteAvatar(input: Readonly<{ media: PendingAttachmentInput; publicId: string; previousObjectKey?: string }>): Promise<Readonly<{ objectKey: string }>> {
+    return this.promoteProfileImage(input, 'avatar');
+  }
+
+  async promoteCover(input: Readonly<{ media: PendingAttachmentInput; publicId: string; previousObjectKey?: string }>) {
+    return this.promoteProfileImage(input, 'cover');
+  }
+
+  private async promoteProfileImage(input: Readonly<{ media: PendingAttachmentInput; publicId: string; previousObjectKey?: string }>, purpose: 'avatar' | 'cover') {
     const kind = this.validateFile(input.media);
     if (kind !== 'image') throw new ApiError(400, 'UNSUPPORTED_AVATAR', 'Profile photos must be an image.');
-    const expected = `pending-avatar/${input.publicId}/${input.media.id}`;
+    const expected = `pending-${purpose}/${input.publicId}/${input.media.id}`;
     if (input.media.objectKey !== expected) {
       throw new ApiError(400, 'INVALID_AVATAR', 'This photo does not belong to your account.');
     }
-    const finalKey = `avatars/${input.publicId}/${input.media.id}`;
+    const finalKey = `${purpose === 'avatar' ? 'avatars' : 'covers'}/${input.publicId}/${input.media.id}`;
     const object = await this.client.send(new HeadObjectCommand({ Bucket: this.config.bucket, Key: expected })).catch(() => null);
     if (!object || object.ContentLength !== input.media.byteSize || object.ContentType !== input.media.contentType || object.Metadata?.['g000st-owner-id'] !== input.publicId) {
       throw new ApiError(400, 'UPLOAD_NOT_FOUND', 'Upload is missing or does not match the selected photo.');

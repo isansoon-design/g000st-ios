@@ -18,6 +18,7 @@ export type MarketPost = Readonly<{
   likeCount: number;
   commentCount: number;
   likedByViewer: boolean;
+  campedByViewer: boolean;
   ownedByViewer: boolean;
 }>;
 

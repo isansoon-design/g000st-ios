@@ -84,7 +84,7 @@ function ContactRow({
         <View className="flex-row items-center gap-1.5">
           {contact.online ? <View className="h-2 w-2 rounded-full bg-[#4CAF50]" /> : null}
           <Text className="font-black text-g000st-black" numberOfLines={1}>
-            {contact.nickname || contact.displayName || contact.publicId.slice(0, 12)}
+            {contact.nickname || contact.displayName || contact.publicId.slice(0, 8)}
           </Text>
         </View>
         <Text className="font-mono text-[10px] text-black/40" numberOfLines={1}>
@@ -114,7 +114,7 @@ function ContactRow({
         <Text className="text-base">🎥</Text>
       </Pressable>
       <Pressable
-        accessibilityLabel="Remove friend"
+        accessibilityLabel="Unfollow friend"
         accessibilityRole="button"
         className="h-8 w-8 items-center justify-center rounded-full"
         onPress={() => onRemove(contact)}
@@ -160,7 +160,7 @@ function ContactsScreenContentComponent({
           className="h-8 justify-center rounded-full bg-g000st-silver px-3.5"
           onPress={onOpenAdd}
         >
-          <Text className="text-xs font-extrabold text-white">+ Add</Text>
+          <Text className="text-xs font-extrabold text-white">+ Follow</Text>
         </Pressable>
       }
     >
@@ -186,7 +186,7 @@ function ContactsScreenContentComponent({
       ) : contacts.length === 0 ? (
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-center text-[13px] font-semibold text-black/45">
-            {tab === 'online' ? 'No friends online right now.' : 'No friends yet. Add someone by their Public ID.'}
+            {tab === 'online' ? 'No friends online right now.' : 'No friends yet. Follow someone from Social or Market.'}
           </Text>
         </View>
       ) : (
@@ -210,9 +210,9 @@ function ContactsScreenContentComponent({
       <Modal animationType="fade" onRequestClose={onCloseAdd} transparent visible={isAddOpen}>
         <View className="flex-1 items-center justify-center bg-black/60 px-5">
           <View className="w-full max-w-[400px] rounded-[22px] border border-white/70 bg-[#F2F2F2] p-5">
-            <Text className="text-center text-lg font-black text-g000st-black">Add friend</Text>
+            <Text className="text-center text-lg font-black text-g000st-black">Follow someone</Text>
             <Text className="mb-4 mt-2 text-center text-xs font-semibold leading-5 text-g000st-muted">
-              Paste their Public ID to add them to your friends.
+              Paste their Public ID to follow them. They will appear in your Friends list.
             </Text>
             <TextInput
               autoCapitalize="none"
@@ -241,7 +241,7 @@ function ContactsScreenContentComponent({
                 disabled={isAdding}
                 onPress={onSubmitAdd}
               >
-                {isAdding ? <ActivityIndicator color="#FFFFFF" /> : <Text className="font-black text-white">Add</Text>}
+                {isAdding ? <ActivityIndicator color="#FFFFFF" /> : <Text className="font-black text-white">Follow</Text>}
               </Pressable>
             </View>
           </View>

@@ -24,6 +24,7 @@ type RelayMessage = z.infer<typeof relayMessage>;
 
 const PENDING_CALL_TTL_MS = 90_000;
 const MAX_PENDING_CANDIDATES = 64;
+const AUTHORIZED_CALL_TTL_MS = 6 * 60 * 60 * 1_000;
 
 type PendingCall = {
   callerPublicId: string;
@@ -47,6 +48,7 @@ export class CallingRelay {
   private readonly pendingCalls = new Map<string, PendingCall>();
   /** Tracks whether an in-flight call has been answered, purely to classify how it ended. */
   private readonly answeredCallIds = new Set<string>();
+  private readonly authorizedCalls = new Map<string, { callerPublicId: string; calleePublicId: string; expiryTimer: ReturnType<typeof setTimeout> }>();
 
   constructor(
     private readonly authService: AuthService,
@@ -91,7 +93,9 @@ export class CallingRelay {
     let processingChain: Promise<void> = Promise.resolve();
     socket.on('message', (raw) => {
       const payload = raw.toString();
-      processingChain = processingChain.then(() => this.handleMessage(publicId, payload));
+      processingChain = processingChain.then(() => this.handleMessage(publicId, payload)).catch((error) => {
+        console.error('[calling] signaling message failed:', error);
+      });
     });
 
     socket.on('close', () => {
@@ -110,8 +114,29 @@ export class CallingRelay {
     console.log(`[calling] ${message.type} from ${fromPublicId.slice(0, 8)} to ${message.toPublicId.slice(0, 8)} (call ${message.callId})`);
 
     if (message.type === 'call-invite') {
+      const existing = this.authorizedCalls.get(message.callId);
+      if (existing && (existing.callerPublicId !== fromPublicId || existing.calleePublicId !== message.toPublicId)) return;
+      let allowed = false;
+      try {
+        allowed = await this.callingService.canReceiveCall(fromPublicId, message.toPublicId, message.media ?? 'audio');
+      } catch (error) {
+        console.error('[calling] could not check call permissions:', error);
+      }
+      if (!allowed) {
+        this.relay({ type: 'call-reject', callId: message.callId, toPublicId: fromPublicId }, message.toPublicId);
+        return;
+      }
       await this.callingService.recordInvite(message.callId, fromPublicId, message.toPublicId, message.media ?? 'audio');
-    } else if (message.type === 'call-answer') {
+      this.authorizeCall(message.callId, fromPublicId, message.toPublicId);
+    } else {
+      const authorized = this.authorizedCalls.get(message.callId);
+      if (!authorized || !(
+        authorized.callerPublicId === fromPublicId && authorized.calleePublicId === message.toPublicId ||
+        authorized.calleePublicId === fromPublicId && authorized.callerPublicId === message.toPublicId
+      )) return;
+    }
+
+    if (message.type === 'call-answer') {
       this.answeredCallIds.add(message.callId);
       await this.callingService.recordAnswered(message.callId);
     } else if (message.type === 'call-reject') {
@@ -136,6 +161,21 @@ export class CallingRelay {
     if (message.type === 'call-answer' || message.type === 'call-reject' || message.type === 'call-end') {
       this.forgetPendingCall(message.callId);
     }
+    if (message.type === 'call-reject' || message.type === 'call-end') this.forgetAuthorizedCall(message.callId);
+  }
+
+  private authorizeCall(callId: string, callerPublicId: string, calleePublicId: string): void {
+    this.forgetAuthorizedCall(callId);
+    const expiryTimer = setTimeout(() => this.authorizedCalls.delete(callId), AUTHORIZED_CALL_TTL_MS);
+    expiryTimer.unref();
+    this.authorizedCalls.set(callId, { callerPublicId, calleePublicId, expiryTimer });
+  }
+
+  private forgetAuthorizedCall(callId: string): void {
+    const call = this.authorizedCalls.get(callId);
+    if (!call) return;
+    clearTimeout(call.expiryTimer);
+    this.authorizedCalls.delete(callId);
   }
 
   private rememberPendingInvite(invite: RelayMessage, callerPublicId: string): void {

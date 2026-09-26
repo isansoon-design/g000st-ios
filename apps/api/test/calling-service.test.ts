@@ -3,6 +3,8 @@ import { describe, it } from 'node:test';
 
 import type { NativeCallPushClient } from '../src/calling/calling-service.js';
 import { CallingService } from '../src/calling/calling-service.js';
+import { CallingRelay } from '../src/calling/calling-relay.js';
+import type { AuthService } from '../src/auth/auth-service.js';
 import type { CallingStore } from '../src/calling/calling-store.js';
 import type {
   CallHistoryEntry,
@@ -99,5 +101,42 @@ describe('CallingService.notifyMissedInvite', () => {
     await service.notifyMissedInvite('call-4', CALLER, CALLEE, 'audio');
 
     assert.equal(notifier.calls.length, 1);
+  });
+});
+
+describe('CallingService call permissions', () => {
+  it('checks the caller, callee, and media before a call can ring', async () => {
+    const checked: string[] = [];
+    const service = new CallingService(new StubCallingStore(), undefined, new SpyNotifier(), {}, Date.now, {
+      async canCall(caller, callee, media) {
+        checked.push(`${caller}:${callee}:${media}`);
+        return media === 'audio';
+      },
+    });
+
+    assert.equal(await service.canReceiveCall(CALLER, CALLEE, 'audio'), true);
+    assert.equal(await service.canReceiveCall(CALLER, CALLEE, 'video'), false);
+    assert.deepEqual(checked, [`${CALLER}:${CALLEE}:audio`, `${CALLER}:${CALLEE}:video`]);
+  });
+});
+
+describe('CallingRelay call permissions', () => {
+  it('drops a denied invite and its offer before recording or notifying a call', async () => {
+    let recorded = 0;
+    let notified = 0;
+    const callingService = {
+      async canReceiveCall() { return false; },
+      async recordInvite() { recorded += 1; },
+      async notifyMissedInvite() { notified += 1; },
+    } as unknown as CallingService;
+    const relay = new CallingRelay({} as AuthService, callingService);
+    const handleMessage = (relay as unknown as { handleMessage(fromPublicId: string, raw: string): Promise<void> }).handleMessage.bind(relay);
+    const callId = '5ec62ebf-953e-4d21-b1a3-0b6837f899a6';
+
+    await handleMessage(CALLER, JSON.stringify({ type: 'call-invite', callId, toPublicId: CALLEE, media: 'audio' }));
+    await handleMessage(CALLER, JSON.stringify({ type: 'call-offer', callId, toPublicId: CALLEE, sdp: 'offer' }));
+
+    assert.equal(recorded, 0);
+    assert.equal(notified, 0);
   });
 });

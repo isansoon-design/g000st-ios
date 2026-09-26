@@ -7,12 +7,16 @@ const conversationIdSchema = z.string().length(64).regex(/^[a-f0-9]+$/);
 export const chatConversationSchema = z.object({
   createdAtMs: z.number().int().positive(),
   id: conversationIdSchema,
+  kind: z.enum(['private', 'market']),
+  marketPostId: z.string().uuid().optional(),
   participants: z.tuple([g000stIdSchema, g000stIdSchema]),
   updatedAtMs: z.number().int().positive(),
 });
 
 export const chatConversationSummarySchema = z.object({
   conversationId: conversationIdSchema,
+  kind: z.enum(['private', 'market']),
+  marketPostId: z.string().uuid().optional(),
   firstUnreadCreatedAtMs: z.number().int().positive().optional(),
   firstUnreadExpiresAtMs: z.number().int().positive().optional(),
   firstUnreadMessageId: z.string().uuid().optional(),

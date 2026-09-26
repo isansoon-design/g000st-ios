@@ -60,6 +60,7 @@ export class FirestoreSocialStore implements SocialStore {
   async listPosts(viewerId: string, limit: number, cursor?: SocialCursor, ownerId?: string): Promise<SocialPage<SocialPost>> {
     let query = this.posts().orderBy('createdAtMs', 'desc').orderBy(FieldPath.documentId(), 'desc');
     if (ownerId) query = query.where('ownerPublicId', '==', ownerId);
+    if (ownerId && ownerId !== viewerId) query = query.where('visibility', '==', 'public');
     if (cursor) query = query.startAfter(cursor.createdAtMs, cursor.id);
     const snapshot = await query.limit(limit + 1).get();
     const documents = snapshot.docs.slice(0, limit);
@@ -183,6 +184,32 @@ export class FirestoreSocialStore implements SocialStore {
       } else transaction.delete(reference);
       return { camped };
     });
+  }
+
+  async follow(viewerId: string, targetId: string, nowMs: number): Promise<void> {
+    const reference = this.camps(viewerId).doc(targetId);
+    await this.db.runTransaction(async (transaction) => {
+      if ((await transaction.get(reference)).exists) return;
+      transaction.create(reference, { createdAtMs: nowMs });
+      transaction.create(this.alerts(targetId).doc(randomUUID()), { actorPublicId: viewerId, createdAtMs: nowMs, kind: 'camp', readAtMs: null });
+    });
+  }
+
+  async unfollow(viewerId: string, targetId: string): Promise<boolean> {
+    const reference = this.camps(viewerId).doc(targetId);
+    return this.db.runTransaction(async (transaction) => {
+      if (!(await transaction.get(reference)).exists) return false;
+      transaction.delete(reference);
+      return true;
+    });
+  }
+
+  async listFollowing(viewerId: string): Promise<readonly Readonly<{ publicId: string; followedAtMs: number }>[]> {
+    const snapshot = await this.camps(viewerId).get();
+    return snapshot.docs.map((document) => ({
+      publicId: document.id,
+      followedAtMs: document.data().createdAtMs as number,
+    })).sort((left, right) => right.followedAtMs - left.followedAtMs);
   }
 
   async getProfile(viewerId: string, publicId: string): Promise<(SocialProfile & { campedByViewer: boolean }) | null> {

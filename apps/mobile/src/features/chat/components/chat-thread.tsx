@@ -16,6 +16,7 @@ import Animated, { Easing, FadeInDown, ReduceMotion } from 'react-native-reanima
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useConfirmModal } from '@/providers/confirm-modal-provider';
+import type { PeerPreferences } from '@/api/contacts';
 
 import type { ChatMessage } from '@/domain/chat/types';
 import { BlurredMessageText } from '@/features/chat/components/blurred-message-text';
@@ -29,6 +30,7 @@ type ChatThreadProps = Readonly<{
   attachmentError: string | null;
   blurMessages: boolean;
   burnAfterRead: boolean;
+  conversationKind: 'private' | 'market';
   draft: string;
   error: string | null;
   firstUnreadMessageId?: string;
@@ -44,6 +46,8 @@ type ChatThreadProps = Readonly<{
   onEditMessage: (message: ChatMessage) => void;
   onCallAudio: () => void;
   onCallVideo: () => void;
+  onToggleFollow: () => Promise<void>;
+  onUpdatePeerPreferences: (changes: Partial<PeerPreferences>) => Promise<void>;
   onCaptureAttachment: () => Promise<void>;
   onChangeDraft: (value: string) => void;
   onLoadOlder: () => void;
@@ -60,6 +64,8 @@ type ChatThreadProps = Readonly<{
   onVoiceError: (message: string | null) => void;
   participantAvatarUrl?: string;
   participantDisplayName?: string;
+  peerPreferences: PeerPreferences | null;
+  followingPeer: boolean | null;
   participantPublicId: string;
   userPublicId: string;
   attachments: readonly Readonly<{ fileName: string }>[];
@@ -73,7 +79,7 @@ const messageEntering = FadeInDown.duration(220)
   .reduceMotion(ReduceMotion.System);
 
 function shortId(publicId: string): string {
-  return publicId.slice(-8);
+  return publicId.slice(0, 8);
 }
 
 function formatTime(value: number): string {
@@ -194,6 +200,7 @@ function ChatThreadComponent({
   attachmentError,
   blurMessages,
   burnAfterRead,
+  conversationKind,
   draft,
   error,
   firstUnreadMessageId,
@@ -209,6 +216,8 @@ function ChatThreadComponent({
   onEditMessage,
   onCallAudio,
   onCallVideo,
+  onToggleFollow,
+  onUpdatePeerPreferences,
   onCaptureAttachment,
   onChangeDraft,
   onLoadOlder,
@@ -225,6 +234,8 @@ function ChatThreadComponent({
   onVoiceError,
   participantAvatarUrl,
   participantDisplayName,
+  peerPreferences,
+  followingPeer,
   participantPublicId,
   userPublicId,
   attachments,
@@ -237,8 +248,11 @@ function ChatThreadComponent({
   const prevIdsRef = useRef<Set<string> | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
+  const [isPeerMenuOpen, setIsPeerMenuOpen] = useState(false);
+  const [isPeerMenuBusy, setIsPeerMenuBusy] = useState(false);
+  useEffect(() => setIsPeerMenuOpen(false), [participantPublicId]);
   const [fontSize, setFontSize] = useState(14);
-  const canSend = !isParticipantDeleted && !isSending && (draft.trim().length > 0 || attachments.length > 0);
+  const canSend = !isParticipantDeleted && !peerPreferences?.blocked && !isSending && (draft.trim().length > 0 || attachments.length > 0);
   const { confirm } = useConfirmModal();
 
   const handleToggleBurn = useCallback(async () => {
@@ -364,7 +378,7 @@ function ChatThreadComponent({
         </View>
 
         <Pressable className="ml-2 min-w-0 flex-1" onPress={onEditName} accessibilityRole="button" accessibilityLabel="Edit friend's name">
-          <Text className="text-[11px] font-bold text-black/45">PRIVATE CHAT</Text>
+          <Text className="text-[11px] font-bold text-black/45">{conversationKind === 'market' ? 'MARKET CHAT' : 'PRIVATE CHAT'}</Text>
           <Text className="font-mono text-[12px] font-black text-g000st-black" numberOfLines={1}>
             {isParticipantDeleted ? 'Deleted account' : participantDisplayName || shortId(participantPublicId)}
           </Text>
@@ -415,6 +429,7 @@ function ChatThreadComponent({
               accessibilityLabel="Call"
               accessibilityRole="button"
               className="h-9 w-9 items-center justify-center rounded-full active:bg-black/5"
+              disabled={peerPreferences?.blocked}
               onPress={onCallAudio}
             >
               <Text className="text-lg">📞</Text>
@@ -423,6 +438,7 @@ function ChatThreadComponent({
               accessibilityLabel="Video call"
               accessibilityRole="button"
               className="h-9 w-9 items-center justify-center rounded-full active:bg-black/5"
+              disabled={peerPreferences?.blocked}
               onPress={onCallVideo}
             >
               <Text className="text-lg">🎥</Text>
@@ -430,6 +446,11 @@ function ChatThreadComponent({
           </View>
         )}
         {/* End Call Buttons */}
+        {!isParticipantDeleted && (
+          <Pressable accessibilityLabel="Conversation options" accessibilityRole="button" className="h-9 w-8 items-center justify-center rounded-full" onPress={() => setIsPeerMenuOpen(true)}>
+            <Text className="text-2xl font-black text-g000st-black">⋮</Text>
+          </Pressable>
+        )}
       </View>
 
       <KeyboardAvoidingView automaticOffset behavior="padding" style={{ flex: 1 }}>
@@ -489,7 +510,7 @@ function ChatThreadComponent({
               ListEmptyComponent={
                 <View className="flex-1 items-center justify-center px-7 py-12">
                   <Text className="text-center text-[13px] font-semibold leading-5 text-black/45">
-                    This private conversation is empty. Send the first message.
+                    {conversationKind === 'market' ? 'This Market conversation is empty. Send the first message.' : 'This private conversation is empty. Send the first message.'}
                   </Text>
                 </View>
               }
@@ -509,10 +530,10 @@ function ChatThreadComponent({
         )}
 
         {/* Input bar */}
-        {isParticipantDeleted ? (
+        {isParticipantDeleted || peerPreferences?.blocked ? (
           <View className="border-t border-black/10 bg-[#D0D0D0] px-4 py-3">
             <Text className="text-center text-xs font-bold text-black/50">
-              This account was deleted. You can read retained messages, but cannot send new ones.
+              {isParticipantDeleted ? 'This account was deleted. You can read retained messages, but cannot send new ones.' : 'You blocked this account. Unblock it to send messages or call.'}
             </Text>
           </View>
         ) : (
@@ -527,7 +548,7 @@ function ChatThreadComponent({
                 >
                   <Text className="text-[28px] font-bold text-g000st-silver">+</Text>
                 </Pressable>
-                <Pressable
+                {conversationKind !== 'market' && <Pressable
                   accessibilityLabel={`Burn after read ${burnAfterRead ? 'on' : 'off'}`}
                   accessibilityRole="switch"
                   accessibilityState={{ checked: burnAfterRead }}
@@ -538,7 +559,7 @@ function ChatThreadComponent({
                   <Text className="text-center text-[8px] font-black text-white">
                     {burnAfterRead ? '🔥 ON' : 'BURN'}
                   </Text>
-                </Pressable>
+                </Pressable>}
               </View>
               <VoiceComposer
                 canSendText={canSend}
@@ -566,7 +587,7 @@ function ChatThreadComponent({
               </View>
             ) : null}
             <Text className="pt-0.5 text-center text-[10px] font-bold leading-3 my-0.5 text-black/40">
-              Kept 2 hours · Burn 5s {burnAfterRead ? 'ON' : 'OFF'} · Screenshots possible
+              Kept {conversationKind === 'market' ? '30 days' : '2 hours'}{conversationKind === 'market' ? '' : ` · Burn 5s ${burnAfterRead ? 'ON' : 'OFF'}`} · Screenshots possible
             </Text>
           </View>
         )}
@@ -581,6 +602,22 @@ function ChatThreadComponent({
             ].map(([label, action]) => (
               <Pressable key={label as string} className="border-b border-black/10 py-4" onPress={() => { setIsAttachmentMenuOpen(false); void (action as () => Promise<void>)(); }}>
                 <Text className="text-center font-bold text-g000st-black">{label as string}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+      <Modal animationType="fade" transparent visible={isPeerMenuOpen} onRequestClose={() => setIsPeerMenuOpen(false)}>
+        <Pressable className="flex-1 items-center justify-end bg-black/45 p-5" onPress={() => setIsPeerMenuOpen(false)}>
+          <View className="mb-10 w-full rounded-[24px] bg-white p-4">
+            {([
+              [followingPeer ? 'Unfollow' : 'Follow', onToggleFollow, followingPeer !== null],
+              [peerPreferences?.blocked ? 'Unblock' : 'Block', () => onUpdatePeerPreferences({ blocked: !peerPreferences?.blocked }), !!peerPreferences],
+              [peerPreferences?.allowAudioCalls === false ? 'Allow voice calls' : 'Block voice calls', () => onUpdatePeerPreferences({ allowAudioCalls: !peerPreferences?.allowAudioCalls }), !!peerPreferences],
+              [peerPreferences?.allowVideoCalls === false ? 'Allow video calls' : 'Block video calls', () => onUpdatePeerPreferences({ allowVideoCalls: !peerPreferences?.allowVideoCalls }), !!peerPreferences],
+            ] as const).map(([label, action, enabled]) => (
+              <Pressable key={label} className="border-b border-black/10 py-4 disabled:opacity-40" disabled={!enabled || isPeerMenuBusy} onPress={() => { setIsPeerMenuBusy(true); void action().finally(() => { setIsPeerMenuBusy(false); setIsPeerMenuOpen(false); }); }}>
+                <Text className="text-center font-bold text-g000st-black">{label}</Text>
               </Pressable>
             ))}
           </View>

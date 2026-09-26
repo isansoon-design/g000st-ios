@@ -12,3 +12,9 @@ export type ContactView = Readonly<{
   addedAtMs: number;
   nickname?: string;
 }>;
+
+export type PeerPreferences = Readonly<{
+  blocked: boolean;
+  allowAudioCalls: boolean;
+  allowVideoCalls: boolean;
+}>;

@@ -54,18 +54,11 @@ async function main(): Promise<void> {
     Date.now,
     mediaService,
   );
+  const marketStore = new FirestoreMarketStore(firestore, environment.collectionPrefix, mediaService);
   const marketService = new MarketService(
-    new FirestoreMarketStore(firestore, environment.collectionPrefix, mediaService),
+    marketStore,
     Date.now,
     mediaService,
-  );
-  const chatService = new ChatService(
-    chatStore,
-    store,
-    Date.now,
-    notificationService,
-    mediaService,
-    socialService,
   );
   const presenceService = new PresenceService(
     new FirestorePresenceStore(firestore, environment.collectionPrefix),
@@ -75,6 +68,16 @@ async function main(): Promise<void> {
     store,
     socialService,
     presenceService,
+  );
+  const chatService = new ChatService(
+    chatStore,
+    store,
+    Date.now,
+    notificationService,
+    mediaService,
+    socialService,
+    contactsService,
+    marketStore,
   );
   const expirationWorker = new ChatExpirationWorker(chatStore, Date.now, mediaService);
   function buildBilling(config: NonNullable<typeof environment.billing>) {
@@ -119,6 +122,8 @@ async function main(): Promise<void> {
       ...(environment.apnsVoip ? { apns: new ApnsVoipClient(environment.apnsVoip) } : {}),
       fcm: new FcmVoipClient(),
     },
+    Date.now,
+    contactsService,
   );
   const callingRelay = new CallingRelay(authService, callingService);
   const app = createApp({

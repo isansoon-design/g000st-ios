@@ -103,6 +103,20 @@ export class SocialService {
     return this.store.toggleCamp(viewerId, targetId, this.now());
   }
 
+  async follow(viewerId: string, targetId: string): Promise<void> {
+    if (viewerId === targetId) throw new ApiError(400, 'INVALID_CAMP_TARGET', 'You cannot follow your own profile.');
+    if (!(await this.authStore.isUserActive(targetId))) throw new ApiError(404, 'USER_NOT_FOUND', 'User not found.');
+    await this.store.follow(viewerId, targetId, this.now());
+  }
+
+  unfollow(viewerId: string, targetId: string): Promise<boolean> {
+    return this.store.unfollow(viewerId, targetId);
+  }
+
+  listFollowing(viewerId: string): Promise<readonly Readonly<{ publicId: string; followedAtMs: number }>[]> {
+    return this.store.listFollowing(viewerId);
+  }
+
   async getProfile(viewerId: string, publicId: string) {
     if (!(await this.authStore.isUserActive(publicId))) throw new ApiError(404, 'USER_NOT_FOUND', 'User not found.');
     const stored = await this.store.getProfile(viewerId, publicId);
@@ -124,8 +138,9 @@ export class SocialService {
   }
 
   async updateProfile(publicId: string, input: UpdateSocialProfileInput) {
-    const { avatarMedia, ...fields } = input;
+    const { avatarMedia, coverMedia, ...fields } = input;
     let avatarObjectKey: string | undefined;
+    let coverObjectKey: string | undefined;
     if (avatarMedia) {
       const current = await this.store.getProfile(publicId, publicId);
       avatarObjectKey = (
@@ -136,9 +151,13 @@ export class SocialService {
         })
       ).objectKey;
     }
+    if (coverMedia) {
+      const current = await this.store.getProfile(publicId, publicId);
+      coverObjectKey = (await this.requireMedia().promoteCover({ media: coverMedia, previousObjectKey: current?.coverObjectKey, publicId })).objectKey;
+    }
     const profile = await this.store.updateProfile(
       publicId,
-      { ...fields, ...(avatarObjectKey ? { avatarObjectKey } : {}) },
+      { ...fields, ...(avatarObjectKey ? { avatarObjectKey } : {}), ...(coverObjectKey ? { coverObjectKey } : {}) },
       this.now(),
     );
     return this.withProfileAvatar({ ...profile, showDisplayName: profile.showDisplayName === true });
@@ -146,6 +165,10 @@ export class SocialService {
 
   createAvatarUpload(publicId: string, input: Readonly<{ byteSize: number; contentType: string; fileName: string }>) {
     return this.requireMedia().createAvatarUpload({ ...input, publicId });
+  }
+
+  createCoverUpload(publicId: string, input: Readonly<{ byteSize: number; contentType: string; fileName: string }>) {
+    return this.requireMedia().createCoverUpload({ ...input, publicId });
   }
 
   listAlerts(publicId: string, limit: number, cursor?: string) {
@@ -188,16 +211,15 @@ export class SocialService {
       })));
   }
 
-  private async withProfileAvatar<T extends Partial<Pick<SocialProfile, 'avatarObjectKey'>>>(
+  private async withProfileAvatar<T extends Partial<Pick<SocialProfile, 'avatarObjectKey' | 'coverObjectKey'>>>(
     profile: T,
-  ): Promise<Omit<T, 'avatarObjectKey'> & Readonly<{ avatarUrl?: string }>> {
-    const { avatarObjectKey, ...safe } = profile;
-    if (!avatarObjectKey || !this.mediaService) return safe;
-    const { downloadUrl } = await this.mediaService.getDownloadUrl(
-      { byteSize: 0, contentType: 'image/*', fileName: 'avatar', id: 'avatar', kind: 'image', objectKey: avatarObjectKey },
-      30 * 60,
-    );
-    return { ...safe, avatarUrl: downloadUrl };
+  ): Promise<Omit<T, 'avatarObjectKey' | 'coverObjectKey'> & Readonly<{ avatarUrl?: string; coverUrl?: string }>> {
+    const { avatarObjectKey, coverObjectKey, ...safe } = profile;
+    if (!this.mediaService) return safe;
+    const [avatarUrl, coverUrl] = await Promise.all([avatarObjectKey, coverObjectKey].map(async (objectKey) => objectKey
+      ? (await this.mediaService!.getDownloadUrl({ byteSize: 0, contentType: 'image/*', fileName: 'profile', id: 'profile', kind: 'image', objectKey }, 30 * 60)).downloadUrl
+      : undefined));
+    return { ...safe, ...(avatarUrl ? { avatarUrl } : {}), ...(coverUrl ? { coverUrl } : {}) };
   }
 
   private requireMedia(): MediaService {

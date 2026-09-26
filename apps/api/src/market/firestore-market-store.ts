@@ -9,7 +9,7 @@ import type { SocialAuthor, SocialMedia } from '../social/social-types.js';
 import type { MarketStore } from './market-store.js';
 import type { CreateMarketPostInput, MarketComment, MarketPage, MarketPost, UpdateMarketPostInput } from './market-types.js';
 
-type StoredPost = Readonly<Omit<MarketPost, 'id' | 'author' | 'likedByViewer' | 'ownedByViewer'> & { ownerPublicId: string }>;
+type StoredPost = Readonly<Omit<MarketPost, 'id' | 'author' | 'likedByViewer' | 'campedByViewer' | 'ownedByViewer'> & { ownerPublicId: string }>;
 type StoredComment = Readonly<{ ownerPublicId: string; content: string; createdAtMs: number }>;
 
 export class FirestoreMarketStore implements MarketStore {
@@ -137,8 +137,12 @@ export class FirestoreMarketStore implements MarketStore {
   }
 
   private async toPost(viewerId: string, id: string, post: StoredPost): Promise<MarketPost> {
-    const [liked, author] = await Promise.all([this.reactions(id).doc(viewerId).get(), this.author(post.ownerPublicId)]);
-    return { ...post, id, author, likedByViewer: liked.exists, ownedByViewer: post.ownerPublicId === viewerId };
+    const [liked, camped, author] = await Promise.all([
+      this.reactions(id).doc(viewerId).get(),
+      this.camps(viewerId).doc(post.ownerPublicId).get(),
+      this.author(post.ownerPublicId),
+    ]);
+    return { ...post, id, author, likedByViewer: liked.exists, campedByViewer: camped.exists, ownedByViewer: post.ownerPublicId === viewerId };
   }
 
   private async toComment(viewerId: string, postId: string, id: string, comment: StoredComment): Promise<MarketComment> {
@@ -162,6 +166,7 @@ export class FirestoreMarketStore implements MarketStore {
   private profiles() { return this.collection('social_profiles'); }
   private comments(postId: string) { return this.posts().doc(postId).collection('comments'); }
   private reactions(postId: string) { return this.posts().doc(postId).collection('reactions'); }
+  private camps(publicId: string) { return this.collection('social_camps').doc(publicId).collection('targets'); }
 }
 
 function isMissingFirestoreIndex(error: unknown): boolean {

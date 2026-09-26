@@ -1,12 +1,16 @@
 export type ChatConversation = Readonly<{
   createdAtMs: number;
   id: string;
+  kind: 'private' | 'market';
+  marketPostId?: string;
   participants: readonly [string, string];
   updatedAtMs: number;
 }>;
 
 export type ChatConversationMemberSummary = Readonly<{
   conversationId: string;
+  kind: 'private' | 'market';
+  marketPostId?: string;
   firstUnreadCreatedAtMs?: number;
   firstUnreadExpiresAtMs?: number;
   firstUnreadMessageId?: string;

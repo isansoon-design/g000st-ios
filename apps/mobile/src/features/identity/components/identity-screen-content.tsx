@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useRouter, type Href } from 'expo-router';
 import { memo } from 'react';
 import { ActivityIndicator, Pressable, Switch, Text, TextInput, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -45,6 +46,7 @@ function IdentityScreenContentComponent({
   saving,
   uploadingPhoto,
 }: IdentityScreenContentProps) {
+  const router = useRouter();
   if (loading) {
     return (
       <FeatureScreen title="ID & Profile">
@@ -83,6 +85,7 @@ function IdentityScreenContentComponent({
             {avatarUrl ? 'Change photo' : 'Add photo'}
           </Text>
         </Pressable>
+        <Pressable accessibilityRole="button" onPress={() => router.push(`/users/${publicId}` as Href)} className="mb-4 rounded-full bg-[#17191d] px-5 py-3"><Text className="text-xs font-black text-white">View public profile</Text></Pressable>
 
         {/* Name visibility */}
         <View className="mb-4 w-full rounded-[18px] border border-white/60 bg-[#D0D0D0] p-3">
@@ -108,7 +111,7 @@ function IdentityScreenContentComponent({
             </View>
           </View>
           <Text className="mt-2 text-[11px] font-semibold leading-[16px] text-black/45">
-            Show your name to other users, or turn this off to use your 8-character alias ({publicId.slice(-8)}).
+            Show your name to other users, or turn this off to use your 8-character alias ({publicId.slice(0, 8)}).
           </Text>
         </View>
 

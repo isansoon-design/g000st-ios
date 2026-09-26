@@ -11,6 +11,7 @@ const exactPublicId = z.string().length(G000ST_ID_LENGTH).regex(/^[A-Za-z0-9]+$/
 const conversationId = z.string().length(64).regex(/^[a-f0-9]+$/);
 const messageId = z.string().uuid();
 const createConversationBody = z.object({ participantPublicId: exactPublicId }).strict();
+const createMarketConversationBody = z.object({ postId: z.string().uuid() }).strict();
 const createMessageBody = z
   .object({
     attachments: z
@@ -94,6 +95,11 @@ export function createChatRouter(authService: AuthService, chatService: ChatServ
       });
     }),
   );
+
+  router.post('/v1/market/conversations', chatRateLimit(30), asyncRoute(async (request, response) => {
+    const { postId } = createMarketConversationBody.parse(request.body);
+    response.status(200).json({ conversation: await chatService.startMarketConversation(request.authenticatedPublicId, postId) });
+  }));
 
   router.get(
     '/conversations/:conversationId/messages',

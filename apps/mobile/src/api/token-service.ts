@@ -5,11 +5,13 @@ import { env } from '@/config/env';
 import { refreshSessionResultSchema } from '@/domain/auth/types';
 import { sessionStorage } from '@/services/session/session-storage';
 
-let refreshInFlight: Promise<string> | null = null;
+let refreshInFlight: { version: number; promise: Promise<string> } | null = null;
 
-async function refreshAccessToken(): Promise<string> {
+async function refreshAccessToken(expectedVersion: number): Promise<string> {
   const stored = await sessionStorage.get();
-  if (!stored?.tokens.refreshToken) throw new Error('No refresh token');
+  if (!stored?.tokens.refreshToken || sessionStorage.getVersion() !== expectedVersion) {
+    throw new Error('Session changed during token refresh');
+  }
 
   const response = await axios.post(
     `${env.apiBaseUrl}/auth/token/refresh`,
@@ -18,30 +20,41 @@ async function refreshAccessToken(): Promise<string> {
   );
   const result = parseApiPayload(refreshSessionResultSchema, response.data);
 
-  await sessionStorage.save({
+  const saved = await sessionStorage.saveRefreshed({
     user: stored.user,
     tokens: result.session,
-  });
+  }, expectedVersion);
+  if (!saved) throw new Error('Session changed during token refresh');
 
   return result.session.accessToken;
 }
 
 export const tokenService = {
-  async getAccess(): Promise<string | null> {
-    return (await sessionStorage.get())?.tokens.accessToken ?? null;
+  getVersion(): number {
+    return sessionStorage.getVersion();
   },
 
-  async refresh(): Promise<string> {
-    if (!refreshInFlight) {
-      refreshInFlight = refreshAccessToken().finally(() => {
-        refreshInFlight = null;
+  async getAccess(): Promise<string | null> {
+    const version = sessionStorage.getVersion();
+    const token = (await sessionStorage.get())?.tokens.accessToken ?? null;
+    return version === sessionStorage.getVersion() ? token : null;
+  },
+
+  async refresh(expectedVersion: number): Promise<string> {
+    if (sessionStorage.getVersion() !== expectedVersion) {
+      throw new Error('Session changed during token refresh');
+    }
+    if (refreshInFlight?.version !== expectedVersion) {
+      const promise = refreshAccessToken(expectedVersion).finally(() => {
+        if (refreshInFlight?.promise === promise) refreshInFlight = null;
       });
+      refreshInFlight = { version: expectedVersion, promise };
     }
 
-    return refreshInFlight;
+    return refreshInFlight.promise;
   },
 
-  async clear(): Promise<void> {
-    await sessionStorage.clear();
+  async clearIfVersion(expectedVersion: number): Promise<void> {
+    await sessionStorage.clearIfVersion(expectedVersion);
   },
 };

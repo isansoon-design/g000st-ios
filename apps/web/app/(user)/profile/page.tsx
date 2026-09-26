@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -12,7 +13,6 @@ import {
   type SocialProfile,
 } from "@/app/api/social";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
-import { useRouter } from "next/navigation";
 
 type ProfileFields = {
   displayName: string;
@@ -45,7 +45,6 @@ const fieldClass =
   "h-11 w-full rounded-[12px] border border-black/10 bg-white px-3 text-[13px] font-bold text-[#111] outline-none focus:border-[#9A9A9A]";
 
 export default function ProfilePage() {
-  const router = useRouter();
   const { confirm } = useConfirmModal();
   const publicId = sessionStorage.get()?.user.publicId ?? "";
   const recoveryId = sessionStorage.getRecoveryId(publicId);
@@ -175,7 +174,7 @@ export default function ProfilePage() {
       }
     }
     logout();
-    router.push("/login");
+    window.location.replace("/login");
   };
 
   const removeAccount = async () => {
@@ -193,7 +192,7 @@ export default function ProfilePage() {
     try {
       await deleteAccount();
       logout();
-      router.push("/login");
+      window.location.replace("/login");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not delete your account.");
       setDeleting(false);
@@ -243,6 +242,7 @@ export default function ProfilePage() {
               <button onClick={() => photoInputRef.current?.click()} className="mb-4 mt-2 text-xs font-black text-[#C62828]">
                 {profile?.avatarUrl ? "Change photo" : "Add photo"}
               </button>
+              <Link href={`/users/${publicId}`} className="mb-4 rounded-full bg-[#17191d] px-5 py-2.5 text-xs font-black text-white transition hover:bg-[#c62828]">View public profile</Link>
 
               {/* Name visibility */}
               <div className="mb-4 w-full rounded-[18px] border border-white/60 bg-[#D0D0D0] p-3">
@@ -269,7 +269,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <p className="mt-2 text-[11px] font-semibold leading-[16px] text-black/45">
-                  Show your name to other users, or turn this off to use your 8-character alias ({publicId.slice(-8)}).
+                  Show your name to other users, or turn this off to use your 8-character alias ({publicId.slice(0, 8)}).
                 </p>
               </div>
 

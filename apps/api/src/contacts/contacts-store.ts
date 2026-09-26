@@ -1,8 +1,8 @@
-import type { Contact } from './contacts-types.js';
+import type { Contact, PeerPreferences } from './contacts-types.js';
 
 export interface ContactsStore {
-  addContact(ownerPublicId: string, contactPublicId: string, nowMs: number): Promise<void>;
-  removeContact(ownerPublicId: string, contactPublicId: string): Promise<boolean>;
   updateNickname(ownerPublicId: string, contactPublicId: string, nickname: string | undefined): Promise<boolean>;
   listContacts(ownerPublicId: string): Promise<readonly Contact[]>;
+  getPeerPreferences(ownerPublicId: string, peerPublicId: string): Promise<PeerPreferences>;
+  updatePeerPreferences(ownerPublicId: string, peerPublicId: string, changes: Partial<PeerPreferences>): Promise<PeerPreferences>;
 }

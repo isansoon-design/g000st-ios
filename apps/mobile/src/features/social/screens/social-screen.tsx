@@ -1,7 +1,7 @@
 import { randomUUID } from "expo-crypto";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter, type Href } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { cssInterop } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -517,7 +517,7 @@ export function SocialScreen() {
             onPress={() => setView("home")}
           />
           <ViewButton
-            label="My Page"
+            label="My Posts"
             active={view === "mine"}
             onPress={() => setView("mine")}
           />
@@ -684,6 +684,7 @@ function PostCard({
   onCamp,
   onComments,
 }: PostCardProps) {
+  const router = useRouter();
   const { confirm } = useConfirmModal();
   return (
     <View className="overflow-hidden rounded-2xl border-2 border-black bg-white shadow-sm">
@@ -705,7 +706,8 @@ function PostCard({
         </View>
         <Pressable
           className="min-w-0 flex-1"
-          onPress={() => void onChat(post.ownerPublicId)}
+          onPress={() => { if (post.author.publicId) router.push(`/users/${post.author.publicId}` as Href); }}
+          accessibilityRole={post.author.publicId ? 'button' : undefined}
         >
           <Text className="font-black">{post.author.displayName}</Text>
           <Text className="text-[10px] text-black/45">
@@ -1068,7 +1070,7 @@ function ProfileEditor({
         className="rounded-2xl bg-white p-4"
       >
         <Text className="text-base font-black">
-          {profile.displayName || "My social profile"}
+          {profile.displayName || profile.publicId.slice(0, 8)}
         </Text>
         <Text className="mt-1 text-xs text-black/45">
           {profile.country ||

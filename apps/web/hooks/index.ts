@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { sessionStorage } from "@/app/api/session-storage";
 import type { PersistedSession } from "@/features/auth/types";
@@ -56,7 +55,6 @@ export function useLocalStorage<T = any>(key: string, initialValue?: T) {
  * Custom hook for authentication state
  */
 export function useAuth() {
-  const router = useRouter();
   const [session, setSession] = useState<PersistedSession | null>(null);
 
   useEffect(() => {
@@ -66,8 +64,8 @@ export function useAuth() {
   const logout = useCallback(() => {
     sessionStorage.clear();
     setSession(null);
-    router.push("/login");
-  }, [router]);
+    window.location.replace("/login");
+  }, []);
 
   return {
     token: session?.tokens.accessToken,

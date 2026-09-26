@@ -4,7 +4,8 @@ import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { Mic, Send, Square, Trash2, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { addContact, listContacts, updateContactNickname } from "@/app/api/contacts";
+import { getPeerPreferences, listContactNicknames, updateContactNickname, updatePeerPreferences, type PeerPreferences } from "@/app/api/contacts";
+import { getSocialProfile, toggleSocialCamp } from "@/app/api/social";
 import toast from "react-hot-toast";
 
 import { useCalling } from "@/features/calling/use-calling";
@@ -15,7 +16,7 @@ import { useVoiceRecorder } from "@/features/chat/use-voice-recorder";
 import Image from "next/image";
 
 function shortId(publicId: string): string {
-  return publicId.slice(-8);
+  return publicId.slice(0, 8);
 }
 
 function formatTime(value: number): string {
@@ -161,6 +162,7 @@ function MessageAttachment({ attachment, conversationId, messageId }: MessageAtt
 
 type ConversationListProps = Readonly<{
   conversations: readonly ChatConversationSummary[];
+  initialKind?: 'private' | 'market';
   namesByPublicId: Readonly<Record<string, string>>;
   error: string | null;
   isLoading: boolean;
@@ -171,6 +173,7 @@ type ConversationListProps = Readonly<{
 
 function ConversationList({
   conversations,
+  initialKind,
   namesByPublicId,
   error,
   isLoading,
@@ -178,6 +181,9 @@ function ConversationList({
   onRefresh,
   onStart,
 }: ConversationListProps) {
+  const [kind, setKind] = useState<'private' | 'market'>(initialKind ?? 'private');
+  useEffect(() => { if (initialKind) setKind(initialKind); }, [initialKind]);
+  const visibleConversations = conversations.filter((conversation) => (conversation.kind ?? 'private') === kind);
   if (isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center bg-[#D8D8D8] text-xs font-semibold text-black/45">
@@ -201,25 +207,11 @@ function ConversationList({
     );
   }
 
-  if (conversations.length === 0) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center bg-[#D8D8D8] px-7">
-        <p className="text-center text-[13px] font-semibold leading-5 text-black/45">
-          Your private conversations will appear here.
-        </p>
-        <button
-          className="mt-4 h-11 rounded-full bg-[#9A9A9A] px-6 font-black text-white"
-          onClick={onStart}
-          type="button"
-        >
-          Start private chat
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="flex-1 overflow-y-auto bg-[#D8D8D8] p-3">
+      <div className="mb-3 flex gap-2" role="tablist" aria-label="Conversation type">
+        {(['private', 'market'] as const).map((value) => <button key={value} type="button" role="tab" aria-selected={kind === value} onClick={() => setKind(value)} className={`rounded-full px-4 py-2 text-xs font-black ${kind === value ? 'bg-black text-white' : 'bg-white text-black'}`}>{value === 'market' ? 'Market chats' : 'Private chats'}</button>)}
+      </div>
       {error ? (
         <div
           aria-live="polite"
@@ -235,7 +227,8 @@ function ConversationList({
           </button>
         </div>
       ) : null}
-      {conversations.map((conversation) => (
+      {visibleConversations.length === 0 && <div className="py-12 text-center"><p className="text-sm text-black/45">{kind === 'market' ? 'Your Market chats will appear here.' : 'Your private chats will appear here.'}</p>{kind === 'private' && <button className="mt-4 rounded-full bg-[#9A9A9A] px-6 py-3 font-black text-white" onClick={onStart} type="button">Start private chat</button>}</div>}
+      {visibleConversations.map((conversation) => (
         <button
           className="mb-2 flex w-full items-center rounded-[18px] border border-white/60 bg-[#E2E2E2] p-3 text-left"
           key={conversation.conversationId}
@@ -252,7 +245,8 @@ function ConversationList({
                 : namesByPublicId[conversation.participantPublicId] || conversation.participantDisplayName || shortId(conversation.participantPublicId)}
             </span>
             <span className="mt-1 block truncate text-xs font-semibold text-black/45">
-              {conversation.lastMessagePreview || "Private conversation"}
+              {conversation.lastMessagePreview || (conversation.kind === 'market' ? 'Market conversation' : 'Private conversation')}
+              {conversation.kind === 'market' && <span className="ml-2 text-[#C62828]">Market · Listing {conversation.marketPostId?.slice(0, 8)} · 30 days</span>}
             </span>
           </span>
           <span className="ml-2 flex shrink-0 flex-col items-end">
@@ -275,6 +269,7 @@ export default function PrivateChatPage() {
   const searchParams = useSearchParams();
   const requestedConversationId = searchParams.get("conversationId") ?? undefined;
   const chat = usePrivateChat(requestedConversationId);
+  const activeIsMarket = chat.conversations.find((item) => item.conversationId === chat.activeConversation?.conversationId)?.kind === 'market';
   const [blurMessages, setBlurMessages] = useState(false);
   const [fontSize, setFontSize] = useState(14);
   const [namesByPublicId, setNamesByPublicId] = useState<Record<string, string>>({});
@@ -282,6 +277,9 @@ export default function PrivateChatPage() {
   const [nickname, setNickname] = useState("");
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [messageDraft, setMessageDraft] = useState("");
+  const [peerPreferences, setPeerPreferences] = useState<PeerPreferences | null>(null);
+  const [followingPeer, setFollowingPeer] = useState<boolean | null>(null);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
   const voiceRecorder = useVoiceRecorder();
   const { confirm } = useConfirmModal();
   const { callUser } = useCalling();
@@ -290,13 +288,42 @@ export default function PrivateChatPage() {
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const didScrollToUnreadRef = useRef<string | null>(null);
 
-  useEffect(() => { void listContacts().then((contacts) => setNamesByPublicId(Object.fromEntries(contacts.filter((contact) => contact.nickname).map((contact) => [contact.publicId, contact.nickname!])))).catch(() => undefined); }, []);
+  useEffect(() => { void listContactNicknames().then((contacts) => setNamesByPublicId(Object.fromEntries(contacts.map((contact) => [contact.publicId, contact.nickname])))).catch(() => undefined); }, []);
+
+  const peerPublicId = chat.activeConversation?.participantPublicId;
+  useEffect(() => {
+    let active = true;
+    setPeerPreferences(null);
+    setFollowingPeer(null);
+    setIsActionsOpen(false);
+    if (peerPublicId && chat.activeConversation?.participantStatus !== "deleted") {
+      void getPeerPreferences(peerPublicId).then((value) => { if (active) setPeerPreferences(value); }).catch(() => undefined);
+      void getSocialProfile(peerPublicId).then((profile) => { if (active) setFollowingPeer(profile.campedByViewer); }).catch(() => undefined);
+    }
+    return () => { active = false; };
+  }, [peerPublicId, chat.activeConversation?.participantStatus]);
+
+  async function changePeerPreferences(changes: Partial<PeerPreferences>) {
+    if (!peerPublicId) return;
+    try {
+      setPeerPreferences(await updatePeerPreferences(peerPublicId, changes));
+      setIsActionsOpen(false);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update contact settings."); }
+  }
+
+  async function togglePeerFollow() {
+    if (!peerPublicId) return;
+    try {
+      const result = await toggleSocialCamp(peerPublicId);
+      setFollowingPeer(result.camped);
+      setIsActionsOpen(false);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update follow."); }
+  }
 
   async function saveName(publicId: string) {
     try {
       const next = nickname.trim();
       if (!next && !namesByPublicId[publicId]) { setIsNameOpen(false); return; }
-      if (next && !(await listContacts()).some((contact) => contact.publicId === publicId)) await addContact(publicId);
       await updateContactNickname(publicId, next);
       setNamesByPublicId((current) => ({ ...current, [publicId]: next }));
       setIsNameOpen(false);
@@ -362,7 +389,8 @@ export default function PrivateChatPage() {
   const canSend =
     (chat.draft.trim().length > 0 || chat.attachments.length > 0) &&
     !chat.isSending &&
-    !participantDeleted;
+    !participantDeleted &&
+    !peerPreferences?.blocked;
 
   const sendVoiceMessage = async () => {
     const recording = voiceRecorder.recording ?? await voiceRecorder.stop();
@@ -426,7 +454,7 @@ export default function PrivateChatPage() {
               )}
             </div>
             <button className="ml-2 min-w-0 flex-1 text-left" type="button" aria-label="Edit friend's name" onClick={() => { setNickname(namesByPublicId[chat.activeConversation!.participantPublicId] ?? ""); setIsNameOpen(true); }}>
-              <p className="text-[10px] font-bold text-black/45">PRIVATE CHAT</p>
+              <p className="text-[10px] font-bold text-black/45">{activeIsMarket ? 'MARKET CHAT' : 'PRIVATE CHAT'}</p>
               <p className="truncate font-mono text-[12px] font-black text-[#111]">
                 {participantDeleted
                   ? "Deleted account"
@@ -453,6 +481,7 @@ export default function PrivateChatPage() {
                 <button
                   aria-label="Call"
                   className="flex h-9 w-9 items-center justify-center rounded-full text-base hover:bg-black/5"
+                  disabled={peerPreferences?.blocked}
                   onClick={() => void callUser(chat.activeConversation!.participantPublicId, "audio")}
                   type="button"
                 >
@@ -461,11 +490,28 @@ export default function PrivateChatPage() {
                 <button
                   aria-label="Video call"
                   className="flex h-9 w-9 items-center justify-center rounded-full text-base hover:bg-black/5"
+                  disabled={peerPreferences?.blocked}
                   onClick={() => void callUser(chat.activeConversation!.participantPublicId, "video")}
                   type="button"
                 >
                   🎥
                 </button>
+              </div>
+            ) : null}
+            {!participantDeleted ? (
+              <div className="relative">
+                <button aria-label="Conversation options" aria-expanded={isActionsOpen} className="flex h-9 w-9 items-center justify-center rounded-full text-2xl font-black hover:bg-black/5" onClick={() => setIsActionsOpen((value) => !value)} type="button">⋮</button>
+                {isActionsOpen ? (
+                  <>
+                    <button aria-label="Close conversation options" className="fixed inset-0 z-10 cursor-default" onClick={() => setIsActionsOpen(false)} type="button" />
+                    <div className="absolute right-0 top-10 z-20 w-60 rounded-2xl border border-black/10 bg-white p-2 shadow-xl">
+                      <button disabled={followingPeer === null} className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-black/5 disabled:opacity-40" onClick={() => void togglePeerFollow()} type="button">{followingPeer ? "Unfollow" : "Follow"}</button>
+                      <button disabled={!peerPreferences} className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-black/5 disabled:opacity-40" onClick={() => void changePeerPreferences({ blocked: !peerPreferences?.blocked })} type="button">{peerPreferences?.blocked ? "Unblock" : "Block"}</button>
+                      <button disabled={!peerPreferences} className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-black/5 disabled:opacity-40" onClick={() => void changePeerPreferences({ allowAudioCalls: !peerPreferences?.allowAudioCalls })} type="button">{peerPreferences?.allowAudioCalls === false ? "Allow voice calls" : "Block voice calls"}</button>
+                      <button disabled={!peerPreferences} className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-black/5 disabled:opacity-40" onClick={() => void changePeerPreferences({ allowVideoCalls: !peerPreferences?.allowVideoCalls })} type="button">{peerPreferences?.allowVideoCalls === false ? "Allow video calls" : "Block video calls"}</button>
+                    </div>
+                  </>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -515,7 +561,7 @@ export default function PrivateChatPage() {
               {chat.messages.length === 0 ? (
                 <div className="flex h-full items-center justify-center px-7">
                   <p className="text-center text-[13px] font-semibold leading-5 text-black/45">
-                    This private conversation is empty. Send the first message.
+                    {activeIsMarket ? 'This Market conversation is empty. Send the first message.' : 'This private conversation is empty. Send the first message.'}
                   </p>
                 </div>
               ) : (
@@ -600,10 +646,10 @@ export default function PrivateChatPage() {
             </p>
           ) : null}
 
-          {participantDeleted ? (
+          {participantDeleted || peerPreferences?.blocked ? (
             <div className="shrink-0 border-t border-black/10 bg-[#D0D0D0] px-4 py-3">
               <p className="text-center text-xs font-bold text-black/50">
-                This account was deleted. You can read retained messages, but cannot send new ones.
+                {participantDeleted ? "This account was deleted. You can read retained messages, but cannot send new ones." : "You blocked this account. Unblock it to send messages or call."}
               </p>
             </div>
           ) : (
@@ -629,7 +675,7 @@ export default function PrivateChatPage() {
                     ref={attachmentInputRef}
                     type="file"
                   />
-                  <button
+                  {!activeIsMarket && <button
                     aria-checked={chat.burnAfterRead}
                     aria-label={`Burn after read ${chat.burnAfterRead ? "on" : "off"}`}
                     className={`min-w-10  rounded-full px-1.5 py-0.5 text-[8px] font-black text-white ${chat.burnAfterRead ? "bg-[#C62828] p-1" : "bg-black/20"
@@ -639,7 +685,7 @@ export default function PrivateChatPage() {
                     type="button"
                   >
                     {chat.burnAfterRead ? "🔥 ON" : "BURN"}
-                  </button>
+                  </button>}
                 </div>
                 {voiceRecorder.isRecording ? (
                   <div className="flex min-h-11 flex-1 items-center gap-3 rounded-[22px] border border-[#C62828]/25 bg-white px-3 shadow-inner">
@@ -705,7 +751,7 @@ export default function PrivateChatPage() {
                 </div>
               ) : null}
               <p className="pt-0.5 text-center text-[10px] font-bold leading-3 text-black/40">
-                Kept 2 hours · Burn 5s {chat.burnAfterRead ? "ON" : "OFF"} · Screenshots possible
+                Kept {activeIsMarket ? '30 days' : '2 hours'}{activeIsMarket ? '' : ` · Burn 5s ${chat.burnAfterRead ? 'ON' : 'OFF'}`} · Screenshots possible
               </p>
             </div>
           )}
@@ -713,6 +759,7 @@ export default function PrivateChatPage() {
       ) : (
         <ConversationList
           conversations={chat.conversations}
+          initialKind={chat.conversations.find((item) => item.conversationId === requestedConversationId)?.kind ?? (searchParams.get('kind') === 'market' ? 'market' : undefined)}
           namesByPublicId={namesByPublicId}
           error={chat.conversationsError}
           isLoading={chat.isLoadingConversations}

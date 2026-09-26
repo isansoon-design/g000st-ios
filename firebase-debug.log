@@ -196,3 +196,1435 @@
     }
   ]
 }
+[debug] [2026-09-26T20:33:33.773Z] ----------------------------------------------------------------------
+[debug] [2026-09-26T20:33:33.774Z] Command:       /Users/moudy/.nvm/versions/node/v22.22.3/bin/node /Users/moudy/.npm/_npx/7750544ccf494d8b/node_modules/.bin/firebase firestore:indexes --project g000st-9f70c --json
+[debug] [2026-09-26T20:33:33.774Z] CLI Version:   15.31.0
+[debug] [2026-09-26T20:33:33.774Z] Platform:      darwin
+[debug] [2026-09-26T20:33:33.774Z] Node Version:  v22.22.3
+[debug] [2026-09-26T20:33:33.775Z] Detected Agent: codex_cli
+[debug] [2026-09-26T20:33:33.775Z] Time:          Sat Sep 26 2026 23:33:33 GMT+0300 (GMT+03:00)
+[debug] [2026-09-26T20:33:33.775Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-26T20:33:33.780Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-09-26T20:33:34.693Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-26T20:33:34.693Z] > authorizing via signed-in user (bakrisabagh@gmail.com)
+[debug] [2026-09-26T20:33:34.693Z] [iam] checking project g000st-9f70c for permissions ["datastore.indexes.list","firebase.projects.get"]
+[debug] [2026-09-26T20:33:34.693Z] Checked if tokens are valid: false, expires at: 1790298848429
+[debug] [2026-09-26T20:33:34.693Z] Checked if tokens are valid: false, expires at: 1790298848429
+[debug] [2026-09-26T20:33:34.693Z] > refreshing access token with scopes: []
+[debug] [2026-09-26T20:33:34.694Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-09-26T20:33:34.694Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-09-26T20:33:37.034Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-09-26T20:33:37.034Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-09-26T20:33:38.451Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-09-26T20:33:38.451Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-09-26T20:33:38.463Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions [none]
+[debug] [2026-09-26T20:33:38.463Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions  x-goog-user-project=g000st-9f70c
+[debug] [2026-09-26T20:33:38.463Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:33:40.483Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions 200
+[debug] [2026-09-26T20:33:40.484Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:33:40.485Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:33:40.485Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:33:40.485Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes [none]
+[debug] [2026-09-26T20:33:41.124Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes 200
+[debug] [2026-09-26T20:33:41.124Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes {"indexes":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_market_posts/indexes/CICAgJiUzYsK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_telephony_sms/indexes/CICAgOi3kJAK","queryScope":"COLLECTION","fields":[{"fieldPath":"publicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjmiJEK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"}]}
+[debug] [2026-09-26T20:33:41.125Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:33:41.125Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:33:41.125Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* [none]
+[debug] [2026-09-26T20:33:41.348Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* 200
+[debug] [2026-09-26T20:33:41.348Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* {"fields":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","arrayConfig":"CONTAINS"}],"state":"READY"}]}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/createdAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/expiresAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}}]}
+[info] {
+  "indexes": [
+    {
+      "collectionGroup": "staging_v1_market_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_telephony_sms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "publicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "createdAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "expiresAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
+}
+[debug] [2026-09-26T20:33:58.071Z] ----------------------------------------------------------------------
+[debug] [2026-09-26T20:33:58.073Z] Command:       /Users/moudy/.nvm/versions/node/v22.22.3/bin/node /Users/moudy/.npm/_npx/7750544ccf494d8b/node_modules/.bin/firebase deploy --only firestore:indexes --project g000st-9f70c --non-interactive
+[debug] [2026-09-26T20:33:58.073Z] CLI Version:   15.31.0
+[debug] [2026-09-26T20:33:58.073Z] Platform:      darwin
+[debug] [2026-09-26T20:33:58.073Z] Node Version:  v22.22.3
+[debug] [2026-09-26T20:33:58.073Z] Detected Agent: codex_cli
+[debug] [2026-09-26T20:33:58.073Z] Time:          Sat Sep 26 2026 23:33:58 GMT+0300 (GMT+03:00)
+[debug] [2026-09-26T20:33:58.074Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-26T20:33:58.587Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-26T20:33:58.587Z] > authorizing via signed-in user (bakrisabagh@gmail.com)
+[debug] [2026-09-26T20:33:58.587Z] [iam] checking project g000st-9f70c for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]
+[debug] [2026-09-26T20:33:58.592Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:33:58.592Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:33:58.593Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions [none]
+[debug] [2026-09-26T20:33:58.593Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions  x-goog-user-project=g000st-9f70c
+[debug] [2026-09-26T20:33:58.593Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[debug] [2026-09-26T20:34:00.242Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions 200
+[debug] [2026-09-26T20:34:00.242Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[info] 
+[info] === Deploying to 'g000st-9f70c'...
+[info] 
+[info] i  deploying firestore 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-09-26T20:34:00.246Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:00.246Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:00.246Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default) [none]
+[debug] [2026-09-26T20:34:01.960Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default) 200
+[debug] [2026-09-26T20:34:01.960Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default) {"name":"projects/g000st-9f70c/databases/(default)","uid":"3194103e-8de5-49b7-90b8-30a8f40470c8","createTime":"2026-08-28T22:30:59.711748Z","updateTime":"2026-08-28T22:30:59.711748Z","locationId":"europe-west2","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-09-26T19:34:01.587070Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"g","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","enhancedTextSearchQueryMode":"ENHANCED_QUERY_MODE_ENABLED","etag":"IKbmxoaMjZcDMJiwqKewxJYD"}
+[info] i  firestore: reading indexes from firestore.indexes.json... 
+[info] i  firestore: deploying indexes... 
+[debug] [2026-09-26T20:34:01.965Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:01.965Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:01.965Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes [none]
+[debug] [2026-09-26T20:34:02.522Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes 200
+[debug] [2026-09-26T20:34:02.523Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes {"indexes":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_market_posts/indexes/CICAgJiUzYsK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_telephony_sms/indexes/CICAgOi3kJAK","queryScope":"COLLECTION","fields":[{"fieldPath":"publicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjmiJEK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"}]}
+[debug] [2026-09-26T20:34:02.523Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:02.524Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:02.524Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* [none]
+[debug] [2026-09-26T20:34:03.026Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* 200
+[debug] [2026-09-26T20:34:03.027Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* {"fields":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","arrayConfig":"CONTAINS"}],"state":"READY"}]}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/createdAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/expiresAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}}]}
+[debug] [2026-09-26T20:34:03.027Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:03.028Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:03.028Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default) [none]
+[debug] [2026-09-26T20:34:03.613Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default) 200
+[debug] [2026-09-26T20:34:03.613Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default) {"name":"projects/g000st-9f70c/databases/(default)","uid":"3194103e-8de5-49b7-90b8-30a8f40470c8","createTime":"2026-08-28T22:30:59.711748Z","updateTime":"2026-08-28T22:30:59.711748Z","locationId":"europe-west2","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-09-26T19:34:03.223930Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"g","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","enhancedTextSearchQueryMode":"ENHANCED_QUERY_MODE_ENABLED","etag":"IOvZqoeMjZcDMJiwqKewxJYD"}
+[debug] [2026-09-26T20:34:03.615Z] Skipping existing index: {"collectionGroup":"staging_v1_social_posts","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]}
+[debug] [2026-09-26T20:34:03.615Z] Creating new index: {"collectionGroup":"staging_v1_social_posts","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"visibility","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]}
+[debug] [2026-09-26T20:34:03.616Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:03.616Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:03.617Z] >>> [apiv2][query] POST https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes [none]
+[debug] [2026-09-26T20:34:03.617Z] >>> [apiv2][body] POST https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes {"fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"visibility","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"queryScope":"COLLECTION"}
+[debug] [2026-09-26T20:34:04.589Z] <<< [apiv2][status] POST https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes 200
+[debug] [2026-09-26T20:34:04.590Z] <<< [apiv2][body] POST https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes {"name":"projects/g000st-9f70c/databases/(default)/operations/S0lvOUZqSmdBQ0lDDCoDIDM5MmE5YTBmZDcyZC1jMzlhLWMzZjQtN2Q5Zi1iYmIwNTdhMCQac2VuaWxlcGlwCQpBEg","metadata":{"@type":"type.googleapis.com/google.firestore.admin.v1.IndexOperationMetadata","startTime":"2026-09-26T20:34:03.895523Z","index":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjF9oIK","state":"INITIALIZING"}}
+[debug] [2026-09-26T20:34:04.590Z] Skipping existing index: {"collectionGroup":"staging_v1_market_posts","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]}
+[debug] [2026-09-26T20:34:04.590Z] Skipping existing index: {"collectionGroup":"staging_v1_telephony_sms","queryScope":"COLLECTION","fields":[{"fieldPath":"publicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]}
+[debug] [2026-09-26T20:34:04.609Z] Skipping existing field override: {"collectionGroup":"messages","fieldPath":"createdAtMs","indexes":[{"order":"ASCENDING","queryScope":"COLLECTION"},{"order":"DESCENDING","queryScope":"COLLECTION"},{"order":"ASCENDING","queryScope":"COLLECTION_GROUP"}]}
+[debug] [2026-09-26T20:34:04.610Z] Skipping existing field override: {"collectionGroup":"messages","fieldPath":"expiresAtMs","indexes":[{"order":"ASCENDING","queryScope":"COLLECTION"},{"order":"DESCENDING","queryScope":"COLLECTION"},{"order":"ASCENDING","queryScope":"COLLECTION_GROUP"}]}
+[info] ✔  firestore: deployed indexes in firestore.indexes.json successfully for (default) database 
+[info] 
+[info] ✔  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/g000st-9f70c/overview
+[debug] [2026-09-26T20:34:28.421Z] ----------------------------------------------------------------------
+[debug] [2026-09-26T20:34:28.424Z] Command:       /Users/moudy/.nvm/versions/node/v22.22.3/bin/node /Users/moudy/.npm/_npx/7750544ccf494d8b/node_modules/.bin/firebase firestore:indexes --project g000st-9f70c --json
+[debug] [2026-09-26T20:34:28.424Z] CLI Version:   15.31.0
+[debug] [2026-09-26T20:34:28.424Z] Platform:      darwin
+[debug] [2026-09-26T20:34:28.424Z] Node Version:  v22.22.3
+[debug] [2026-09-26T20:34:28.424Z] Detected Agent: codex_cli
+[debug] [2026-09-26T20:34:28.424Z] Time:          Sat Sep 26 2026 23:34:28 GMT+0300 (GMT+03:00)
+[debug] [2026-09-26T20:34:28.424Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-26T20:34:28.799Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-26T20:34:28.799Z] > authorizing via signed-in user (bakrisabagh@gmail.com)
+[debug] [2026-09-26T20:34:28.799Z] [iam] checking project g000st-9f70c for permissions ["datastore.indexes.list","firebase.projects.get"]
+[debug] [2026-09-26T20:34:28.805Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:28.805Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:28.805Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions [none]
+[debug] [2026-09-26T20:34:28.806Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions  x-goog-user-project=g000st-9f70c
+[debug] [2026-09-26T20:34:28.806Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:34:31.235Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions 200
+[debug] [2026-09-26T20:34:31.235Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:34:31.236Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:31.236Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:31.236Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes [none]
+[debug] [2026-09-26T20:34:31.656Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes 200
+[debug] [2026-09-26T20:34:31.657Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes {"indexes":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjF9oIK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"visibility","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"CREATING","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_market_posts/indexes/CICAgJiUzYsK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_telephony_sms/indexes/CICAgOi3kJAK","queryScope":"COLLECTION","fields":[{"fieldPath":"publicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjmiJEK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"}]}
+[debug] [2026-09-26T20:34:31.657Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:31.657Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:31.657Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* [none]
+[debug] [2026-09-26T20:34:31.781Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* 200
+[debug] [2026-09-26T20:34:31.781Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* {"fields":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","arrayConfig":"CONTAINS"}],"state":"READY"}]}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/createdAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/expiresAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}}]}
+[info] {
+  "indexes": [
+    {
+      "collectionGroup": "staging_v1_market_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "visibility",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_telephony_sms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "publicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "createdAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "expiresAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
+}
+[debug] [2026-09-26T20:34:48.822Z] ----------------------------------------------------------------------
+[debug] [2026-09-26T20:34:48.824Z] Command:       /Users/moudy/.nvm/versions/node/v22.22.3/bin/node /Users/moudy/.npm/_npx/7750544ccf494d8b/node_modules/.bin/firebase firestore:indexes --project g000st-9f70c --debug
+[debug] [2026-09-26T20:34:48.824Z] CLI Version:   15.31.0
+[debug] [2026-09-26T20:34:48.824Z] Platform:      darwin
+[debug] [2026-09-26T20:34:48.824Z] Node Version:  v22.22.3
+[debug] [2026-09-26T20:34:48.824Z] Detected Agent: codex_cli
+[debug] [2026-09-26T20:34:48.824Z] Time:          Sat Sep 26 2026 23:34:48 GMT+0300 (GMT+03:00)
+[debug] [2026-09-26T20:34:48.825Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-26T20:34:49.120Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-26T20:34:49.121Z] > authorizing via signed-in user (bakrisabagh@gmail.com)
+[debug] [2026-09-26T20:34:49.121Z] [iam] checking project g000st-9f70c for permissions ["datastore.indexes.list","firebase.projects.get"]
+[debug] [2026-09-26T20:34:49.126Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:49.126Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:49.127Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions [none]
+[debug] [2026-09-26T20:34:49.127Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions  x-goog-user-project=g000st-9f70c
+[debug] [2026-09-26T20:34:49.127Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:34:50.142Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions 200
+[debug] [2026-09-26T20:34:50.142Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:34:50.142Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:50.142Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:50.142Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes [none]
+[debug] [2026-09-26T20:34:50.673Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes 200
+[debug] [2026-09-26T20:34:50.673Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes {"indexes":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjF9oIK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"visibility","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"CREATING","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_market_posts/indexes/CICAgJiUzYsK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_telephony_sms/indexes/CICAgOi3kJAK","queryScope":"COLLECTION","fields":[{"fieldPath":"publicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjmiJEK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"}]}
+[debug] [2026-09-26T20:34:50.674Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:50.674Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:34:50.674Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* [none]
+[debug] [2026-09-26T20:34:50.886Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* 200
+[debug] [2026-09-26T20:34:50.886Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* {"fields":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","arrayConfig":"CONTAINS"}],"state":"READY"}]}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/createdAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/expiresAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}}]}
+[info] {
+  "indexes": [
+    {
+      "collectionGroup": "staging_v1_market_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "visibility",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_telephony_sms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "publicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "createdAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "expiresAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
+}
+[debug] [2026-09-26T20:35:22.055Z] ----------------------------------------------------------------------
+[debug] [2026-09-26T20:35:22.056Z] Command:       /Users/moudy/.nvm/versions/node/v22.22.3/bin/node /Users/moudy/.npm/_npx/7750544ccf494d8b/node_modules/.bin/firebase firestore:indexes --project g000st-9f70c --debug
+[debug] [2026-09-26T20:35:22.056Z] CLI Version:   15.31.0
+[debug] [2026-09-26T20:35:22.057Z] Platform:      darwin
+[debug] [2026-09-26T20:35:22.057Z] Node Version:  v22.22.3
+[debug] [2026-09-26T20:35:22.057Z] Detected Agent: codex_cli
+[debug] [2026-09-26T20:35:22.057Z] Time:          Sat Sep 26 2026 23:35:22 GMT+0300 (GMT+03:00)
+[debug] [2026-09-26T20:35:22.057Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-26T20:35:22.347Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-26T20:35:22.347Z] > authorizing via signed-in user (bakrisabagh@gmail.com)
+[debug] [2026-09-26T20:35:22.347Z] [iam] checking project g000st-9f70c for permissions ["datastore.indexes.list","firebase.projects.get"]
+[debug] [2026-09-26T20:35:22.352Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:35:22.353Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:35:22.353Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions [none]
+[debug] [2026-09-26T20:35:22.353Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions  x-goog-user-project=g000st-9f70c
+[debug] [2026-09-26T20:35:22.353Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:35:23.670Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions 200
+[debug] [2026-09-26T20:35:23.670Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:35:23.671Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:35:23.671Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:35:23.671Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes [none]
+[debug] [2026-09-26T20:35:28.032Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes 200
+[debug] [2026-09-26T20:35:28.032Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes {"indexes":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjF9oIK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"visibility","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"CREATING","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_market_posts/indexes/CICAgJiUzYsK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_telephony_sms/indexes/CICAgOi3kJAK","queryScope":"COLLECTION","fields":[{"fieldPath":"publicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjmiJEK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"}]}
+[debug] [2026-09-26T20:35:28.032Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:35:28.032Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:35:28.033Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* [none]
+[debug] [2026-09-26T20:35:29.765Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* 200
+[debug] [2026-09-26T20:35:29.766Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* {"fields":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","arrayConfig":"CONTAINS"}],"state":"READY"}]}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/createdAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/expiresAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}}]}
+[info] {
+  "indexes": [
+    {
+      "collectionGroup": "staging_v1_market_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "visibility",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_telephony_sms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "publicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "createdAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "expiresAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
+}
+[debug] [2026-09-26T20:36:02.355Z] ----------------------------------------------------------------------
+[debug] [2026-09-26T20:36:02.356Z] Command:       /Users/moudy/.nvm/versions/node/v22.22.3/bin/node /Users/moudy/.npm/_npx/7750544ccf494d8b/node_modules/.bin/firebase firestore:indexes --project g000st-9f70c --debug
+[debug] [2026-09-26T20:36:02.356Z] CLI Version:   15.31.0
+[debug] [2026-09-26T20:36:02.357Z] Platform:      darwin
+[debug] [2026-09-26T20:36:02.357Z] Node Version:  v22.22.3
+[debug] [2026-09-26T20:36:02.357Z] Detected Agent: codex_cli
+[debug] [2026-09-26T20:36:02.357Z] Time:          Sat Sep 26 2026 23:36:02 GMT+0300 (GMT+03:00)
+[debug] [2026-09-26T20:36:02.357Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-26T20:36:02.642Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-26T20:36:02.643Z] > authorizing via signed-in user (bakrisabagh@gmail.com)
+[debug] [2026-09-26T20:36:02.643Z] [iam] checking project g000st-9f70c for permissions ["datastore.indexes.list","firebase.projects.get"]
+[debug] [2026-09-26T20:36:02.649Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:36:02.649Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:36:02.649Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions [none]
+[debug] [2026-09-26T20:36:02.649Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions  x-goog-user-project=g000st-9f70c
+[debug] [2026-09-26T20:36:02.649Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:36:05.345Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions 200
+[debug] [2026-09-26T20:36:05.346Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:36:05.347Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:36:05.348Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:36:05.348Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes [none]
+[debug] [2026-09-26T20:36:06.763Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes 200
+[debug] [2026-09-26T20:36:06.763Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes {"indexes":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjF9oIK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"visibility","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"CREATING","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_market_posts/indexes/CICAgJiUzYsK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_telephony_sms/indexes/CICAgOi3kJAK","queryScope":"COLLECTION","fields":[{"fieldPath":"publicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjmiJEK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"}]}
+[debug] [2026-09-26T20:36:06.764Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:36:06.764Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:36:06.764Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* [none]
+[debug] [2026-09-26T20:36:07.833Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* 200
+[debug] [2026-09-26T20:36:07.833Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* {"fields":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","arrayConfig":"CONTAINS"}],"state":"READY"}]}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/createdAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/expiresAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}}]}
+[info] {
+  "indexes": [
+    {
+      "collectionGroup": "staging_v1_market_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "visibility",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_telephony_sms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "publicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "createdAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "expiresAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
+}
+[debug] [2026-09-26T20:36:49.610Z] ----------------------------------------------------------------------
+[debug] [2026-09-26T20:36:49.612Z] Command:       /Users/moudy/.nvm/versions/node/v22.22.3/bin/node /Users/moudy/.npm/_npx/7750544ccf494d8b/node_modules/.bin/firebase firestore:indexes --project g000st-9f70c --debug
+[debug] [2026-09-26T20:36:49.612Z] CLI Version:   15.31.0
+[debug] [2026-09-26T20:36:49.612Z] Platform:      darwin
+[debug] [2026-09-26T20:36:49.612Z] Node Version:  v22.22.3
+[debug] [2026-09-26T20:36:49.612Z] Detected Agent: codex_cli
+[debug] [2026-09-26T20:36:49.612Z] Time:          Sat Sep 26 2026 23:36:49 GMT+0300 (GMT+03:00)
+[debug] [2026-09-26T20:36:49.613Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-26T20:36:49.903Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-26T20:36:49.903Z] > authorizing via signed-in user (bakrisabagh@gmail.com)
+[debug] [2026-09-26T20:36:49.903Z] [iam] checking project g000st-9f70c for permissions ["datastore.indexes.list","firebase.projects.get"]
+[debug] [2026-09-26T20:36:49.909Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:36:49.909Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:36:49.910Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions [none]
+[debug] [2026-09-26T20:36:49.910Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions  x-goog-user-project=g000st-9f70c
+[debug] [2026-09-26T20:36:49.910Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:36:53.817Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions 200
+[debug] [2026-09-26T20:36:53.817Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:36:53.818Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:36:53.818Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:36:53.818Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes [none]
+[debug] [2026-09-26T20:36:56.727Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes 200
+[debug] [2026-09-26T20:36:56.727Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes {"indexes":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjF9oIK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"visibility","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"CREATING","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_market_posts/indexes/CICAgJiUzYsK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_telephony_sms/indexes/CICAgOi3kJAK","queryScope":"COLLECTION","fields":[{"fieldPath":"publicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjmiJEK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"}]}
+[debug] [2026-09-26T20:36:56.728Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:36:56.728Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:36:56.728Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* [none]
+[debug] [2026-09-26T20:36:58.623Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* 200
+[debug] [2026-09-26T20:36:58.623Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* {"fields":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","arrayConfig":"CONTAINS"}],"state":"READY"}]}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/createdAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/expiresAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}}]}
+[info] {
+  "indexes": [
+    {
+      "collectionGroup": "staging_v1_market_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "visibility",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_telephony_sms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "publicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "createdAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "expiresAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
+}
+[debug] [2026-09-26T20:37:08.649Z] Error: Timed out.
+    at Timeout._onTimeout (/Users/moudy/.npm/_npx/7750544ccf494d8b/node_modules/firebase-tools/lib/utils.js:299:49)
+    at listOnTimeout (node:internal/timers:585:17)
+    at process.processTimers (node:internal/timers:521:7)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-09-26T20:37:21.992Z] ----------------------------------------------------------------------
+[debug] [2026-09-26T20:37:21.994Z] Command:       /Users/moudy/.nvm/versions/node/v22.22.3/bin/node /Users/moudy/.npm/_npx/7750544ccf494d8b/node_modules/.bin/firebase firestore:indexes --project g000st-9f70c --json
+[debug] [2026-09-26T20:37:21.994Z] CLI Version:   15.31.0
+[debug] [2026-09-26T20:37:21.994Z] Platform:      darwin
+[debug] [2026-09-26T20:37:21.994Z] Node Version:  v22.22.3
+[debug] [2026-09-26T20:37:21.994Z] Detected Agent: codex_cli
+[debug] [2026-09-26T20:37:21.994Z] Time:          Sat Sep 26 2026 23:37:21 GMT+0300 (GMT+03:00)
+[debug] [2026-09-26T20:37:21.994Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-26T20:37:22.282Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-26T20:37:22.282Z] > authorizing via signed-in user (bakrisabagh@gmail.com)
+[debug] [2026-09-26T20:37:22.282Z] [iam] checking project g000st-9f70c for permissions ["datastore.indexes.list","firebase.projects.get"]
+[debug] [2026-09-26T20:37:22.287Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:37:22.287Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:37:22.288Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions [none]
+[debug] [2026-09-26T20:37:22.288Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions  x-goog-user-project=g000st-9f70c
+[debug] [2026-09-26T20:37:22.288Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:37:26.180Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions 200
+[debug] [2026-09-26T20:37:26.180Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:37:26.181Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:37:26.181Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:37:26.181Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes [none]
+[debug] [2026-09-26T20:37:30.883Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes 200
+[debug] [2026-09-26T20:37:30.883Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes {"indexes":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjF9oIK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"visibility","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"CREATING","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_market_posts/indexes/CICAgJiUzYsK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_telephony_sms/indexes/CICAgOi3kJAK","queryScope":"COLLECTION","fields":[{"fieldPath":"publicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjmiJEK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"}]}
+[debug] [2026-09-26T20:37:30.884Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:37:30.884Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:37:30.884Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* [none]
+[debug] [2026-09-26T20:37:35.734Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* 200
+[debug] [2026-09-26T20:37:35.734Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* {"fields":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","arrayConfig":"CONTAINS"}],"state":"READY"}]}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/createdAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/expiresAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}}]}
+[info] {
+  "indexes": [
+    {
+      "collectionGroup": "staging_v1_market_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "visibility",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_telephony_sms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "publicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "createdAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "expiresAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
+}
+[debug] [2026-09-26T20:37:54.109Z] ----------------------------------------------------------------------
+[debug] [2026-09-26T20:37:54.111Z] Command:       /Users/moudy/.nvm/versions/node/v22.22.3/bin/node /Users/moudy/.npm/_npx/7750544ccf494d8b/node_modules/.bin/firebase firestore:indexes --project g000st-9f70c --debug
+[debug] [2026-09-26T20:37:54.111Z] CLI Version:   15.31.0
+[debug] [2026-09-26T20:37:54.111Z] Platform:      darwin
+[debug] [2026-09-26T20:37:54.111Z] Node Version:  v22.22.3
+[debug] [2026-09-26T20:37:54.112Z] Detected Agent: codex_cli
+[debug] [2026-09-26T20:37:54.112Z] Time:          Sat Sep 26 2026 23:37:54 GMT+0300 (GMT+03:00)
+[debug] [2026-09-26T20:37:54.112Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-26T20:37:54.403Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-26T20:37:54.404Z] > authorizing via signed-in user (bakrisabagh@gmail.com)
+[debug] [2026-09-26T20:37:54.404Z] [iam] checking project g000st-9f70c for permissions ["datastore.indexes.list","firebase.projects.get"]
+[debug] [2026-09-26T20:37:54.409Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:37:54.409Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:37:54.410Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions [none]
+[debug] [2026-09-26T20:37:54.410Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions  x-goog-user-project=g000st-9f70c
+[debug] [2026-09-26T20:37:54.410Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:38:01.220Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions 200
+[debug] [2026-09-26T20:38:01.221Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:38:01.222Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:38:01.222Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:38:01.222Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes [none]
+[debug] [2026-09-26T20:38:03.942Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes 200
+[debug] [2026-09-26T20:38:03.942Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes {"indexes":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjF9oIK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"visibility","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"CREATING","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_market_posts/indexes/CICAgJiUzYsK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_telephony_sms/indexes/CICAgOi3kJAK","queryScope":"COLLECTION","fields":[{"fieldPath":"publicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjmiJEK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"}]}
+[debug] [2026-09-26T20:38:03.943Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:38:03.943Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:38:03.943Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* [none]
+[debug] [2026-09-26T20:38:06.488Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* 200
+[debug] [2026-09-26T20:38:06.488Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* {"fields":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","arrayConfig":"CONTAINS"}],"state":"READY"}]}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/createdAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/expiresAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}}]}
+[info] {
+  "indexes": [
+    {
+      "collectionGroup": "staging_v1_market_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "visibility",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_telephony_sms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "publicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "createdAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "expiresAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
+}
+[debug] [2026-09-26T20:38:44.796Z] ----------------------------------------------------------------------
+[debug] [2026-09-26T20:38:44.798Z] Command:       /Users/moudy/.nvm/versions/node/v22.22.3/bin/node /Users/moudy/.npm/_npx/7750544ccf494d8b/node_modules/.bin/firebase firestore:indexes --project g000st-9f70c --debug
+[debug] [2026-09-26T20:38:44.798Z] CLI Version:   15.31.0
+[debug] [2026-09-26T20:38:44.798Z] Platform:      darwin
+[debug] [2026-09-26T20:38:44.798Z] Node Version:  v22.22.3
+[debug] [2026-09-26T20:38:44.798Z] Detected Agent: codex_cli
+[debug] [2026-09-26T20:38:44.798Z] Time:          Sat Sep 26 2026 23:38:44 GMT+0300 (GMT+03:00)
+[debug] [2026-09-26T20:38:44.799Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-26T20:38:45.086Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-26T20:38:45.086Z] > authorizing via signed-in user (bakrisabagh@gmail.com)
+[debug] [2026-09-26T20:38:45.087Z] [iam] checking project g000st-9f70c for permissions ["datastore.indexes.list","firebase.projects.get"]
+[debug] [2026-09-26T20:38:45.092Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:38:45.092Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:38:45.093Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions [none]
+[debug] [2026-09-26T20:38:45.093Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions  x-goog-user-project=g000st-9f70c
+[debug] [2026-09-26T20:38:45.093Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:38:46.171Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions 200
+[debug] [2026-09-26T20:38:46.171Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/g000st-9f70c:testIamPermissions {"permissions":["datastore.indexes.list","firebase.projects.get"]}
+[debug] [2026-09-26T20:38:46.172Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:38:46.172Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:38:46.172Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes [none]
+[debug] [2026-09-26T20:38:46.685Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes 200
+[debug] [2026-09-26T20:38:46.685Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/indexes {"indexes":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjF9oIK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"visibility","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_market_posts/indexes/CICAgJiUzYsK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_telephony_sms/indexes/CICAgOi3kJAK","queryScope":"COLLECTION","fields":[{"fieldPath":"publicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/staging_v1_social_posts/indexes/CICAgJjmiJEK","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerPublicId","order":"ASCENDING"},{"fieldPath":"createdAtMs","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"}]}
+[debug] [2026-09-26T20:38:46.686Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:38:46.686Z] Checked if tokens are valid: true, expires at: 1790458417451
+[debug] [2026-09-26T20:38:46.686Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* [none]
+[debug] [2026-09-26T20:38:46.913Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* 200
+[debug] [2026-09-26T20:38:46.914Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/g000st-9f70c/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* {"fields":[{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","arrayConfig":"CONTAINS"}],"state":"READY"}]}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/createdAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"createdAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"createdAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}},{"name":"projects/g000st-9f70c/databases/(default)/collectionGroups/messages/fields/expiresAtMs","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"expiresAtMs","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"expiresAtMs","order":"ASCENDING"}],"state":"READY"}],"ancestorField":"projects/g000st-9f70c/databases/(default)/collectionGroups/__default__/fields/*"}}]}
+[info] {
+  "indexes": [
+    {
+      "collectionGroup": "staging_v1_market_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_social_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerPublicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "visibility",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "staging_v1_telephony_sms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "publicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "createdAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "expiresAtMs",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
+}

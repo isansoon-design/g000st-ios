@@ -10,6 +10,7 @@ import { ContactsService } from './contacts-service.js';
 const publicId = z.string().length(G000ST_ID_LENGTH).regex(/^[A-Za-z0-9]+$/);
 const addContactBody = z.object({ publicId }).strict();
 const nicknameBody = z.object({ nickname: z.string().trim().max(80).optional() }).strict();
+const preferencesBody = z.object({ blocked: z.boolean().optional(), allowAudioCalls: z.boolean().optional(), allowVideoCalls: z.boolean().optional() }).strict().refine((value) => Object.keys(value).length > 0);
 
 function bearerToken(request: Request): string {
   const [scheme, token] = (request.header('authorization') ?? '').split(' ', 2);
@@ -30,12 +31,21 @@ export function createContactsRouter(authService: AuthService, service: Contacts
   router.get('/', asyncRoute(async (request, response) => {
     response.json({ items: await service.listContacts(request.authenticatedPublicId) });
   }));
+  router.get('/nicknames', asyncRoute(async (request, response) => {
+    response.json({ items: await service.listNicknames(request.authenticatedPublicId) });
+  }));
+  router.get('/:publicId/preferences', asyncRoute(async (request, response) => {
+    response.json({ preferences: await service.getPeerPreferences(request.authenticatedPublicId, publicId.parse(request.params.publicId)) });
+  }));
+  router.patch('/:publicId/preferences', limiter(30), asyncRoute(async (request, response) => {
+    response.json({ preferences: await service.updatePeerPreferences(request.authenticatedPublicId, publicId.parse(request.params.publicId), preferencesBody.parse(request.body)) });
+  }));
   router.post('/', limiter(20), asyncRoute(async (request, response) => {
-    await service.addContact(request.authenticatedPublicId, addContactBody.parse(request.body).publicId);
+    await service.followUser(request.authenticatedPublicId, addContactBody.parse(request.body).publicId);
     response.status(201).json({ ok: true });
   }));
   router.delete('/:publicId', limiter(30), asyncRoute(async (request, response) => {
-    await service.removeContact(request.authenticatedPublicId, publicId.parse(request.params.publicId));
+    await service.unfollowUser(request.authenticatedPublicId, publicId.parse(request.params.publicId));
     response.status(204).send();
   }));
   router.patch('/:publicId', limiter(30), asyncRoute(async (request, response) => {

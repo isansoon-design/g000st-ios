@@ -16,7 +16,7 @@ type CallOverlayProps = Readonly<{
 }>;
 
 function shortId(publicId: string): string {
-  return `${publicId.slice(0, 12)}…${publicId.slice(-6)}`;
+  return publicId.slice(0, 8);
 }
 
 function initials(displayName: string | undefined): string {

@@ -171,13 +171,20 @@ export async function uploadAvatarMedia(
     throw new Error(`Photo upload failed (${result.status}): ${result.body}`);
   return upload.media;
 }
+export async function uploadCoverMedia(input: Readonly<{ byteSize: number; contentType: string; fileName: string; uri: string }>) {
+  const response = await axiosInstance.post('/social/cover-uploads', { byteSize: input.byteSize, contentType: input.contentType, fileName: input.fileName });
+  const upload = parseApiPayload(avatarUploadSchema, response.data).upload;
+  const result = await new File(input.uri).upload(upload.uploadUrl, { headers: { ...upload.headers }, httpMethod: 'PUT', uploadType: UploadType.BINARY_CONTENT });
+  if (result.status < 200 || result.status >= 300) throw new Error(`Cover upload failed (${result.status}).`);
+  return upload.media;
+}
 export async function updateSocialProfile(
   profile: Partial<
     Pick<
       SocialProfile,
       "displayName" | "showDisplayName" | "country" | "age" | "sex" | "hobby" | "bio"
     >
-  > & { avatarMedia?: PendingAvatarMedia },
+  > & { avatarMedia?: PendingAvatarMedia; coverMedia?: PendingAvatarMedia },
 ) {
   const response = await axiosInstance.put("/social/profile", profile);
   return parseApiPayload(socialProfileResultSchema, response.data).profile;

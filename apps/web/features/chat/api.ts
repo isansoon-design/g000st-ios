@@ -25,6 +25,13 @@ export async function startChatConversation(
   return response.data.conversation;
 }
 
+export async function startMarketChatConversation(postId: string): Promise<ChatConversation> {
+  const response = await axios.post<{ conversation: ChatConversation }>(
+    '/chat/v1/market/conversations', { postId },
+  );
+  return response.data.conversation;
+}
+
 export async function listChatMessages(
   conversationId: string,
   cursor?: string,

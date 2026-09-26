@@ -2,7 +2,7 @@ export const SOCIAL_ALIAS_LENGTH = 8;
 export const DELETED_ACCOUNT_DISPLAY_NAME = 'Deleted account';
 
 export function socialAlias(publicId: string): string {
-  return publicId.slice(-SOCIAL_ALIAS_LENGTH);
+  return publicId.slice(0, SOCIAL_ALIAS_LENGTH);
 }
 
 export function publicDisplayName(

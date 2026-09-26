@@ -1,10 +1,11 @@
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 
 import type { ChatConversationSummary } from '@/domain/chat/types';
 
 type ChatConversationListProps = Readonly<{
   conversations: readonly ChatConversationSummary[];
+  initialKind?: 'private' | 'market';
   namesByPublicId: Readonly<Record<string, string>>;
   error: string | null;
   isLoading: boolean;
@@ -14,7 +15,7 @@ type ChatConversationListProps = Readonly<{
 }>;
 
 function shortId(publicId: string): string {
-  return publicId.slice(-8);
+  return publicId.slice(0, 8);
 }
 
 function formatTime(value: number): string {
@@ -23,6 +24,7 @@ function formatTime(value: number): string {
 
 function ChatConversationListComponent({
   conversations,
+  initialKind,
   namesByPublicId,
   error,
   isLoading,
@@ -30,6 +32,9 @@ function ChatConversationListComponent({
   onRefresh,
   onStart,
 }: ChatConversationListProps) {
+  const [kind, setKind] = useState<'private' | 'market'>(initialKind ?? 'private');
+  useEffect(() => { if (initialKind) setKind(initialKind); }, [initialKind]);
+  const visibleConversations = conversations.filter((conversation) => (conversation.kind ?? 'private') === kind);
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-[#D8D8D8]">
@@ -54,34 +59,26 @@ function ChatConversationListComponent({
     );
   }
 
-  if (conversations.length === 0) {
-    return (
-      <View className="flex-1 items-center justify-center bg-[#D8D8D8] px-7">
-        <Text className="text-center text-[13px] font-semibold leading-5 text-black/45">
-          Your private conversations will appear here.
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          className="mt-4 h-11 items-center justify-center rounded-full bg-g000st-silver px-6"
-          onPress={onStart}
-        >
-          <Text className="font-black text-white">Start private chat</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
   return (
+    <View className="flex-1 bg-[#D8D8D8]">
+      <View className="flex-row gap-2 p-3">
+        {(['private', 'market'] as const).map((value) => (
+          <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: kind === value }} onPress={() => setKind(value)} className={`rounded-full px-4 py-2 ${kind === value ? 'bg-black' : 'bg-white'}`}>
+            <Text className={`text-xs font-black ${kind === value ? 'text-white' : 'text-black'}`}>{value === 'market' ? 'Market chats' : 'Private chats'}</Text>
+          </Pressable>
+        ))}
+      </View>
     <FlatList
       className="flex-1 bg-[#D8D8D8]"
       contentContainerClassName="p-3"
-      data={conversations}
+      data={visibleConversations}
+      ListEmptyComponent={<View className="items-center py-12"><Text className="text-center text-sm text-black/45">{kind === 'market' ? 'Your Market chats will appear here.' : 'Your private chats will appear here.'}</Text>{kind === 'private' && <Pressable accessibilityRole="button" className="mt-4 rounded-full bg-g000st-silver px-6 py-3" onPress={onStart}><Text className="font-black text-white">Start private chat</Text></Pressable>}</View>}
       keyExtractor={(item) => item.conversationId}
       onRefresh={onRefresh}
       refreshing={false}
       renderItem={({ item }) => (
         <Pressable
-          accessibilityHint="Opens this private conversation"
+          accessibilityHint={item.kind === 'market' ? 'Opens this Market conversation' : 'Opens this private conversation'}
           accessibilityRole="button"
           className="mb-2 flex-row items-center rounded-[18px] border border-white/60 bg-[#E2E2E2] p-3"
           onPress={() => onOpen(item)}
@@ -97,9 +94,10 @@ function ChatConversationListComponent({
             </Text>
             <Text className="mt-1" numberOfLines={1}>
               <Text className="text-xs font-semibold text-black/45">
-                {item.lastMessagePreview || 'Private conversation'}
+                {item.lastMessagePreview || (item.kind === 'market' ? 'Market conversation' : 'Private conversation')}
               </Text>
             </Text>
+            {item.kind === 'market' && <Text className="mt-1 text-[10px] font-bold text-g000st-red">Market · Listing {item.marketPostId?.slice(0, 8)} · 30 days</Text>}
           </View>
           <View className="ml-2 items-end">
             <Text className="text-[10px] font-bold text-black/40">
@@ -116,6 +114,7 @@ function ChatConversationListComponent({
         </Pressable>
       )}
     />
+    </View>
   );
 }
 

@@ -16,6 +16,7 @@ export type SocialProfile = Readonly<{
   displayName?: string;
   showDisplayName: boolean;
   avatarObjectKey?: string;
+  coverObjectKey?: string;
   country?: string;
   age?: number;
   sex?: 'male' | 'female';
@@ -24,7 +25,7 @@ export type SocialProfile = Readonly<{
   updatedAtMs: number;
 }>;
 
-export type SocialProfileView = Omit<SocialProfile, 'avatarObjectKey'> & Readonly<{ avatarUrl?: string }>;
+export type SocialProfileView = Omit<SocialProfile, 'avatarObjectKey' | 'coverObjectKey'> & Readonly<{ avatarUrl?: string; coverUrl?: string }>;
 
 export type PendingAvatarMedia = Readonly<{
   byteSize: number;
@@ -109,6 +110,7 @@ export type UpdateSocialProfileInput = Readonly<{
   displayName?: string;
   showDisplayName?: boolean;
   avatarMedia?: PendingAvatarMedia;
+  coverMedia?: PendingAvatarMedia;
   country?: string;
   age?: number;
   sex?: 'male' | 'female';

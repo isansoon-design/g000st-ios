@@ -6,7 +6,9 @@ import { decodeChatCursor } from './chat-cursor.js';
 import {
   CHAT_BURN_AFTER_READ_SECONDS,
   CHAT_MESSAGE_RETENTION_MS,
+  MARKET_CHAT_MESSAGE_RETENTION_MS,
 } from './chat-policy.js';
+import type { MarketStore } from '../market/market-store.js';
 import type { ChatNotifier } from '../notifications/notification-service.js';
 import type { ChatStore } from './chat-store.js';
 import type { MediaService, PendingAttachmentInput } from '../media/media-service.js';
@@ -25,6 +27,10 @@ type ChatIdentityProvider = Readonly<{
   getPublicDisplayName(publicId: string): Promise<string>;
 }>;
 
+type ChatPermissions = Readonly<{
+  canMessage(senderPublicId: string, recipientPublicId: string): Promise<boolean>;
+}>;
+
 export class ChatService {
   constructor(
     private readonly store: ChatStore,
@@ -33,6 +39,8 @@ export class ChatService {
     private readonly notifier?: ChatNotifier,
     private readonly mediaService?: MediaService,
     private readonly identityProvider?: ChatIdentityProvider,
+    private readonly permissions?: ChatPermissions,
+    private readonly marketStore?: Pick<MarketStore, 'findPost'>,
   ) {}
 
   async startConversation(
@@ -46,8 +54,23 @@ export class ChatService {
     if (!(await this.authStore.isUserActive(participantPublicId))) {
       throw new ApiError(404, 'USER_NOT_FOUND', 'No active user has that Public ID.');
     }
+    await this.requireMessagePermission(publicId, participantPublicId);
 
     return await this.store.getOrCreateConversation(publicId, participantPublicId, this.now());
+  }
+
+  async startMarketConversation(publicId: string, postId: string): Promise<ChatConversation> {
+    if (!this.marketStore) throw new ApiError(503, 'MARKET_UNAVAILABLE', 'Market is unavailable.');
+    const post = await this.marketStore.findPost(publicId, postId);
+    if (!post) throw new ApiError(404, 'MARKET_POST_NOT_FOUND', 'Market post not found.');
+    if (post.ownerPublicId === publicId) {
+      throw new ApiError(400, 'INVALID_PARTICIPANT', 'You cannot chat with your own account.');
+    }
+    if (!(await this.authStore.isUserActive(post.ownerPublicId))) {
+      throw new ApiError(404, 'USER_NOT_FOUND', 'No active user has that Public ID.');
+    }
+    await this.requireMessagePermission(publicId, post.ownerPublicId);
+    return await this.store.getOrCreateConversation(publicId, post.ownerPublicId, this.now(), postId);
   }
 
   async listConversations(
@@ -57,12 +80,20 @@ export class ChatService {
     const summaries = await this.store.listConversations(publicId, limit, this.now());
     return await Promise.all(
       summaries.map(async (summary) => {
+        const retentionMs = summary.kind === 'market'
+          ? MARKET_CHAT_MESSAGE_RETENTION_MS
+          : CHAT_MESSAGE_RETENTION_MS;
+        const lastMessagePreview = summary.lastMessageCreatedAtMs !== undefined &&
+          summary.lastMessageCreatedAtMs + retentionMs <= this.now()
+          ? ''
+          : summary.lastMessagePreview;
         const active = await this.authStore.isUserActive(summary.participantPublicId);
         const participantDisplayName = active
           ? await this.identityProvider?.getPublicDisplayName(summary.participantPublicId)
           : undefined;
         return {
           ...summary,
+          lastMessagePreview,
           ...(participantDisplayName ? { participantDisplayName } : {}),
           participantStatus: active ? ('active' as const) : ('deleted' as const),
         };
@@ -127,6 +158,7 @@ export class ChatService {
         'This account is no longer available.',
       );
     }
+    await this.requireMessagePermission(publicId, recipientPublicId);
 
     const content = input.content?.trim() ?? '';
     if ((!content && !input.attachments?.length) || content.length > MAX_MESSAGE_LENGTH) {
@@ -149,14 +181,16 @@ export class ChatService {
       : undefined;
     const message: ChatMessage = {
       ...(attachments ? { attachments } : {}),
-      ...(input.burnAfterRead
+      ...(input.burnAfterRead && conversation.kind !== 'market'
         ? { burnAfterReadSeconds: CHAT_BURN_AFTER_READ_SECONDS }
         : {}),
       clientMessageId,
       content,
       conversationId,
       createdAtMs: nowMs,
-      expiresAtMs: nowMs + CHAT_MESSAGE_RETENTION_MS,
+      expiresAtMs: nowMs + (conversation.kind === 'market'
+        ? MARKET_CHAT_MESSAGE_RETENTION_MS
+        : CHAT_MESSAGE_RETENTION_MS),
       id: clientMessageId,
       locked: false,
       senderPublicId: publicId,
@@ -169,7 +203,7 @@ export class ChatService {
       stored.senderPublicId !== publicId ||
       stored.content !== content ||
       JSON.stringify(stored.attachments ?? []) !== JSON.stringify(attachments ?? []) ||
-      Boolean(stored.burnAfterReadSeconds) !== Boolean(input.burnAfterRead)
+      Boolean(stored.burnAfterReadSeconds) !== Boolean(input.burnAfterRead && conversation.kind !== 'market')
     ) {
       throw new ApiError(409, 'MESSAGE_ID_CONFLICT', 'This message retry does not match the original.');
     }
@@ -209,7 +243,8 @@ export class ChatService {
       fileName: string;
     }>,
   ) {
-    await this.requireParticipant(publicId, input.conversationId);
+    const conversation = await this.requireParticipant(publicId, input.conversationId);
+    await this.requireMessagePermission(publicId, conversation.participants.find((id) => id !== publicId)!);
     return await this.requireMedia().createUpload({ ...input, publicId });
   }
 
@@ -293,6 +328,12 @@ export class ChatService {
     }
 
     return conversation;
+  }
+
+  private async requireMessagePermission(senderPublicId: string, recipientPublicId: string): Promise<void> {
+    if (this.permissions && !(await this.permissions.canMessage(senderPublicId, recipientPublicId))) {
+      throw new ApiError(403, 'CONTACT_BLOCKED', 'Messages cannot be sent to this account.');
+    }
   }
 
   private requireMedia(): MediaService {

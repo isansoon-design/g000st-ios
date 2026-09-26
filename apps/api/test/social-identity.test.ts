@@ -6,18 +6,18 @@ import { publicDisplayName, socialAlias } from '../src/social/social-identity.js
 import { SocialService } from '../src/social/social-service.js';
 import type { SocialStore } from '../src/social/social-store.js';
 
-const PUBLIC_ID = 'A'.repeat(42) + 'B12cD34e';
+const PUBLIC_ID = '1234AbCd' + 'A'.repeat(34) + 'B12cD34e';
 
 describe('Social display identity', () => {
-  it('uses the last eight Public ID characters as the alias', () => {
-    assert.equal(socialAlias(PUBLIC_ID), 'B12cD34e');
+  it('uses the first eight Public ID characters as the alias', () => {
+    assert.equal(socialAlias(PUBLIC_ID), '1234AbCd');
   });
 
   it('hides the real name unless the user explicitly allows it', () => {
-    assert.equal(publicDisplayName(PUBLIC_ID, { displayName: 'Real Name' }), 'B12cD34e');
+    assert.equal(publicDisplayName(PUBLIC_ID, { displayName: 'Real Name' }), '1234AbCd');
     assert.equal(
       publicDisplayName(PUBLIC_ID, { displayName: 'Real Name', showDisplayName: false }),
-      'B12cD34e',
+      '1234AbCd',
     );
   });
 
@@ -26,7 +26,8 @@ describe('Social display identity', () => {
       publicDisplayName(PUBLIC_ID, { displayName: '  Real Name  ', showDisplayName: true }),
       'Real Name',
     );
-    assert.equal(publicDisplayName(PUBLIC_ID, { displayName: '   ', showDisplayName: true }), 'B12cD34e');
+    assert.equal(publicDisplayName(PUBLIC_ID, { displayName: '   ', showDisplayName: true }), '1234AbCd');
+    assert.equal(publicDisplayName(PUBLIC_ID, undefined), '1234AbCd');
   });
 
   it('always uses the deleted-account tombstone instead of a name or alias', () => {
@@ -60,6 +61,6 @@ describe('Social display identity', () => {
     const service = new SocialService(store, authStore);
 
     assert.equal((await service.getProfile(PUBLIC_ID, PUBLIC_ID)).displayName, 'Real Name');
-    assert.equal((await service.getProfile('viewer', PUBLIC_ID)).displayName, 'B12cD34e');
+    assert.equal((await service.getProfile('viewer', PUBLIC_ID)).displayName, '1234AbCd');
   });
 });

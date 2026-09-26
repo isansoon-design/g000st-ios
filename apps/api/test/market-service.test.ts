@@ -14,11 +14,14 @@ const basePost: MarketPost = {
   currency: 'USD',
   quantity: 1,
   city: 'Damascus',
+  allowCalls: false,
+  allowVideoCalls: false,
   createdAtMs: 100,
   updatedAtMs: 100,
   likeCount: 0,
   commentCount: 0,
   likedByViewer: false,
+  campedByViewer: false,
   ownedByViewer: true,
 };
 
@@ -46,6 +49,8 @@ describe('MarketService', () => {
       currency: 'usd',
       quantity: 2,
       city: '  Damascus  ',
+      allowCalls: false,
+      allowVideoCalls: false,
     }, basePost.id);
 
     assert.equal(post.content, 'Vintage desk');
@@ -72,7 +77,7 @@ describe('MarketService', () => {
     const service = new MarketService(store);
 
     await assert.rejects(
-      service.createPost('seller', { content: 'Replica watch', price: 5, currency: 'USD', quantity: 1, city: 'London' }, basePost.id),
+      service.createPost('seller', { content: 'Replica watch', price: 5, currency: 'USD', quantity: 1, city: 'London', allowCalls: false, allowVideoCalls: false }, basePost.id),
       (error: unknown) => error instanceof Error && 'code' in error && error.code === 'PROHIBITED_MARKET_CONTENT',
     );
     await assert.rejects(

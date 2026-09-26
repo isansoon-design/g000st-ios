@@ -319,7 +319,8 @@ export default function SocialPage() {
                   </div>
                   <button
                     className="min-w-0 flex-1 text-left"
-                    onClick={() => void openChat(post.ownerPublicId)}
+                    onClick={() => { if (post.author.publicId) router.push(`/users/${post.author.publicId}`); }}
+                    disabled={!post.author.publicId}
                   >
                     <div className="truncate font-black">
                       {post.author.displayName}
@@ -502,7 +503,7 @@ export default function SocialPage() {
         <ViewButton
           active={view === "mine"}
           onClick={() => setView("mine")}
-          label="My Page"
+          label="My Posts"
         />
         <ViewButton
           active={view === "alerts"}
@@ -858,7 +859,7 @@ function ProfileEditor({
         className="w-full rounded-2xl bg-white p-4 text-left shadow-sm"
       >
         <div className="font-black">
-          {profile.displayName || "My social profile"}
+          {profile.displayName || profile.publicId.slice(0, 8)}
         </div>
         <div className="mt-1 text-xs text-black/45">
           {profile.country ||

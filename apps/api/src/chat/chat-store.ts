@@ -34,6 +34,7 @@ export interface ChatStore {
     firstPublicId: string,
     secondPublicId: string,
     nowMs: number,
+    marketPostId?: string,
   ): Promise<ChatConversation>;
   listConversations(
     publicId: string,

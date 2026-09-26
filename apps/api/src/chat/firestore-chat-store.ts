@@ -20,6 +20,8 @@ import type {
 
 type StoredConversation = Readonly<{
   createdAtMs: number;
+  kind: 'private' | 'market';
+  marketPostId?: string;
   participants: readonly [string, string];
   updatedAtMs: number;
 }>;
@@ -36,9 +38,12 @@ export class FirestoreChatStore implements ChatStore {
     firstPublicId: string,
     secondPublicId: string,
     nowMs: number,
+    marketPostId?: string,
   ): Promise<ChatConversation> {
     const participants = [firstPublicId, secondPublicId].sort() as [string, string];
-    const conversationId = createHash('sha256').update(participants.join('\0')).digest('hex');
+    const conversationId = createHash('sha256')
+      .update(marketPostId ? `market\0${marketPostId}\0${participants.join('\0')}` : participants.join('\0'))
+      .digest('hex');
     const conversationRef = this.conversations().doc(conversationId);
 
     return await this.db.runTransaction(async (transaction) => {
@@ -47,6 +52,8 @@ export class FirestoreChatStore implements ChatStore {
 
       const conversation: StoredConversation = {
         createdAtMs: nowMs,
+        kind: marketPostId ? 'market' : 'private',
+        ...(marketPostId ? { marketPostId } : {}),
         participants,
         updatedAtMs: nowMs,
       };
@@ -55,6 +62,8 @@ export class FirestoreChatStore implements ChatStore {
       for (const publicId of participants) {
         const participantPublicId = participants.find((candidate) => candidate !== publicId)!;
         transaction.create(this.memberConversation(publicId, conversationId), {
+          kind: conversation.kind,
+          ...(marketPostId ? { marketPostId } : {}),
           lastMessagePreview: '',
           participantPublicId,
           unreadCount: 0,
@@ -80,6 +89,7 @@ export class FirestoreChatStore implements ChatStore {
       ? {
           ...(snapshot.data() as StoredConversationSummary),
           conversationId,
+          kind: (snapshot.data() as StoredConversationSummary).kind ?? 'private',
         }
       : null;
   }
@@ -106,6 +116,7 @@ export class FirestoreChatStore implements ChatStore {
           {
             ...(document.data() as StoredConversationSummary),
             conversationId: document.id,
+            kind: (document.data() as StoredConversationSummary).kind ?? 'private',
           },
           nowMs,
         ),
@@ -423,7 +434,7 @@ export class FirestoreChatStore implements ChatStore {
         current.updatedAtMs !== summary.updatedAtMs ||
         current.lastMessageId !== summary.lastMessageId
       ) {
-        return { ...current, conversationId: summary.conversationId };
+        return { ...current, conversationId: summary.conversationId, kind: current.kind ?? 'private' };
       }
 
       transaction.set(
@@ -483,6 +494,8 @@ export class FirestoreChatStore implements ChatStore {
     return {
       createdAtMs: data.createdAtMs,
       id,
+      kind: data.kind === 'market' ? 'market' : 'private',
+      ...(typeof data.marketPostId === 'string' ? { marketPostId: data.marketPostId } : {}),
       participants: data.participants as [string, string],
       updatedAtMs: data.updatedAtMs,
     };

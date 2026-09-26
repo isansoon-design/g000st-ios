@@ -6,6 +6,7 @@ import { env } from "@/config/env";
 
 type RetriableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
+  _sessionVersion?: number;
 };
 
 type CompatibleHeaders = InternalAxiosRequestConfig['headers'] &
@@ -59,6 +60,11 @@ const axiosInstance = create({
 });
 
 axiosInstance.interceptors.request.use(async (config) => {
+  const request = config as RetriableRequestConfig;
+  if (request._retry && request._sessionVersion !== tokenService.getVersion()) {
+    return Promise.reject(new Error('Session changed during request retry'));
+  }
+  request._sessionVersion = tokenService.getVersion();
   const token = await tokenService.getAccess();
   const isFormData =
     typeof FormData !== "undefined" && config.data instanceof FormData;
@@ -82,6 +88,8 @@ axiosInstance.interceptors.request.use(async (config) => {
 
   if (token) {
     setHeader(config, "Authorization", `Bearer ${token}`);
+  } else {
+    config.headers.delete('Authorization');
   }
 
   return config;
@@ -103,18 +111,28 @@ axiosInstance.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       original &&
+      original.headers.has('Authorization') &&
       !original._retry &&
       !isRefreshRequest
     ) {
       original._retry = true;
 
-      try {
-        const accessToken = await tokenService.refresh();
-        setHeader(original, "Authorization", `Bearer ${accessToken}`);
-        return await axiosInstance(original);
-      } catch {
-        await tokenService.clear();
+      if (original._sessionVersion !== tokenService.getVersion()) {
+        return Promise.reject(toApiError(error));
       }
+
+      let accessToken: string;
+      try {
+        accessToken = await tokenService.refresh(original._sessionVersion);
+      } catch {
+        await tokenService.clearIfVersion(original._sessionVersion);
+        return Promise.reject(toApiError(error));
+      }
+      if (original._sessionVersion !== tokenService.getVersion()) {
+        return Promise.reject(toApiError(error));
+      }
+      setHeader(original, "Authorization", `Bearer ${accessToken}`);
+      return axiosInstance(original);
     }
 
     return Promise.reject(toApiError(error));

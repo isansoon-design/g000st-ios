@@ -38,6 +38,7 @@ import {
 } from "@/services/notifications/chat-notification-presentation";
 
 const MESSAGE_RETENTION_MS = 2 * 60 * 60 * 1_000;
+const MARKET_MESSAGE_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000;
 
 type ActiveConversation = Readonly<{
   conversationId: string;
@@ -409,6 +410,7 @@ export function usePrivateChat(
 
     const nowMs = Date.now();
     const clientMessageId = randomUUID();
+    const isMarket = conversationsQuery.data?.some((conversation) => conversation.conversationId === activeConversation.conversationId && conversation.kind === 'market') ?? false;
     setIsUploadingAttachments(true);
     setAttachmentUploadError(null);
     try {
@@ -428,12 +430,12 @@ export function usePrivateChat(
       setOutbox((current) => [
         ...current,
         {
-          ...(burnAfterRead ? { burnAfterReadSeconds: 5 as const } : {}),
+          ...(burnAfterRead && !isMarket ? { burnAfterReadSeconds: 5 as const } : {}),
           clientMessageId,
           content,
           conversationId: activeConversation.conversationId,
           createdAtMs: nowMs,
-          expiresAtMs: nowMs + MESSAGE_RETENTION_MS,
+          expiresAtMs: nowMs + (isMarket ? MARKET_MESSAGE_RETENTION_MS : MESSAGE_RETENTION_MS),
           id: clientMessageId,
           locked: false,
           senderPublicId: user.publicId,
@@ -445,7 +447,7 @@ export function usePrivateChat(
       chatAttachments.clearAttachments();
       sendMutation.mutate({
         ...(attachments.length ? { attachments } : {}),
-        burn: burnAfterRead,
+        burn: burnAfterRead && !isMarket,
         clientMessageId,
         content,
         conversationId: activeConversation.conversationId,
@@ -459,6 +461,7 @@ export function usePrivateChat(
     activeConversation,
     burnAfterRead,
     chatAttachments,
+    conversationsQuery.data,
     draft,
     sendMutation,
     user,

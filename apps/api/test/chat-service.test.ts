@@ -12,7 +12,8 @@ import type {
   SessionMaterial,
 } from '../src/auth/auth-store.js';
 import { encodeChatCursor } from '../src/chat/chat-cursor.js';
-import { CHAT_MESSAGE_RETENTION_MS } from '../src/chat/chat-policy.js';
+import { CHAT_MESSAGE_RETENTION_MS, MARKET_CHAT_MESSAGE_RETENTION_MS } from '../src/chat/chat-policy.js';
+import type { MarketPost } from '../src/market/market-types.js';
 import { ChatService } from '../src/chat/chat-service.js';
 import type {
   ChatStore,
@@ -96,17 +97,20 @@ class MemoryChatStore implements ChatStore {
     firstPublicId: string,
     secondPublicId: string,
     nowMs: number,
+    marketPostId?: string,
   ): Promise<ChatConversation> {
     const participants = [firstPublicId, secondPublicId].sort() as [string, string];
-    const id = participants.join('--');
+    const id = marketPostId ? `market--${marketPostId}--${participants.join('--')}` : participants.join('--');
     const existing = this.conversations.get(id);
     if (existing) return existing;
 
-    const conversation = { createdAtMs: nowMs, id, participants, updatedAtMs: nowMs } as const;
+    const conversation = { createdAtMs: nowMs, id, kind: marketPostId ? 'market' as const : 'private' as const, ...(marketPostId ? { marketPostId } : {}), participants, updatedAtMs: nowMs } as const;
     this.conversations.set(id, conversation);
     for (const publicId of participants) {
       this.members.set(`${publicId}:${id}`, {
         conversationId: id,
+        kind: conversation.kind,
+        ...(marketPostId ? { marketPostId } : {}),
         lastMessagePreview: '',
         participantPublicId: participants.find((candidate) => candidate !== publicId)!,
         unreadCount: 0,
@@ -331,7 +335,7 @@ function expectApiError(code: string) {
   return (error: unknown): boolean => error instanceof ApiError && error.code === code;
 }
 
-function createFixture(mediaService?: MediaService) {
+function createFixture(mediaService?: MediaService, permissions?: { canMessage(senderPublicId: string, recipientPublicId: string): Promise<boolean> }) {
   let nowMs = NOW;
   const chatStore = new MemoryChatStore();
   const authStore = new ActiveUsersStore(new Set([USER_A, USER_B, USER_C]));
@@ -340,7 +344,7 @@ function createFixture(mediaService?: MediaService) {
     async notifyNewMessage(input) {
       notifications.push(input);
     },
-  }, mediaService);
+  }, mediaService, undefined, permissions);
   return {
     advance: (milliseconds: number) => {
       nowMs += milliseconds;
@@ -353,6 +357,49 @@ function createFixture(mediaService?: MediaService) {
 }
 
 describe('ChatService', () => {
+  it('separates Market chats by listing and retains their messages for 30 days', async () => {
+    const fixture = createFixture();
+    const firstPostId = '11111111-1111-4111-8111-111111111111';
+    const secondPostId = '22222222-2222-4222-8222-222222222222';
+    const marketStore = {
+      async findPost(_viewerId: string, postId: string) {
+        return postId === firstPostId || postId === secondPostId
+          ? { id: postId, ownerPublicId: USER_B } as MarketPost
+          : null;
+      },
+    };
+    let nowMs = NOW;
+    const service = new ChatService(fixture.chatStore, fixture.authStore, () => nowMs, undefined, undefined, undefined, undefined, marketStore);
+    const privateChat = await service.startConversation(USER_A, USER_B);
+    const first = await service.startMarketConversation(USER_A, firstPostId);
+    const repeated = await service.startMarketConversation(USER_A, firstPostId);
+    const second = await service.startMarketConversation(USER_A, secondPostId);
+
+    assert.equal(first.id, repeated.id);
+    assert.notEqual(first.id, privateChat.id);
+    assert.notEqual(first.id, second.id);
+    assert.equal(first.kind, 'market');
+    assert.equal(first.marketPostId, firstPostId);
+    assert.equal((await service.sendTextMessage(USER_A, first.id, { content: 'Interested' })).expiresAtMs, NOW + MARKET_CHAT_MESSAGE_RETENTION_MS);
+    assert.equal((await service.sendTextMessage(USER_A, first.id, { content: 'Still interested', burnAfterRead: true })).burnAfterReadSeconds, undefined);
+    assert.equal((await service.sendTextMessage(USER_A, privateChat.id, { content: 'Hello' })).expiresAtMs, NOW + CHAT_MESSAGE_RETENTION_MS);
+    assert.equal((await service.listConversations(USER_B, 10)).find((item) => item.conversationId === first.id)?.kind, 'market');
+    nowMs += CHAT_MESSAGE_RETENTION_MS;
+    const summaries = await service.listConversations(USER_B, 10);
+    assert.equal(summaries.find((item) => item.conversationId === privateChat.id)?.lastMessagePreview, '');
+    assert.equal(summaries.find((item) => item.conversationId === first.id)?.lastMessagePreview, 'Message');
+    await assert.rejects(service.startMarketConversation(USER_A, '33333333-3333-4333-8333-333333333333'), expectApiError('MARKET_POST_NOT_FOUND'));
+    await assert.rejects(service.startMarketConversation(USER_B, firstPostId), expectApiError('INVALID_PARTICIPANT'));
+  });
+  it('rejects a new chat and new messages when either user blocks the other', async () => {
+    let allowed = true;
+    const { service } = createFixture(undefined, { async canMessage() { return allowed; } });
+    const conversation = await service.startConversation(USER_A, USER_B);
+    allowed = false;
+    await assert.rejects(() => service.sendTextMessage(USER_A, conversation.id, { content: 'Hello' }), expectApiError('CONTACT_BLOCKED'));
+    await assert.rejects(() => service.startConversation(USER_B, USER_A), expectApiError('CONTACT_BLOCKED'));
+  });
+
   it('lets only the sender edit a live plain text message', async () => {
     const { service, advance } = createFixture();
     const conversation = await service.startConversation(USER_A, USER_B);

@@ -3,7 +3,8 @@ import { memo, useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 
 import { editChatMessage } from '@/api/chat';
-import { addContact, listContacts, updateContactNickname } from '@/api/contacts';
+import { getPeerPreferences, listContactNicknames, updateContactNickname, updatePeerPreferences, type PeerPreferences } from '@/api/contacts';
+import { getSocialProfile, toggleSocialCamp } from '@/api/social';
 import { G000stWordmark } from '@/components/brand/g000st-wordmark';
 import { FeatureScreen } from '@/components/layout/feature-screen';
 import type { ChatMessage } from '@/domain/chat/types';
@@ -28,11 +29,13 @@ function OnlineSignal() {
 
 type PrivateChatScreenContentProps = Readonly<{
   initialConversationId?: string;
+  initialKind?: 'private' | 'market';
   openRequestId?: string;
 }>;
 
 function PrivateChatScreenContentComponent({
   initialConversationId,
+  initialKind,
   openRequestId,
 }: PrivateChatScreenContentProps) {
   const chat = usePrivateChat(initialConversationId, openRequestId);
@@ -43,22 +46,54 @@ function PrivateChatScreenContentComponent({
   const [nickname, setNickname] = useState('');
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [messageDraft, setMessageDraft] = useState('');
+  const [peerPreferences, setPeerPreferences] = useState<PeerPreferences | null>(null);
+  const [followingPeer, setFollowingPeer] = useState<boolean | null>(null);
   const navigation = useNavigation();
   const closeConversation = chat.closeConversation;
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    void listContacts().then((contacts) => {
-      if (active) setNamesByPublicId(Object.fromEntries(contacts.filter((contact) => contact.nickname).map((contact) => [contact.publicId, contact.nickname!])));
+    void listContactNicknames().then((contacts) => {
+      if (active) setNamesByPublicId(Object.fromEntries(contacts.map((contact) => [contact.publicId, contact.nickname])));
     }).catch(() => undefined);
     return () => { active = false; };
   }, []));
+
+  const peerPublicId = chat.activeConversation?.participantPublicId;
+  const participantDeleted = chat.activeConversation?.participantStatus === 'deleted';
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setPeerPreferences(null);
+    setFollowingPeer(null);
+    if (peerPublicId && !participantDeleted) {
+      void getPeerPreferences(peerPublicId).then((value) => { if (active) setPeerPreferences(value); }).catch(() => undefined);
+      void getSocialProfile(peerPublicId).then((profile) => { if (active) setFollowingPeer(profile.campedByViewer ?? false); }).catch(() => undefined);
+    }
+    return () => { active = false; };
+  }, [peerPublicId, participantDeleted]));
+
+  async function changePeerPreferences(changes: Partial<PeerPreferences>) {
+    if (!peerPublicId) return;
+    try {
+      setPeerPreferences(await updatePeerPreferences(peerPublicId, changes));
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Chat', text2: error instanceof Error ? error.message : 'Could not update contact settings.' });
+    }
+  }
+
+  async function togglePeerFollow() {
+    if (!peerPublicId) return;
+    try {
+      setFollowingPeer((await toggleSocialCamp(peerPublicId)).camped);
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Chat', text2: error instanceof Error ? error.message : 'Could not update follow.' });
+    }
+  }
 
   async function saveName(publicId: string) {
     try {
       const next = nickname.trim();
       if (!next && !namesByPublicId[publicId]) { setIsNameOpen(false); return; }
-      if (next && !(await listContacts()).some((contact) => contact.publicId === publicId)) await addContact(publicId);
       await updateContactNickname(publicId, next);
       setNamesByPublicId((current) => ({ ...current, [publicId]: next }));
       setIsNameOpen(false);
@@ -91,6 +126,7 @@ function PrivateChatScreenContentComponent({
     return (
       <>
         <ChatThread
+          conversationKind={chat.conversations.find((item) => item.conversationId === chat.activeConversation?.conversationId)?.kind ?? 'private'}
           attachmentError={chat.attachmentError}
           attachments={chat.attachments}
           burnAfterRead={chat.burnAfterRead}
@@ -110,6 +146,8 @@ function PrivateChatScreenContentComponent({
           onEditMessage={(message) => { setEditingMessage(message); setMessageDraft(message.content); }}
           onCallAudio={() => void callUser(participantPublicId, namesByPublicId[participantPublicId], 'audio')}
           onCallVideo={() => void callUser(participantPublicId, namesByPublicId[participantPublicId], 'video')}
+          onToggleFollow={togglePeerFollow}
+          onUpdatePeerPreferences={changePeerPreferences}
           onCaptureAttachment={chat.captureAttachment}
           onChangeDraft={chat.updateDraft}
           onLoadOlder={() => void chat.loadOlderMessages()}
@@ -126,6 +164,8 @@ function PrivateChatScreenContentComponent({
           onVoiceError={chat.setVoiceError}
           participantAvatarUrl={chat.participantAvatarUrl}
           participantDisplayName={namesByPublicId[participantPublicId] || chat.participantDisplayName}
+          peerPreferences={peerPreferences}
+          followingPeer={followingPeer}
           participantPublicId={chat.activeConversation.participantPublicId}
           userPublicId={chat.userPublicId}
         />
@@ -177,6 +217,7 @@ function PrivateChatScreenContentComponent({
     >
       <ChatConversationList
         conversations={chat.conversations}
+        initialKind={chat.conversations.find((item) => item.conversationId === initialConversationId)?.kind ?? initialKind}
         namesByPublicId={namesByPublicId}
         error={chat.conversationsError}
         isLoading={chat.isLoadingConversations}

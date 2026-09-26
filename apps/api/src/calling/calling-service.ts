@@ -24,6 +24,10 @@ export type NativeCallPushClients = Readonly<{
   fcm?: NativeCallPushClient;
 }>;
 
+type CallingPermissions = Readonly<{
+  canCall(callerPublicId: string, calleePublicId: string, media: CallMedia): Promise<boolean>;
+}>;
+
 export class CallingService {
   constructor(
     private readonly store: CallingStore,
@@ -31,7 +35,12 @@ export class CallingService {
     private readonly notifier: CallingNotifier,
     private readonly nativePush: NativeCallPushClients = {},
     private readonly now: () => number = Date.now,
+    private readonly permissions?: CallingPermissions,
   ) {}
+
+  canReceiveCall(callerPublicId: string, calleePublicId: string, media: CallMedia): Promise<boolean> {
+    return this.permissions?.canCall(callerPublicId, calleePublicId, media) ?? Promise.resolve(true);
+  }
 
   async issueTurnCredential(publicId: string): Promise<TurnCredential> {
     if (!this.turnCredentialProvider) {

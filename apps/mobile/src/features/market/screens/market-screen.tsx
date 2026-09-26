@@ -1,7 +1,7 @@
 import { randomUUID } from "expo-crypto";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter, type Href } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { cssInterop } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -22,7 +22,8 @@ import {
 } from "react-native";
 import Toast from "react-native-toast-message";
 
-import { startChatConversation } from "@/api/chat";
+import { startMarketChatConversation } from "@/api/chat";
+import { toggleSocialCamp } from "@/api/social";
 import {
   createMarketComment,
   createMarketPost,
@@ -189,7 +190,7 @@ export function MarketScreen() {
 
   async function openChat(post: MarketPost) {
     try {
-      const conversation = await startChatConversation(post.ownerPublicId);
+      const conversation = await startMarketChatConversation(post.id);
       router.push({
         pathname: "/(app)/(tabs)/chat",
         params: {
@@ -259,6 +260,18 @@ export function MarketScreen() {
                   );
                 }}
                 onComments={() => setCommentsPost(item)}
+                onFollow={async () => {
+                  try {
+                    const result = await toggleSocialCamp(item.ownerPublicId);
+                    setPosts((current) => current.map((post) =>
+                      post.ownerPublicId === item.ownerPublicId
+                        ? { ...post, campedByViewer: result.camped }
+                        : post,
+                    ));
+                  } catch (error) {
+                    showError(error, "Could not update follow.");
+                  }
+                }}
                 onChat={() => openChat(item)}
                 onCall={() =>
                   callUser(item.ownerPublicId, item.author.displayName, "audio")
@@ -293,6 +306,7 @@ export function MarketScreen() {
             active={view === "mine"}
             onPress={() => setView("mine")}
           />
+          <ViewButton label="Market Chats" active={false} onPress={() => router.push({ pathname: '/(app)/(tabs)/chat', params: { kind: 'market' } })} />
         </View>
       </View>
       {commentsPost && (
@@ -426,6 +440,7 @@ function MarketCard({
   post,
   onLike,
   onComments,
+  onFollow,
   onChat,
   onCall,
   onVideoCall,
@@ -435,6 +450,7 @@ function MarketCard({
   post: MarketPost;
   onLike: () => Promise<void>;
   onComments: () => void;
+  onFollow: () => Promise<void>;
   onChat: () => Promise<void>;
   onCall: () => Promise<void>;
   onVideoCall: () => Promise<void>;
@@ -442,6 +458,7 @@ function MarketCard({
   onDelete: () => Promise<void>;
 }) {
   const { confirm } = useConfirmModal();
+  const router = useRouter();
   return (
     <View className="overflow-hidden rounded-2xl border-2 border-black bg-white shadow-sm">
       <View className="flex-row items-center gap-3 p-4">
@@ -456,13 +473,13 @@ function MarketCard({
             <Text className="text-white">👻</Text>
           )}
         </View>
-        <View className="min-w-0 flex-1">
+        <Pressable onPress={() => router.push(`/users/${post.ownerPublicId}` as Href)} accessibilityRole="button" className="min-w-0 flex-1">
           <Text className="font-black">{post.author.displayName}</Text>
           <Text className="text-[10px] text-black/45">
             {new Date(post.createdAtMs).toLocaleString()}
             {post.editedAtMs ? " · edited" : ""}
           </Text>
-        </View>
+        </Pressable>
         {post.ownedByViewer && (
           <View className="flex-row gap-2">
             <Pressable
@@ -521,7 +538,7 @@ function MarketCard({
           />
         ),
       )}
-      <View className="flex-row items-center border-t border-black/10 p-2">
+      <View className="flex-row flex-wrap items-center border-t border-black/10 p-2">
         <Action
           label={`♥ ${post.likeCount}`}
           active={post.likedByViewer}
@@ -531,18 +548,21 @@ function MarketCard({
           label={`💬 ${post.commentCount}`}
           onPress={async () => onComments()}
         />
+        {!post.ownedByViewer && (
+          <Action label={post.campedByViewer ? "Following" : "+ Follow"} onPress={onFollow} />
+        )}
         {!post.ownedByViewer && post.allowCalls && (
           <Action label="☎" onPress={onCall} />
         )}
         {!post.ownedByViewer && post.allowVideoCalls && (
           <Action label="Video" onPress={onVideoCall} />
         )}
-        <Pressable
+        {!post.ownedByViewer && <Pressable
           onPress={() => void onChat()}
           className="mx-1 rounded-full bg-black px-5 py-3"
         >
-          <Text className="font-black text-white">Chat</Text>
-        </Pressable>
+          <Text className="font-black text-white">Market Chat</Text>
+        </Pressable>}
       </View>
     </View>
   );
@@ -825,7 +845,7 @@ function Action({
   return (
     <Pressable
       onPress={() => void onPress()}
-      className="flex-1 items-center rounded-xl py-3"
+      className="min-w-[64px] flex-1 items-center rounded-xl py-3"
     >
       <Text
         className={`font-black ${active ? "text-[#C62828]" : "text-black/70"}`}

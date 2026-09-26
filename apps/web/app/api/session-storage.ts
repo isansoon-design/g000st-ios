@@ -1,8 +1,9 @@
 import type { PersistedSession } from "@/features/auth/types";
 
-const SESSION_KEY = "g000st.session.v1";
+export const SESSION_KEY = "g000st.session.v1";
 const RECOVERY_ID_KEY = "g000st.recovery-id.v1";
 const SESSION_HINT_COOKIE = "g000st_session_hint";
+let sessionVersion = 0;
 
 function isAuthTokens(value: unknown): value is PersistedSession["tokens"] {
   if (!value || typeof value !== "object") return false;
@@ -36,6 +37,10 @@ function setCookie(name: string, value: string | null): void {
 }
 
 export const sessionStorage = {
+  getVersion(): number {
+    return sessionVersion;
+  },
+
   get(): PersistedSession | null {
     if (typeof window === "undefined") return null;
 
@@ -55,11 +60,22 @@ export const sessionStorage = {
 
   save(session: PersistedSession): void {
     if (typeof window === "undefined") return;
+    sessionVersion += 1;
     window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     setCookie(SESSION_HINT_COOKIE, "1");
     // Also only a routing hint (see middleware.ts) — the API enforces the real admin check
     // server-side via requireAdminRole against the access token, not this cookie.
     setCookie("user_role", session.user.role);
+  },
+
+  saveRefreshed(session: PersistedSession, expectedVersion: number, expectedRefreshToken: string): boolean {
+    const current = this.get();
+    if (sessionVersion !== expectedVersion || current?.user.publicId !== session.user.publicId || current.tokens.refreshToken !== expectedRefreshToken) {
+      return false;
+    }
+    if (typeof window === "undefined") return false;
+    window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    return true;
   },
 
   getRecoveryId(publicId: string): string | null {
@@ -86,11 +102,16 @@ export const sessionStorage = {
   },
 
   clear(): void {
+    sessionVersion += 1;
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(SESSION_KEY);
       window.localStorage.removeItem(RECOVERY_ID_KEY);
     }
     setCookie(SESSION_HINT_COOKIE, null);
     setCookie("user_role", null);
+  },
+
+  clearIfVersion(expectedVersion: number): void {
+    if (sessionVersion === expectedVersion) this.clear();
   },
 };

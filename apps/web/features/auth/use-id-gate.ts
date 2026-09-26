@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -27,7 +26,6 @@ async function copyText(value: string): Promise<void> {
 }
 
 export function useIdGate() {
-  const router = useRouter();
   const [recoveryId, setRecoveryId] = useState("");
   const [errors, setErrors] = useState<IdGateErrors>({});
   const [busyAction, setBusyAction] = useState<BusyAction>(null);
@@ -90,14 +88,14 @@ export function useIdGate() {
           sessionStorage.clear();
           throw error;
         }
-        router.replace("/social");
+        window.location.replace("/social");
       } catch (error) {
         toast.error(toApiError(error).message);
       } finally {
         setBusyAction(null);
       }
     },
-    [recoveryId, router],
+    [recoveryId],
   );
 
   const copyCreatedRecoveryId = useCallback(async () => {

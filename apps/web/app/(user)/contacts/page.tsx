@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
-import { addContact, listContacts, removeContact, updateContactNickname, type Contact } from "@/app/api/contacts";
+import { followByPublicId, listContacts, unfollowContact, updateContactNickname, type Contact } from "@/app/api/contacts";
 import { sessionStorage } from "@/app/api/session-storage";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { startChatConversation } from "@/features/chat/api";
@@ -114,11 +114,11 @@ export default function ContactsPage() {
 
     setIsAdding(true);
     try {
-      await addContact(publicId);
+      await followByPublicId(publicId);
       setIsAddOpen(false);
       setAddValue("");
       await load();
-      toast.success("Friend added.");
+      toast.success("Following.");
     } catch (error) {
       setAddError(errorMessage(error));
     } finally {
@@ -128,15 +128,15 @@ export default function ContactsPage() {
 
   const onRemove = async (contact: Contact) => {
     const confirmed = await confirm({
-      title: "Remove friend?",
-      message: `Remove ${contact.displayName || "this friend"} from your friends?`,
-      confirmLabel: "Remove",
+      title: "Unfollow?",
+      message: `Unfollow ${contact.displayName || "this friend"}? They will leave your Friends list.`,
+      confirmLabel: "Unfollow",
       isDangerous: true,
     });
     if (!confirmed) return;
 
     try {
-      await removeContact(contact.publicId);
+      await unfollowContact(contact.publicId);
       setContacts((current) => current.filter((item) => item.publicId !== contact.publicId));
     } catch (error) {
       toast.error(errorMessage(error));
@@ -174,7 +174,7 @@ export default function ContactsPage() {
       }}>
         <span style={{ fontWeight: 900, fontSize: 16 }}>Friends</span>
         <button style={{ ...btnSmStyle, background: "linear-gradient(180deg,#B8B8B8,#9A9A9A)", color: "#fff", border: "1px solid #9A9A9A" }}
-          onClick={() => { setAddValue(""); setAddError(null); setIsAddOpen(true); }}>+ Add</button>
+          onClick={() => { setAddValue(""); setAddError(null); setIsAddOpen(true); }}>+ Follow</button>
       </div>
 
       <div style={{ padding: "10px 14px 0" }}>
@@ -191,7 +191,7 @@ export default function ContactsPage() {
           {(["all", "online"] as const).map((option) => (
             <button
               key={option}
-              onClick={() => setTab(option)}
+              onClick={() => { setTab(option); if (option === "online") void load({ silent: true }); }}
               style={{
                 height: 28, padding: "0 12px", borderRadius: 14, fontSize: 11, fontWeight: 800,
                 border: tab === option ? "1px solid #9A9A9A" : "1px solid rgba(0,0,0,.1)",
@@ -213,7 +213,7 @@ export default function ContactsPage() {
           </p>
         ) : visibleContacts.length === 0 ? (
           <p style={{ textAlign: "center", fontSize: 13, fontWeight: 600, color: "rgba(0,0,0,.45)", marginTop: 40 }}>
-            {tab === "online" ? "No friends online right now." : "No friends yet. Add someone by their Public ID."}
+            {tab === "online" ? "No friends online right now." : "No friends yet. Follow someone from Social or Market."}
           </p>
         ) : (
           visibleContacts.map((contact) => (
@@ -242,7 +242,7 @@ export default function ContactsPage() {
                     <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4CAF50", flexShrink: 0 }} />
                   ) : null}
                   <span style={{ fontWeight: 900, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {contact.nickname || contact.displayName || contact.publicId.slice(0, 12)}
+                    {contact.nickname || contact.displayName || contact.publicId.slice(0, 8)}
                   </span>
                 </div>
                 <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: "rgba(0,0,0,.4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -265,7 +265,7 @@ export default function ContactsPage() {
                 🎥
               </button>
               <button
-                aria-label="Remove contact"
+                aria-label="Unfollow friend"
                 onClick={(event) => { event.stopPropagation(); void onRemove(contact); }}
                 style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "transparent", color: "rgba(0,0,0,.3)", fontSize: 18, fontWeight: 900, cursor: "pointer" }}
               >
@@ -280,9 +280,9 @@ export default function ContactsPage() {
       {isAddOpen ? (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 }}>
           <div style={{ width: "100%", maxWidth: 400, borderRadius: 22, border: "1px solid rgba(255,255,255,.7)", background: "#F2F2F2", padding: 20 }}>
-            <p style={{ textAlign: "center", fontSize: 18, fontWeight: 900 }}>Add contact</p>
+            <p style={{ textAlign: "center", fontSize: 18, fontWeight: 900 }}>Follow someone</p>
             <p style={{ textAlign: "center", fontSize: 12, fontWeight: 600, color: "rgba(0,0,0,.5)", margin: "8px 0 16px" }}>
-              Paste their Public ID to add them to your contacts.
+              Paste their Public ID to follow them. They will appear in your Friends list.
             </p>
             <input
               value={addValue}
@@ -310,7 +310,7 @@ export default function ContactsPage() {
                 onClick={() => void submitAdd()}
                 style={{ flex: 1, height: 48, borderRadius: 14, border: "none", background: "#C62828", color: "#fff", fontWeight: 900, cursor: "pointer" }}
               >
-                {isAdding ? "Adding…" : "Add"}
+                {isAdding ? "Following…" : "Follow"}
               </button>
             </div>
           </div>
