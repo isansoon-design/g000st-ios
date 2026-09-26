@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { getSocialProfile } from "@/app/api/social";
 import type { CallUiState } from "@/features/calling/call-manager";
+import { listenForRingtoneUnlock, startIncomingCallRingtone } from "@/features/calling/incoming-call-ringtone";
 import { useCalling } from "@/features/calling/use-calling";
 
 function VideoSurface({ stream, muted, mirrored }: { stream?: MediaStream; muted: boolean; mirrored?: boolean }) {
@@ -213,6 +214,12 @@ export function CallOverlayHost() {
     displayName?: string;
     avatarUrl?: string;
   } | null>(null);
+
+  useEffect(() => listenForRingtoneUnlock(), []);
+
+  useEffect(() => {
+    if (state.phase === "ringing-incoming") return startIncomingCallRingtone();
+  }, [state.phase]);
 
   useEffect(() => {
     if (!peerPublicId) return;
