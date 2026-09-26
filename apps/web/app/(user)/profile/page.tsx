@@ -152,6 +152,28 @@ export default function ProfilePage() {
       title: "Sign out from this device?",
     });
     if (!confirmed) return;
+
+    const idToCopy = sessionStorage.getRecoveryId(publicId);
+    const saveId = await confirm({
+      cancelLabel: "Cancel",
+      confirmLabel: "Copy",
+      message: idToCopy
+        ? "Save your Recovery ID to log in again. Copy it now, or choose Cancel to sign out without copying."
+        : "Your Recovery ID is not saved on this device. You may not be able to sign back in after signing out.",
+      title: "Save your ID to log in again?",
+    });
+    if (saveId) {
+      if (!idToCopy || !navigator.clipboard) {
+        toast.error("Could not copy your Recovery ID. You are still signed in.");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(idToCopy);
+      } catch {
+        toast.error("Could not copy your Recovery ID. You are still signed in.");
+        return;
+      }
+    }
     logout();
     router.push("/login");
   };

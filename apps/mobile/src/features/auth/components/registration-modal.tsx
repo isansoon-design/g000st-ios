@@ -28,15 +28,19 @@ function RegistrationModalComponent({
   return (
     <Modal
       animationType="fade"
-      onRequestClose={isConfirming ? onCancel : () => undefined}
+      onRequestClose={onCancel}
       statusBarTranslucent
       transparent
       visible={stage !== 'closed'}
     >
       <View
         accessibilityViewIsModal
-        className="flex-1 items-center justify-center bg-black/60 px-4"
+        className="flex-1 items-center justify-center px-4"
       >
+        <Pressable
+          className="absolute bottom-0 left-0 right-0 top-0 bg-black/60"
+          onPress={onCancel}
+        />
         <View className="w-full max-w-[400px] rounded-[22px] border border-white/70 bg-[#F2F2F2] p-5">
           <G000stWordmark className="mb-2 text-center text-[24px]" />
 

@@ -40,10 +40,8 @@ export function ConfirmModalProvider({ children }: { children: React.ReactNode }
       resolvePromise(true);
     }
     setIsOpen(false);
-    setTimeout(() => {
-      setOptions(null);
-      setResolvePromise(null);
-    }, 200);
+    setOptions(null);
+    setResolvePromise(null);
   }, [resolvePromise]);
 
   const handleCancel = useCallback(() => {
@@ -51,10 +49,8 @@ export function ConfirmModalProvider({ children }: { children: React.ReactNode }
       resolvePromise(false);
     }
     setIsOpen(false);
-    setTimeout(() => {
-      setOptions(null);
-      setResolvePromise(null);
-    }, 200);
+    setOptions(null);
+    setResolvePromise(null);
   }, [resolvePromise]);
 
   return (

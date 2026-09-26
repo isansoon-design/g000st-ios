@@ -118,7 +118,16 @@ function MobileScreenContentComponent({
           ))}
         </View>
 
-        <View className="mx-auto mt-5 w-full max-w-[300px] flex-row items-center justify-between">
+        <Pressable
+          accessibilityLabel="Buy credit"
+          accessibilityRole="button"
+          className="mx-auto mt-4 h-11 w-full max-w-[300px] items-center justify-center rounded-full bg-g000st-black active:opacity-80"
+          onPress={onOpenPlans}
+        >
+          <Text className="text-sm font-black text-white">Buy</Text>
+        </Pressable>
+
+        <View className="mx-auto mt-4 w-full max-w-[300px] flex-row items-center justify-between">
           <Pressable
             accessibilityLabel="Send SMS"
             accessibilityRole="button"

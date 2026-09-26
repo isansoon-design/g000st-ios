@@ -8,6 +8,7 @@ import {
   endCall,
   failIncomingCallConnected,
   fulfillIncomingCallConnected,
+  getActiveCallSession,
   getVoIPPushToken,
   registerVoIPPush,
   reportCallEnded,
@@ -15,6 +16,7 @@ import {
   reportOutgoingCallConnected,
   setMuted,
   startOutgoingCall,
+  type CallSession,
 } from 'expo-callkit-telecom';
 import { randomUUID } from 'expo-crypto';
 
@@ -29,7 +31,13 @@ import { getOrCreatePushDeviceId } from '@/services/notifications/device-id';
 
 export type CallUiState =
   | Readonly<{ phase: 'idle' }>
-  | Readonly<{ phase: 'ringing-outgoing'; peerPublicId: string; peerDisplayName?: string; media: CallMedia }>
+  | Readonly<{
+      phase: 'ringing-outgoing';
+      peerPublicId: string;
+      peerDisplayName?: string;
+      media: CallMedia;
+      localStreamUrl?: string;
+    }>
   | Readonly<{ phase: 'ringing-incoming'; peerPublicId: string; peerDisplayName?: string; media: CallMedia }>
   | Readonly<{ phase: 'connecting'; peerPublicId: string; peerDisplayName?: string; media: CallMedia }>
   | Readonly<{
@@ -41,6 +49,7 @@ export type CallUiState =
       isCameraOn: boolean;
       answeredAtMs: number;
       remoteStreamUrl?: string;
+      localStreamUrl?: string;
     }>;
 
 type ActiveCall = {
@@ -54,6 +63,7 @@ type ActiveCall = {
   requestId?: string;
   pendingOfferSdp?: string;
   pendingCandidates: unknown[];
+  answeringMedia?: boolean;
   isMuted: boolean;
   isCameraOn: boolean;
   answeredAtMs?: number;
@@ -75,15 +85,30 @@ export class CallManager {
   private readonly listeners = new Set<(state: CallUiState) => void>();
   private call: ActiveCall | null = null;
   private nativeSubscriptions: { remove: () => void }[] = [];
+  private signalingSubscription: (() => void) | null = null;
   private started = false;
+  private startGeneration = 0;
   private cachedSnapshot: CallUiState = IDLE_STATE;
 
   start(): void {
     if (this.started) return;
     this.started = true;
+    void this.initialize(++this.startGeneration);
+  }
 
-    void this.signaling.connect();
-    this.signaling.onMessage((message) => void this.handleRelayMessage(message));
+  private async initialize(generation: number): Promise<void> {
+    // A VoIP push can create and even answer the native call before React starts.
+    // Restore it before opening the socket or flushing the queued answer event.
+    try {
+      const session = await getActiveCallSession();
+      if (!this.started || generation !== this.startGeneration) return;
+      this.restoreNativeCall(session);
+    } catch {
+      // A missing native session must not prevent ordinary in-app calling.
+    }
+    if (!this.started || generation !== this.startGeneration) return;
+
+    this.signalingSubscription = this.signaling.onMessage((message) => void this.handleRelayMessage(message));
 
     registerVoIPPush();
     this.nativeSubscriptions.push(
@@ -98,6 +123,8 @@ export class CallManager {
       addSetMutedActionListener((event) => this.applyMuteFromSystem(event.id, event.isMuted)),
     );
 
+    void this.signaling.connect();
+
     const existingToken = getVoIPPushToken();
     if (existingToken?.token) {
       void getOrCreatePushDeviceId().then((deviceId) =>
@@ -108,12 +135,34 @@ export class CallManager {
 
   stop(): void {
     this.started = false;
+    this.startGeneration += 1;
     this.signaling.close();
+    this.signalingSubscription?.();
+    this.signalingSubscription = null;
     this.nativeSubscriptions.forEach((subscription) => subscription.remove());
     this.nativeSubscriptions = [];
     this.call?.session?.close();
     this.call = null;
     this.cachedSnapshot = IDLE_STATE;
+  }
+
+  private restoreNativeCall(session: CallSession | null): void {
+    if (!session || this.call || session.origin !== 'incoming' || session.status === 'ended') return;
+    const event = session.incomingCallEvent;
+    if (!event?.serverCallId || !event.caller.id) return;
+
+    this.call = {
+      callId: event.serverCallId,
+      nativeCallId: session.id,
+      peerPublicId: event.caller.id,
+      peerDisplayName: event.caller.displayName,
+      media: event.hasVideo ? 'video' : 'audio',
+      direction: 'incoming',
+      pendingCandidates: [],
+      isMuted: session.isMuted,
+      isCameraOn: event.hasVideo,
+    };
+    this.emit();
   }
 
   subscribe(listener: (state: CallUiState) => void): () => void {
@@ -136,10 +185,20 @@ export class CallManager {
     if (!this.call) return IDLE_STATE;
     const { peerPublicId, peerDisplayName, media, direction } = this.call;
 
-    if (direction === 'outgoing' && !this.call.answeredAtMs) return { phase: 'ringing-outgoing', peerPublicId, peerDisplayName, media };
+    if (direction === 'outgoing' && !this.call.answeredAtMs) {
+      const localStream = this.call.session?.getLocalStream();
+      return {
+        phase: 'ringing-outgoing',
+        peerPublicId,
+        peerDisplayName,
+        media,
+        ...(localStream?.getVideoTracks().length ? { localStreamUrl: localStream.toURL() } : {}),
+      };
+    }
     if (direction === 'incoming' && !this.call.requestId) return { phase: 'ringing-incoming', peerPublicId, peerDisplayName, media };
     if (!this.call.session || !this.call.answeredAtMs) return { phase: 'connecting', peerPublicId, peerDisplayName, media };
 
+    const localStream = this.call.session.getLocalStream();
     return {
       phase: 'in-call',
       peerPublicId,
@@ -150,6 +209,9 @@ export class CallManager {
       answeredAtMs: this.call.answeredAtMs,
       ...(this.call.remoteStream?.getVideoTracks().length
         ? { remoteStreamUrl: this.call.remoteStream.toURL() }
+        : {}),
+      ...(localStream?.getVideoTracks().length
+        ? { localStreamUrl: localStream.toURL() }
         : {}),
     };
   }
@@ -249,6 +311,7 @@ export class CallManager {
   }
 
   private async handleIncomingInvite(message: IncomingRelayMessage): Promise<void> {
+    if (this.call?.direction === 'incoming' && this.call.callId === message.callId) return;
     if (this.call) return; // Already on a call — a real product would offer call-waiting; out of scope for now.
 
     this.call = {
@@ -301,7 +364,16 @@ export class CallManager {
   }
 
   private async handleCallAnswered(nativeCallId: string, requestId: string): Promise<void> {
-    if (!this.call) return;
+    // In-app invites create a call record before Telecom assigns its native ID.
+    // A cold-start call, conversely, must be recovered from Telecom first.
+    if (!this.call || (this.call.nativeCallId && this.call.nativeCallId !== nativeCallId)) {
+      try {
+        this.restoreNativeCall(await getActiveCallSession());
+      } catch {
+        return;
+      }
+    }
+    if (!this.call || this.call.direction !== 'incoming' || (this.call.nativeCallId && this.call.nativeCallId !== nativeCallId)) return;
     this.call.nativeCallId = nativeCallId;
     this.call.requestId = requestId;
     this.call.answeredAtMs = Date.now();
@@ -314,7 +386,8 @@ export class CallManager {
     const call = this.call;
     const offerSdp = call?.pendingOfferSdp;
     const requestId = call?.requestId;
-    if (!call || !offerSdp || !requestId) return;
+    if (!call || !offerSdp || !requestId || call.answeringMedia) return;
+    call.answeringMedia = true;
 
     try {
       const pendingLocalCandidates: unknown[] = [];

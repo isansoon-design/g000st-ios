@@ -59,12 +59,10 @@ export class WebrtcCallSession {
   ) {
     this.pc = new RTCPeerConnection({ iceServers: buildIceServers(turnCredential) });
 
-    // The answerer must use the transceivers created by the remote offer. Creating
-    // separate ones ahead of that offer can leave its answer m-lines recvonly.
+    // Keep the working audio negotiation. The outgoing video track is added
+    // with its stream so the browser receives a video stream ID in SDP.
     this.audioTransceiver = role === 'offerer' ? this.pc.addTransceiver('audio', { direction: 'sendrecv' }) : null;
-    this.videoTransceiver = role === 'offerer' && hasVideo
-      ? this.pc.addTransceiver('video', { direction: 'sendrecv' })
-      : null;
+    this.videoTransceiver = null;
 
     this.pc.addEventListener('icecandidate', (event) => {
       if (event.candidate) this.callbacks.onLocalCandidate(event.candidate.toJSON());
@@ -93,10 +91,9 @@ export class WebrtcCallSession {
       this.audioTransceiver = transceivers.find((transceiver) => transceiver.receiver.track?.kind === 'audio') ?? null;
       this.videoTransceiver = transceivers.find((transceiver) => transceiver.receiver.track?.kind === 'video') ?? null;
     }
-    if (!this.audioTransceiver || (this.hasVideo && !this.videoTransceiver)) {
+    if (!this.audioTransceiver || (this.role === 'answerer' && this.hasVideo && !this.videoTransceiver)) {
       throw new Error('The call offer is missing a required media transceiver.');
     }
-
     this.audioTransceiver.direction = 'sendrecv';
     if (this.videoTransceiver) this.videoTransceiver.direction = 'sendrecv';
 
@@ -106,12 +103,20 @@ export class WebrtcCallSession {
     });
 
     const audioTrack = stream.getAudioTracks()[0];
-    if (!audioTrack) throw new Error('Microphone track is unavailable.');
-    await this.audioTransceiver.sender.replaceTrack(audioTrack);
-
     const videoTrack = stream.getVideoTracks()[0];
-    if (this.hasVideo && !videoTrack) throw new Error('Camera track is unavailable.');
-    if (videoTrack && this.videoTransceiver) await this.videoTransceiver.sender.replaceTrack(videoTrack);
+    if (!audioTrack || (this.hasVideo && !videoTrack)) {
+      stream.getTracks().forEach((track) => track.stop());
+      throw new Error('Required call media track is unavailable.');
+    }
+
+    try {
+      await this.audioTransceiver.sender.replaceTrack(audioTrack);
+      if (videoTrack && this.role === 'offerer') this.pc.addTrack(videoTrack, stream);
+      else if (videoTrack) await this.videoTransceiver!.sender.replaceTrack(videoTrack);
+    } catch (error) {
+      stream.getTracks().forEach((track) => track.stop());
+      throw error;
+    }
 
     this.localStream = stream;
     return stream;
@@ -156,6 +161,10 @@ export class WebrtcCallSession {
     for (const candidate of this.pendingRemoteCandidates.splice(0)) {
       await this.addRemoteCandidate(candidate);
     }
+  }
+
+  getLocalStream(): MediaStream | null {
+    return this.localStream;
   }
 
   setMuted(muted: boolean): void {

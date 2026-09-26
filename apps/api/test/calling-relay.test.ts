@@ -256,6 +256,63 @@ describe('CallingRelay', () => {
     alice.close();
   });
 
+  it('replays an offline callee\'s invite, offer, and ICE when the app connects after a push', async () => {
+    const alice = await connect(aliceToken);
+    const callId = crypto.randomUUID();
+    alice.send(JSON.stringify({ type: 'call-invite', callId, toPublicId: bobPublicId, media: 'video' }));
+    alice.send(JSON.stringify({ type: 'call-offer', callId, toPublicId: bobPublicId, sdp: 'offer-sdp' }));
+    alice.send(JSON.stringify({ type: 'ice-candidate', callId, toPublicId: bobPublicId, candidate: { candidate: 'candidate:1' } }));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const bob = new WebSocket(`${baseUrl}?token=${bobToken}`);
+    const received: Record<string, unknown>[] = [];
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timed out waiting for replayed call signaling')), 1_000);
+      bob.on('message', (raw) => {
+        received.push(JSON.parse(raw.toString()) as Record<string, unknown>);
+        if (received.length === 3) {
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+      bob.once('error', reject);
+    });
+
+    assert.deepEqual(received.map((message) => message.type), ['call-invite', 'call-offer', 'ice-candidate']);
+    assert.ok(received.every((message) => message.fromPublicId === alicePublicId && message.callId === callId));
+    assert.equal(received[1]?.sdp, 'offer-sdp');
+    alice.send(JSON.stringify({ type: 'call-end', callId, toPublicId: bobPublicId }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    alice.close();
+    const bobClosed = new Promise<void>((resolve) => bob.once('close', () => resolve()));
+    bob.close();
+    await bobClosed;
+  });
+
+  it('does not replay a call that ended while the callee was offline', async () => {
+    const alice = await connect(aliceToken);
+    const callId = crypto.randomUUID();
+    alice.send(JSON.stringify({ type: 'call-invite', callId, toPublicId: bobPublicId, media: 'audio' }));
+    alice.send(JSON.stringify({ type: 'call-offer', callId, toPublicId: bobPublicId, sdp: 'offer-sdp' }));
+    alice.send(JSON.stringify({ type: 'call-end', callId, toPublicId: bobPublicId }));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const bob = new WebSocket(`${baseUrl}?token=${bobToken}`);
+    const receivedCallIds: unknown[] = [];
+    bob.on('message', (raw) => {
+      receivedCallIds.push((JSON.parse(raw.toString()) as { callId?: string }).callId);
+    });
+    await new Promise<void>((resolve, reject) => {
+      bob.once('open', resolve);
+      bob.once('error', reject);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    assert.equal(receivedCallIds.includes(callId), false);
+    alice.close();
+    bob.close();
+  });
+
   it('classifies an ended call as missed when it was never answered, and ended when it was', async () => {
     const alice = await connect(aliceToken);
     const bob = await connect(bobToken);

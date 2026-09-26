@@ -232,8 +232,36 @@ export function useIdentityScreen() {
       message: "You will need your Recovery ID to sign back in on this device.",
       title: "Sign out from this device?",
     });
-    if (confirmed) await signOut();
-  }, [confirm, signOut]);
+    if (!confirmed) return;
+
+    let idToCopy: string | null = null;
+    try {
+      if (user?.publicId) idToCopy = await recoveryIdStorage.get(user.publicId);
+    } catch {
+      // The final prompt still lets the user decide whether to sign out.
+    }
+    const saveId = await confirm({
+      cancelLabel: "Cancel",
+      confirmLabel: "Copy",
+      message: idToCopy
+        ? "Save your Recovery ID to log in again. Copy it now, or choose Cancel to sign out without copying."
+        : "Your Recovery ID is not saved on this device. You may not be able to sign back in after signing out.",
+      title: "Save your ID to log in again?",
+    });
+    if (saveId) {
+      if (!idToCopy) {
+        Toast.show({ text1: "Copy failed", text2: "Recovery ID unavailable. You are still signed in.", type: "error" });
+        return;
+      }
+      try {
+        await copyText(idToCopy);
+      } catch {
+        Toast.show({ text1: "Copy failed", text2: "Could not copy your Recovery ID. You are still signed in.", type: "error" });
+        return;
+      }
+    }
+    await signOut();
+  }, [confirm, signOut, user?.publicId]);
 
   const requestDeleteAccount = useCallback(async () => {
     const confirmed = await confirm({

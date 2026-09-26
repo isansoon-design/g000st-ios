@@ -33,19 +33,15 @@ export function ConfirmModalProvider({ children }: { children: ReactNode }) {
   const handleConfirm = useCallback(() => {
     if (resolvePromise) resolvePromise(true);
     setIsOpen(false);
-    setTimeout(() => {
-      setOptions(null);
-      setResolvePromise(null);
-    }, 200);
+    setOptions(null);
+    setResolvePromise(null);
   }, [resolvePromise]);
 
   const handleCancel = useCallback(() => {
     if (resolvePromise) resolvePromise(false);
     setIsOpen(false);
-    setTimeout(() => {
-      setOptions(null);
-      setResolvePromise(null);
-    }, 200);
+    setOptions(null);
+    setResolvePromise(null);
   }, [resolvePromise]);
 
   return (
@@ -90,4 +86,3 @@ export function useConfirmModal() {
   }
   return context;
 }
-

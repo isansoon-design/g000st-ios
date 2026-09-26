@@ -103,7 +103,7 @@ function CallOverlayComponent({
         ) : null}
 
         {hasRemoteVideo ? (
-          <RTCView objectFit="cover" streamURL={state.remoteStreamUrl} style={{ flex: 1 }} />
+          <RTCView objectFit="cover" streamURL={state.remoteStreamUrl} style={{ flex: 1 }} zOrder={0} />
         ) : null}
 
         <View className="absolute inset-0 items-center justify-between px-6 py-16">
@@ -163,6 +163,29 @@ function CallOverlayComponent({
             </View>
           )}
         </View>
+
+        {(state.phase === 'in-call' || state.phase === 'ringing-outgoing') &&
+        state.media === 'video' &&
+        (state.phase !== 'in-call' || state.isCameraOn) &&
+        state.localStreamUrl ? (
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              right: 20,
+              bottom: 180,
+              width: 112,
+              height: 160,
+              zIndex: 20,
+              elevation: 20,
+              backgroundColor: '#000000',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.3)',
+            }}
+          >
+            <RTCView mirror objectFit="cover" streamURL={state.localStreamUrl} style={{ flex: 1 }} zOrder={2} />
+          </View>
+        ) : null}
       </View>
     </Modal>
   );

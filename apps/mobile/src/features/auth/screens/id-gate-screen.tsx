@@ -1,10 +1,10 @@
-import { memo } from 'react';
-import { View } from 'react-native';
 import { ToastBanner } from '@/components/feedback/toast-banner';
 import { IdGateForm } from '@/features/auth/components/id-gate-form';
 import { RegistrationModal } from '@/features/auth/components/registration-modal';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useIdGate } from '@/features/auth/hooks/use-id-gate';
+import { memo } from 'react';
+import { View } from 'react-native';
 
 function IdGateScreenComponent() {
   const { completeAuthentication } = useAuth();

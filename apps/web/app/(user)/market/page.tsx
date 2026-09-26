@@ -1,6 +1,6 @@
 'use client';
 
-import { Heart, MapPin, MessageCircle, Package, Pencil, Phone, Send, ShoppingBag, Trash2, X } from 'lucide-react';
+import { Heart, MapPin, MessageCircle, Package, Phone, Send, ShoppingBag, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -11,7 +11,7 @@ import { useConfirmModal } from '@/context/ConfirmModalContext';
 import { startChatConversation } from '@/features/chat/api';
 import { useCalling } from '@/features/calling/use-calling';
 
-const EMPTY_FIELDS: MarketPostFields = { content: '', price: 0, currency: 'GBP', quantity: 1, city: '', allowCalls: true, allowVideoCalls: false };
+const EMPTY_FIELDS: MarketPostFields = { content: '', price: 0, currency: 'GBP', quantity: 1, city: '', allowCalls: false, allowVideoCalls: false };
 
 export default function MarketPage() {
   const router = useRouter();
@@ -62,7 +62,7 @@ export default function MarketPage() {
         <Composer fields={fields} mediaFiles={mediaFiles} busy={busy} onChange={setFields} onFiles={setMediaFiles} onPublish={() => void publish()} />
         {posts.length === 0 && <div className="py-16 text-center font-bold text-black/40">No listings yet.</div>}
         {posts.map((post) => <article key={post.id} className="overflow-hidden rounded-2xl border-2 border-black bg-white shadow-[5px_6px_0_#111]">
-          <div className="flex items-center gap-3 p-4"><div className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-black text-white">{post.author.avatarUrl ? <img src={post.author.avatarUrl} alt="" className="h-full w-full object-cover" /> : '👻'}</div><div className="min-w-0 flex-1"><div className="truncate font-black">{post.author.displayName}</div><div className="text-xs text-black/45">{new Date(post.createdAtMs).toLocaleString()}{post.editedAtMs ? ' · edited' : ''}</div></div>{post.ownedByViewer && <><button aria-label="Edit" onClick={() => setEditingPost(post)} className="rounded-full border border-black p-2"><Pencil size={16} /></button><button aria-label="Delete" onClick={async () => { if (await confirm({ title: 'Delete listing?', message: 'This cannot be undone.', confirmLabel: 'Delete', isDangerous: true })) { await deleteMarketPost(post.id); setPosts((current) => current.filter((item) => item.id !== post.id)); } }} className="rounded-full border border-black p-2"><Trash2 size={16} /></button></>}</div>
+          <div className="flex items-center gap-3 p-4"><div className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-black text-white">{post.author.avatarUrl ? <img src={post.author.avatarUrl} alt="" className="h-full w-full object-cover" /> : '👻'}</div><div className="min-w-0 flex-1"><div className="truncate font-black">{post.author.displayName}</div><div className="text-xs text-black/45">{new Date(post.createdAtMs).toLocaleString()}{post.editedAtMs ? ' · edited' : ''}</div></div>{post.ownedByViewer && <div className="flex shrink-0 gap-2"><button aria-label="Edit listing" onClick={() => setEditingPost(post)} className="rounded-full border border-black/20 px-3 py-2 text-xs font-black">Edit</button><button aria-label="Delete listing" onClick={async () => { if (await confirm({ title: 'Delete listing?', message: 'This cannot be undone.', confirmLabel: 'Delete', isDangerous: true })) { await deleteMarketPost(post.id); setPosts((current) => current.filter((item) => item.id !== post.id)); } }} className="rounded-full border border-[#c62828] px-3 py-2 text-xs font-black text-[#c62828]">Delete</button></div>}</div>
           <p className="whitespace-pre-wrap px-4 pb-3 text-[15px] leading-6">{post.content}</p>
           <div className="mx-4 mb-3 flex flex-wrap gap-2"><Badge><b>{post.currency === 'GBP' ? `£${post.price.toLocaleString()}` : `${post.price.toLocaleString()} ${post.currency}`}</b></Badge><Badge><Package size={13} /> {post.quantity}</Badge><Badge><MapPin size={13} /> {post.city}</Badge></div>
           {post.media?.length ? <div className={`grid gap-1 ${post.media.length === 2 ? 'grid-cols-2' : ''}`}>{post.media.map((item) => item.kind === 'video' ? <video key={item.id} src={item.url} controls playsInline className="max-h-[32rem] w-full bg-black object-contain" /> : <img key={item.id} src={item.url} alt="" className="h-full max-h-[32rem] w-full object-cover" />)}</div> : null}

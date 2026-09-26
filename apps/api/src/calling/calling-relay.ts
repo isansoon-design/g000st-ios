@@ -22,16 +22,29 @@ const relayMessage = z
 
 type RelayMessage = z.infer<typeof relayMessage>;
 
+const PENDING_CALL_TTL_MS = 90_000;
+const MAX_PENDING_CANDIDATES = 64;
+
+type PendingCall = {
+  callerPublicId: string;
+  calleePublicId: string;
+  invite: RelayMessage;
+  offer?: RelayMessage;
+  candidates: RelayMessage[];
+  expiryTimer: ReturnType<typeof setTimeout>;
+};
+
 /**
- * A dumb, authenticated pipe: it authorizes the connection once, then only ever trusts the
- * `fromPublicId` it derives from that authenticated connection — never a value inside the
- * message — before relaying to the addressed peer's open socket(s). It never inspects SDP
- * content beyond passing it through, and it records only call metadata (who/when/status),
- * never anything from the media path itself.
+ * Authenticates each socket and derives `fromPublicId` from that connection, never from a
+ * client message. A short-lived in-memory copy of an offline callee's invite, offer, and
+ * ICE candidates lets a phone woken by VoIP push receive the signaling it missed. Media
+ * remains peer-to-peer; the relay does not inspect SDP or record media contents.
  */
 export class CallingRelay {
   private readonly wss = new WebSocketServer({ noServer: true });
   private readonly socketsByPublicId = new Map<string, Set<WebSocket>>();
+  /** Signaling for a callee awakened by VoIP push after the caller sent its offer. */
+  private readonly pendingCalls = new Map<string, PendingCall>();
   /** Tracks whether an in-flight call has been answered, purely to classify how it ended. */
   private readonly answeredCallIds = new Set<string>();
 
@@ -66,6 +79,7 @@ export class CallingRelay {
 
   private handleConnection(socket: WebSocket, publicId: string): void {
     this.addSocket(publicId, socket);
+    this.replayPendingCalls(publicId, socket);
     console.log(`[calling] socket open for ${publicId.slice(0, 8)} (${this.socketsByPublicId.get(publicId)?.size ?? 0} open for this user)`);
 
     // Messages are handled strictly in the order they arrive on this socket. Without this,
@@ -111,8 +125,56 @@ export class CallingRelay {
     console.log(`[calling] ${message.type} ${delivered ? 'relayed to an open socket' : 'target has no open socket'}`);
 
     if (!delivered && message.type === 'call-invite') {
+      this.rememberPendingInvite(message, fromPublicId);
       await this.callingService.notifyMissedInvite(message.callId, fromPublicId, message.toPublicId, message.media ?? 'audio');
+    } else if (message.type === 'call-offer' || message.type === 'ice-candidate') {
+      // Retain an offline call's signaling until it is answered: the first
+      // socket can disconnect during cold startup before processing its offer.
+      this.rememberPendingSignal(message, fromPublicId);
     }
+
+    if (message.type === 'call-answer' || message.type === 'call-reject' || message.type === 'call-end') {
+      this.forgetPendingCall(message.callId);
+    }
+  }
+
+  private rememberPendingInvite(invite: RelayMessage, callerPublicId: string): void {
+    this.forgetPendingCall(invite.callId);
+    const expiryTimer = setTimeout(() => this.pendingCalls.delete(invite.callId), PENDING_CALL_TTL_MS);
+    expiryTimer.unref();
+    this.pendingCalls.set(invite.callId, {
+      callerPublicId,
+      calleePublicId: invite.toPublicId,
+      invite,
+      candidates: [],
+      expiryTimer,
+    });
+  }
+
+  private rememberPendingSignal(message: RelayMessage, callerPublicId: string): void {
+    const pending = this.pendingCalls.get(message.callId);
+    if (!pending || pending.callerPublicId !== callerPublicId || pending.calleePublicId !== message.toPublicId) return;
+    if (message.type === 'call-offer') pending.offer = message;
+    if (message.type === 'ice-candidate' && pending.candidates.length < MAX_PENDING_CANDIDATES) {
+      pending.candidates.push(message);
+    }
+  }
+
+  private replayPendingCalls(publicId: string, socket: WebSocket): void {
+    for (const pending of this.pendingCalls.values()) {
+      if (pending.calleePublicId !== publicId) continue;
+      const send = (message: RelayMessage) => socket.send(JSON.stringify({ ...message, fromPublicId: pending.callerPublicId }));
+      send(pending.invite);
+      if (pending.offer) send(pending.offer);
+      pending.candidates.forEach(send);
+    }
+  }
+
+  private forgetPendingCall(callId: string): void {
+    const pending = this.pendingCalls.get(callId);
+    if (!pending) return;
+    clearTimeout(pending.expiryTimer);
+    this.pendingCalls.delete(callId);
   }
 
   private relay(message: RelayMessage, fromPublicId: string): boolean {
