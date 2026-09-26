@@ -204,12 +204,24 @@ export class FirestoreSocialStore implements SocialStore {
     });
   }
 
-  async listFollowing(viewerId: string): Promise<readonly Readonly<{ publicId: string; followedAtMs: number }>[]> {
-    const snapshot = await this.camps(viewerId).get();
+  async listFollowing(viewerId: string, limit?: number): Promise<readonly Readonly<{ publicId: string; followedAtMs: number }>[]> {
+    const query = this.camps(viewerId);
+    const snapshot = await (limit === undefined ? query : query.limit(limit)).get();
     return snapshot.docs.map((document) => ({
       publicId: document.id,
       followedAtMs: document.data().createdAtMs as number,
     })).sort((left, right) => right.followedAtMs - left.followedAtMs);
+  }
+
+  async listDiscoveryCandidates(startAtPublicId: string, limit: number): Promise<readonly string[]> {
+    const users = this.collection('users');
+    const first = await users.orderBy(FieldPath.documentId()).startAt(startAtPublicId).limit(limit).get();
+    const documents = [...first.docs];
+    if (documents.length < limit) {
+      const wrapped = await users.orderBy(FieldPath.documentId()).endBefore(startAtPublicId).limit(limit - documents.length).get();
+      documents.push(...wrapped.docs);
+    }
+    return documents.filter((document) => document.data().status === 'active').map((document) => document.id);
   }
 
   async getProfile(viewerId: string, publicId: string): Promise<(SocialProfile & { campedByViewer: boolean }) | null> {

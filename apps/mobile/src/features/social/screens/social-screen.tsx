@@ -33,10 +33,12 @@ import {
   createSocialPost,
   deleteSocialComment,
   deleteSocialPost,
+  followSocialProfile,
   getSocialProfile,
   listSocialAlerts,
   listSocialComments,
   listSocialPosts,
+  listSocialSuggestions,
   markSocialAlertsRead,
   reportSocialPost,
   toggleSocialCamp,
@@ -51,6 +53,7 @@ import type {
   SocialComment,
   SocialPost,
   SocialProfile,
+  SocialSuggestion,
   SocialVisibility,
 } from "@/domain/social/types";
 import { useAuth } from "@/features/auth/hooks/use-auth";
@@ -82,6 +85,8 @@ export function SocialScreen() {
   >([]);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
+  const [suggestions, setSuggestions] = useState<SocialSuggestion[]>([]);
+  const [followingSuggestionId, setFollowingSuggestionId] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingMoreRef = useRef(false);
@@ -112,14 +117,47 @@ export function SocialScreen() {
       setLoading(false);
     }
   }, [userPublicId, view]);
+  const loadSuggestions = useCallback(async () => {
+    if (!userPublicId || view !== 'home') return;
+    try {
+      setSuggestions((await listSocialSuggestions()).items);
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Suggestions', text2: error instanceof Error ? error.message : 'Could not load suggestions.' });
+    }
+  }, [userPublicId, view]);
+
+  async function followSuggestion(publicId: string) {
+    if (followingSuggestionId) return;
+    setFollowingSuggestionId(publicId);
+    try {
+      await followSocialProfile(publicId);
+      setSuggestions((current) => current.filter((person) => person.publicId !== publicId));
+      await loadSuggestions();
+      Toast.show({ type: 'success', text1: 'Following' });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Follow', text2: error instanceof Error ? error.message : 'Could not follow this person.' });
+    } finally {
+      setFollowingSuggestionId(null);
+    }
+  }
   useFocusEffect(
     useCallback(() => {
       void load();
+      void loadSuggestions();
+      let timer: ReturnType<typeof setTimeout>;
+      const schedule = () => {
+        const nextDayMs = (Math.floor(Date.now() / 86_400_000) + 1) * 86_400_000 + 1_000;
+        timer = setTimeout(() => { void loadSuggestions(); schedule(); }, nextDayMs - Date.now());
+      };
+      if (view === 'home') schedule();
       const subscription = AppState.addEventListener("change", (state) => {
-        if (state === "active") void load();
+        if (state === "active") {
+          void load();
+          void loadSuggestions();
+        }
       });
-      return () => subscription.remove();
-    }, [load]),
+      return () => { clearTimeout(timer); subscription.remove(); };
+    }, [load, loadSuggestions]),
   );
 
   const loadMore = useCallback(async () => {
@@ -429,7 +467,7 @@ export function SocialScreen() {
             refreshControl={
               <RefreshControl
                 refreshing={false}
-                onRefresh={() => void load()}
+                onRefresh={() => { void load(); void loadSuggestions(); }}
               />
             }
           >
@@ -446,11 +484,13 @@ export function SocialScreen() {
             refreshControl={
               <RefreshControl
                 refreshing={false}
-                onRefresh={() => void load()}
+                onRefresh={() => { void load(); void loadSuggestions(); }}
               />
             }
             ListHeaderComponent={
-              view === "mine" && profile ? (
+              view === 'home' && suggestions.length > 0 ? (
+                <SuggestedPeople suggestions={suggestions} followingId={followingSuggestionId} onFollow={followSuggestion} />
+              ) : view === "mine" && profile ? (
                 <ProfileEditor
                   profile={profile}
                   onSave={async (value) =>
@@ -504,6 +544,10 @@ export function SocialScreen() {
                         : item,
                     ),
                   );
+                  if (result.camped) {
+                    setSuggestions((current) => current.filter((person) => person.publicId !== post.ownerPublicId));
+                    void loadSuggestions();
+                  }
                 }}
                 onComments={() => setCommentsPost(post)}
               />
@@ -659,6 +703,35 @@ export function SocialScreen() {
         />
       )}
     </FeatureScreen>
+  );
+}
+
+function SuggestedPeople({ suggestions, followingId, onFollow }: {
+  suggestions: SocialSuggestion[];
+  followingId: string | null;
+  onFollow: (publicId: string) => Promise<void>;
+}) {
+  return (
+    <View className="rounded-2xl border border-black/15 bg-white py-4">
+      <Text className="px-4 text-sm font-black">People you may know</Text>
+      <Text className="mt-1 px-4 text-xs text-black/55">Fresh suggestions every day</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3 px-3 pb-2 pt-3">
+        {suggestions.map((person) => (
+          <View key={person.publicId} className="w-44 items-center rounded-xl border border-black/10 bg-[#F6F6F7] p-3">
+            <View className="h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#222]">
+              {person.avatarUrl ? <Image source={{ uri: person.avatarUrl }} className="h-12 w-12" /> : <Text className="text-sm font-bold text-white">{person.displayName.slice(0, 1).toUpperCase()}</Text>}
+            </View>
+            <Text numberOfLines={1} className="mt-2 w-full text-center text-sm font-bold">{person.displayName}</Text>
+            <Text numberOfLines={2} className="mt-1 h-8 text-center text-[11px] text-black/55">
+              {person.reason === 'friends_of_friends' ? 'Followed by people you follow' : 'Discover someone new'}
+            </Text>
+            <Pressable disabled={followingId !== null} onPress={() => void onFollow(person.publicId)} className="mt-2 w-full rounded-lg bg-[#222] px-3 py-2 disabled:opacity-40">
+              <Text className="text-center text-xs font-bold text-white">{followingId === person.publicId ? 'Following…' : 'Follow'}</Text>
+            </Pressable>
+          </View>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 

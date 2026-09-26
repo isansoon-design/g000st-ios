@@ -1,6 +1,7 @@
 import { type PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { unregisterPushDevice } from '@/api/notifications';
+import { getSocialProfile } from '@/api/social';
 import type { AuthenticationResult, AuthenticatedUser } from '@/domain/auth/types';
 import {
   AuthContext,
@@ -11,6 +12,7 @@ import { emitSessionChanged, subscribeToSessionCleared } from '@/services/sessio
 import { getPushDeviceId } from '@/services/notifications/device-id';
 import { sessionStorage } from '@/services/session/session-storage';
 import { recoveryIdStorage } from '@/services/session/recovery-id-storage';
+import { savedAccounts } from '@/services/session/saved-accounts';
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<AuthStatus>('loading');
@@ -50,6 +52,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const completeAuthentication = useCallback(async (result: AuthenticationResult, recoveryId: string) => {
     await sessionStorage.save({ tokens: result.session, user: result.user });
     try {
+      await savedAccounts.save(result.user.publicId, recoveryId);
       await recoveryIdStorage.save(result.user.publicId, recoveryId);
     } catch (error) {
       await sessionStorage.clear();
@@ -58,9 +61,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     emitSessionChanged();
     setUser(result.user);
     setStatus('authenticated');
+    void getSocialProfile(result.user.publicId).then((profile) => savedAccounts.updateProfile(profile)).catch(() => undefined);
   }, []);
 
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(async (forgetAccount = false) => {
+    const current = await sessionStorage.get();
+    if (current && !forgetAccount) {
+      const recoveryId = await recoveryIdStorage.get(current.user.publicId);
+      if (recoveryId) await savedAccounts.save(current.user.publicId, recoveryId);
+    }
     const deviceId = await getPushDeviceId();
     if (deviceId) {
       try {

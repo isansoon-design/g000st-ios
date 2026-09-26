@@ -12,6 +12,7 @@ import {
     socialPostPageSchema,
     socialPostResultSchema,
     socialProfileResultSchema,
+    socialSuggestionsSchema,
     type SocialProfile,
     type SocialVisibility,
 } from "@/domain/social/types";
@@ -116,6 +117,13 @@ export async function toggleSocialCamp(publicId: string) {
     `/social/profiles/${publicId}/camp`,
   );
   return parseApiPayload(socialCampResultSchema, response.data);
+}
+export async function listSocialSuggestions() {
+  const response = await axiosInstance.get('/social/suggestions');
+  return parseApiPayload(socialSuggestionsSchema, response.data);
+}
+export async function followSocialProfile(publicId: string) {
+  await axiosInstance.post(`/social/profiles/${publicId}/follow`);
 }
 export async function listSocialAlerts() {
   const response = await axiosInstance.get("/social/alerts", {

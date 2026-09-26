@@ -6,7 +6,7 @@ export type AuthStatus = 'loading' | 'anonymous' | 'authenticated';
 
 export type AuthContextValue = Readonly<{
   completeAuthentication: (result: AuthenticationResult, recoveryId: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  signOut: (forgetAccount?: boolean) => Promise<void>;
   status: AuthStatus;
   user: AuthenticatedUser | null;
 }>;

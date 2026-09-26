@@ -2,6 +2,23 @@ import type { PersistedSession } from "@/features/auth/types";
 
 export const SESSION_KEY = "g000st.session.v1";
 const RECOVERY_ID_KEY = "g000st.recovery-id.v1";
+const SAVED_ACCOUNTS_KEY = "g000st.saved-accounts.v1";
+export type SavedAccount = Readonly<{ publicId: string; recoveryId: string; displayName?: string; avatarUrl?: string }>;
+
+function readSavedAccounts(): SavedAccount[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(SAVED_ACCOUNTS_KEY) ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry): entry is SavedAccount =>
+      !!entry && typeof entry === "object" &&
+      typeof entry.publicId === "string" && /^[A-Za-z0-9]{50}$/.test(entry.publicId) &&
+      typeof entry.recoveryId === "string" && /^[A-Za-z0-9]{50}$/.test(entry.recoveryId) &&
+      (entry.displayName === undefined || typeof entry.displayName === "string") &&
+      (entry.avatarUrl === undefined || typeof entry.avatarUrl === "string"));
+  } catch { return []; }
+}
+
 const SESSION_HINT_COOKIE = "g000st_session_hint";
 let sessionVersion = 0;
 
@@ -78,10 +95,37 @@ export const sessionStorage = {
     return true;
   },
 
+  listSavedAccounts(): SavedAccount[] {
+    return readSavedAccounts();
+  },
+
+  updateSavedProfile(profile: { publicId: string; displayName?: string; showDisplayName: boolean; avatarUrl?: string }): void {
+    if (typeof window === "undefined") return;
+    const accounts = readSavedAccounts();
+    if (!accounts.some((account) => account.publicId === profile.publicId)) return;
+    window.localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(accounts.map((account) =>
+      account.publicId === profile.publicId
+        ? { publicId: account.publicId, recoveryId: account.recoveryId,
+            ...(profile.showDisplayName && profile.displayName ? { displayName: profile.displayName } : {}),
+            ...(profile.avatarUrl ? { avatarUrl: profile.avatarUrl } : {}) }
+        : account)));
+  },
+
+  removeSavedAccount(publicId: string): void {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(readSavedAccounts().filter((account) => account.publicId !== publicId)));
+    const legacy = window.localStorage.getItem(RECOVERY_ID_KEY);
+    if (legacy) {
+      try {
+        if ((JSON.parse(legacy) as { publicId?: unknown }).publicId === publicId) window.localStorage.removeItem(RECOVERY_ID_KEY);
+      } catch { window.localStorage.removeItem(RECOVERY_ID_KEY); }
+    }
+  },
+
   getRecoveryId(publicId: string): string | null {
     if (typeof window === "undefined") return null;
     const serialized = window.localStorage.getItem(RECOVERY_ID_KEY);
-    if (!serialized) return null;
+    if (!serialized) return readSavedAccounts().find((account) => account.publicId === publicId)?.recoveryId ?? null;
     try {
       const stored: unknown = JSON.parse(serialized);
       if (stored && typeof stored === "object") {
@@ -93,11 +137,17 @@ export const sessionStorage = {
     } catch {
       // Invalid data cannot be displayed as a Recovery ID.
     }
-    return null;
+    return readSavedAccounts().find((account) => account.publicId === publicId)?.recoveryId ?? null;
   },
 
   saveRecoveryId(publicId: string, recoveryId: string): void {
     if (typeof window === "undefined") return;
+    const accounts = readSavedAccounts();
+    const existing = accounts.find((account) => account.publicId === publicId);
+    window.localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify([
+      existing ? { ...existing, recoveryId } : { publicId, recoveryId },
+      ...accounts.filter((account) => account.publicId !== publicId),
+    ]));
     window.localStorage.setItem(RECOVERY_ID_KEY, JSON.stringify({ publicId, recoveryId }));
   },
 

@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 
 import { toApiError } from "@/app/api/api-error";
 import { registerAccount, restoreAccount } from "@/app/api/auth";
+import { getSocialProfile } from "@/app/api/social";
 import { sessionStorage } from "@/app/api/session-storage";
 import {
     parseAuthenticationResult,
@@ -88,6 +89,7 @@ export function useIdGate() {
           sessionStorage.clear();
           throw error;
         }
+        try { sessionStorage.updateSavedProfile(await getSocialProfile(result.user.publicId)); } catch { /* Profile is optional during sign in. */ }
         window.location.replace("/social");
       } catch (error) {
         toast.error(toApiError(error).message);

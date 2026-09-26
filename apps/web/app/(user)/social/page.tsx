@@ -18,10 +18,12 @@ import {
   createSocialPost,
   deleteSocialComment,
   deleteSocialPost,
+  followSocialProfile,
   getSocialProfile,
   listSocialAlerts,
   listSocialComments,
   listSocialPosts,
+  listSocialSuggestions,
   markSocialAlertsRead,
   reportSocialPost,
   toggleSocialCamp,
@@ -33,6 +35,7 @@ import {
   type SocialComment,
   type SocialPost,
   type SocialProfile,
+  type SocialSuggestion,
   type SocialVisibility,
 } from "@/app/api/social";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
@@ -58,6 +61,8 @@ export default function SocialPage() {
   const [busy, setBusy] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
+  const [suggestions, setSuggestions] = useState<SocialSuggestion[]>([]);
+  const [followingSuggestionId, setFollowingSuggestionId] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const feedScrollRef = useRef<HTMLElement>(null);
@@ -87,6 +92,43 @@ export default function SocialPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadSuggestions = useCallback(async () => {
+    if (!myId || view !== 'home') return;
+    try {
+      setSuggestions((await listSocialSuggestions()).items);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not load suggestions.');
+    }
+  }, [myId, view]);
+  useEffect(() => { void loadSuggestions(); }, [loadSuggestions]);
+  useEffect(() => {
+    if (!myId || view !== 'home') return;
+    let timer: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      const nextDayMs = (Math.floor(Date.now() / 86_400_000) + 1) * 86_400_000 + 1_000;
+      timer = setTimeout(() => { void loadSuggestions(); schedule(); }, nextDayMs - Date.now());
+    };
+    schedule();
+    const onVisible = () => { if (document.visibilityState === 'visible') void loadSuggestions(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', onVisible); };
+  }, [loadSuggestions, myId, view]);
+
+  async function followSuggestion(publicId: string) {
+    if (followingSuggestionId) return;
+    setFollowingSuggestionId(publicId);
+    try {
+      await followSocialProfile(publicId);
+      setSuggestions((current) => current.filter((person) => person.publicId !== publicId));
+      await loadSuggestions();
+      toast.success('Following');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not follow this person.');
+    } finally {
+      setFollowingSuggestionId(null);
+    }
+  }
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore || view === "alerts") return;
@@ -291,6 +333,28 @@ export default function SocialPage() {
                 }
               />
             )}
+            {view === 'home' && suggestions.length > 0 && (
+              <section aria-label="Suggested people" className="overflow-hidden rounded-2xl border border-black/15 bg-white p-4">
+                <h2 className="text-sm font-black">People you may know</h2>
+                <p className="mt-1 text-xs text-black/55">Fresh suggestions every day</p>
+                <div className="mt-3 flex snap-x gap-3 overflow-x-auto pb-2">
+                  {suggestions.map((person) => (
+                    <div key={person.publicId} className="flex w-44 shrink-0 snap-start flex-col items-center rounded-xl border border-black/10 bg-[#f6f6f7] p-3 text-center">
+                      <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-full bg-[#222] text-sm font-bold text-white">
+                        {person.avatarUrl ? <img src={person.avatarUrl} alt="" className="h-full w-full object-cover" /> : person.displayName.slice(0, 1).toUpperCase()}
+                      </div>
+                      <div className="mt-2 w-full truncate text-sm font-bold" title={person.displayName}>{person.displayName}</div>
+                      <div className="mt-1 h-8 text-[11px] text-black/55">
+                        {person.reason === 'friends_of_friends' ? 'Followed by people you follow' : 'Discover someone new'}
+                      </div>
+                      <button type="button" disabled={followingSuggestionId !== null} onClick={() => void followSuggestion(person.publicId)} className="mt-2 w-full rounded-lg bg-[#222] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">
+                        {followingSuggestionId === person.publicId ? 'Following…' : 'Follow'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
             {posts.length === 0 && (
               <Empty
                 text={
@@ -457,6 +521,10 @@ export default function SocialPage() {
                               : item,
                           ),
                         );
+                        if (result.camped) {
+                          setSuggestions((current) => current.filter((person) => person.publicId !== post.ownerPublicId));
+                          void loadSuggestions();
+                        }
                       }}
                       className="flex-1 rounded-xl py-3 font-black"
                     >

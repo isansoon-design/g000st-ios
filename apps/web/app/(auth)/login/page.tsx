@@ -1,12 +1,30 @@
 "use client";
 
 import { Copy } from "lucide-react";
+import { useEffect, useState } from "react";
+import { sessionStorage, type SavedAccount } from "@/app/api/session-storage";
 
 import { useIdGate } from "@/features/auth/use-id-gate";
 
 export default function LoginPage() {
   const idGate = useIdGate();
-  const isBusy = idGate.busyAction !== null;
+  const [accounts, setAccounts] = useState<SavedAccount[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => { setAccounts(sessionStorage.listSavedAccounts()); }, []);
+
+  async function selectAccount(account: SavedAccount) {
+    setSelectedId(account.publicId);
+    try { await idGate.submitRestore(account.recoveryId); }
+    finally { setSelectedId(null); }
+  }
+
+  function removeAccount(publicId: string) {
+    if (!window.confirm("Remove this saved account and its Recovery ID from this browser?")) return;
+    sessionStorage.removeSavedAccount(publicId);
+    setAccounts(sessionStorage.listSavedAccounts());
+  }
+  const isBusy = idGate.busyAction !== null || selectedId !== null;
   const isModalOpen = idGate.registrationModalStage !== "closed";
 
   return (
@@ -18,6 +36,22 @@ export default function LoginPage() {
         <p className="mb-[22px] text-center text-xs font-bold leading-[17px] text-[#444]">
           By using the app you are agreeing to our Terms &amp; Conditions and Privacy Policy.
         </p>
+
+        {accounts.length > 0 && (
+          <div className="mb-6">
+            <h2 className="mb-2 text-sm font-black text-[#111]">Saved accounts</h2>
+            {accounts.map((account) => (
+              <div key={account.publicId} className="mb-2 flex items-center rounded-xl bg-white p-2">
+                <button aria-label={`Sign in as ${account.displayName || account.publicId.slice(0, 8)}`} className="flex min-w-0 flex-1 items-center text-left disabled:opacity-60" disabled={isBusy || selectedId !== null} onClick={() => void selectAccount(account)} type="button">
+                  {account.avatarUrl ? <img alt="" className="mr-3 h-10 w-10 rounded-full object-cover" src={account.avatarUrl} /> : <span className="mr-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#C62828] font-black text-white">{(account.displayName || account.publicId).slice(0, 1).toUpperCase()}</span>}
+                  <span className="min-w-0 flex-1 truncate font-bold text-[#111]">{account.displayName || account.publicId.slice(0, 8)}</span>
+                  {selectedId === account.publicId && <span className="text-xs">...</span>}
+                </button>
+                <button aria-label={`Remove saved account ${account.displayName || account.publicId.slice(0, 8)}`} className="px-3 py-2 text-xs font-bold text-[#C62828] disabled:opacity-60" disabled={isBusy || selectedId !== null} onClick={() => removeAccount(account.publicId)} type="button">Remove</button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <form
           onSubmit={(event) => {

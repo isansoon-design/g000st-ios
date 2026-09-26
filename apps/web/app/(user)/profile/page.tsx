@@ -64,6 +64,7 @@ export default function ProfilePage() {
         const loaded = await getSocialProfile(publicId);
         if (cancelled) return;
         setProfile(loaded);
+        sessionStorage.updateSavedProfile(loaded);
         setFields(toFields(loaded));
       } catch (error) {
         if (!cancelled) toast.error(error instanceof Error ? error.message : "Could not load your profile.");
@@ -111,6 +112,7 @@ export default function ProfilePage() {
       const media = await uploadAvatarMedia(file);
       const saved = await updateSocialProfile({ avatarMedia: media });
       setProfile(saved);
+      sessionStorage.updateSavedProfile(saved);
       toast.success("Profile photo updated.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update your photo.");
@@ -133,6 +135,7 @@ export default function ProfilePage() {
         sex: fields.sex || undefined,
       });
       setProfile(saved);
+      sessionStorage.updateSavedProfile(saved);
       setFields(toFields(saved));
       toast.success("Profile saved!");
     } catch (error) {
@@ -143,38 +146,25 @@ export default function ProfilePage() {
   };
 
   const signOut = async () => {
+    const canRestore = !!sessionStorage.getRecoveryId(publicId);
     const confirmed = await confirm({
       cancelLabel: "Cancel",
       confirmLabel: "Sign out",
       isDangerous: true,
-      message: "You will need your Recovery ID to sign back in on this device.",
+      message: canRestore
+        ? "This account will stay in your saved accounts so you can sign in again on this browser."
+        : "Your Recovery ID is unavailable in this browser. Save it before signing out or you may lose access.",
       title: "Sign out from this device?",
     });
     if (!confirmed) return;
 
-    const idToCopy = sessionStorage.getRecoveryId(publicId);
-    const saveId = await confirm({
-      cancelLabel: "Cancel",
-      confirmLabel: "Copy",
-      message: idToCopy
-        ? "Save your Recovery ID to log in again. Copy it now, or choose Cancel to sign out without copying."
-        : "Your Recovery ID is not saved on this device. You may not be able to sign back in after signing out.",
-      title: "Save your ID to log in again?",
-    });
-    if (saveId) {
-      if (!idToCopy || !navigator.clipboard) {
-        toast.error("Could not copy your Recovery ID. You are still signed in.");
-        return;
-      }
-      try {
-        await navigator.clipboard.writeText(idToCopy);
-      } catch {
-        toast.error("Could not copy your Recovery ID. You are still signed in.");
-        return;
-      }
+    try {
+      logout();
+      if (profile) sessionStorage.updateSavedProfile(profile);
+      window.location.replace("/login");
+    } catch {
+      toast.error("Could not sign out. Your account is still signed in.");
     }
-    logout();
-    window.location.replace("/login");
   };
 
   const removeAccount = async () => {
@@ -191,8 +181,12 @@ export default function ProfilePage() {
     setDeleting(true);
     try {
       await deleteAccount();
-      logout();
-      window.location.replace("/login");
+      try {
+        sessionStorage.removeSavedAccount(publicId);
+      } finally {
+        logout(true);
+        window.location.replace("/login");
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not delete your account.");
       setDeleting(false);

@@ -16,9 +16,12 @@ export const socialLikeResultSchema = z.object({ liked: z.boolean(), likeCount: 
 export const socialCampResultSchema = z.object({ camped: z.boolean() });
 export const socialProfileSchema = z.object({ publicId: z.string(), displayName: z.string().optional(), showDisplayName: z.boolean().default(false), avatarUrl: z.url().optional(), coverUrl: z.url().optional(), country: z.string().optional(), age: z.number().int().optional(), sex: z.enum(['male', 'female']).optional(), hobby: z.string().optional(), bio: z.string().optional(), updatedAtMs: z.number(), campedByViewer: z.boolean().optional() });
 export const socialProfileResultSchema = z.object({ profile: socialProfileSchema });
+export const socialSuggestionSchema = z.object({ publicId: z.string(), displayName: z.string(), avatarUrl: z.url().optional(), reason: z.enum(['friends_of_friends', 'discover']), mutualCount: z.number().int().nonnegative() });
+export const socialSuggestionsSchema = z.object({ day: z.iso.date(), items: z.array(socialSuggestionSchema).max(10) });
 
 export type SocialVisibility = z.infer<typeof socialVisibilitySchema>;
 export type SocialPost = z.infer<typeof socialPostSchema>;
 export type SocialComment = z.infer<typeof socialCommentSchema>;
 export type SocialAlert = z.infer<typeof socialAlertSchema>;
 export type SocialProfile = z.infer<typeof socialProfileSchema>;
+export type SocialSuggestion = z.infer<typeof socialSuggestionSchema>;

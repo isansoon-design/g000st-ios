@@ -36,6 +36,11 @@ export async function deleteAccount(): Promise<void> {
   await axiosInstance.delete("/auth/me");
 }
 
-export function logout(): void {
+export function logout(forgetAccount = false): void {
+  const current = sessionStorage.get();
+  if (current && !forgetAccount) {
+    const recoveryId = sessionStorage.getRecoveryId(current.user.publicId);
+    if (recoveryId) sessionStorage.saveRecoveryId(current.user.publicId, recoveryId);
+  }
   sessionStorage.clear();
 }

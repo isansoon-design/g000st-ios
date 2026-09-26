@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import type { AuthStore } from '../src/auth/auth-store.js';
+import type { ContactsStore } from '../src/contacts/contacts-store.js';
 import { SocialService } from '../src/social/social-service.js';
 import type { SocialStore } from '../src/social/social-store.js';
 import type { SocialPost } from '../src/social/social-types.js';
@@ -32,7 +33,7 @@ function fixture() {
       return post;
     },
   } as unknown as SocialStore;
-  return { posts, service: new SocialService(store, {} as AuthStore, () => 10) };
+  return { posts, service: new SocialService(store, {} as AuthStore, () => 10, undefined, {} as ContactsStore) };
 }
 
 describe('Social in-app sharing', () => {

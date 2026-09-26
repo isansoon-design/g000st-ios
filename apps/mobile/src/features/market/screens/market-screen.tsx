@@ -21,6 +21,7 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { startMarketChatConversation } from "@/api/chat";
 import { toggleSocialCamp } from "@/api/social";
@@ -60,6 +61,7 @@ const EMPTY_FIELDS: MarketPostFields = {
 
 export function MarketScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { callUser } = useCalling();
   const [view, setView] = useState<ViewName>("home");
@@ -69,6 +71,7 @@ export function MarketScreen() {
     readonly ImagePicker.ImagePickerAsset[]
   >([]);
   const [posting, setPosting] = useState(false);
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string>();
@@ -180,6 +183,7 @@ export function MarketScreen() {
       setPosts((current) => [post, ...current]);
       setFields(EMPTY_FIELDS);
       setSelectedMedia([]);
+      setIsComposerOpen(false);
       Toast.show({ type: "success", text1: "Listing published" });
     } catch (error) {
       showError(error, "Could not publish listing.");
@@ -220,19 +224,21 @@ export function MarketScreen() {
               />
             }
             ListHeaderComponent={
-              <MarketComposer
-                fields={fields}
-                media={selectedMedia}
-                posting={posting}
-                onChange={setFields}
-                onMedia={() => void pickMedia()}
-                onRemoveMedia={(index) =>
-                  setSelectedMedia((current) =>
-                    current.filter((_, itemIndex) => itemIndex !== index),
-                  )
-                }
-                onPublish={() => void publish()}
-              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Create a Market listing"
+                onPress={() => setIsComposerOpen(true)}
+                className="mb-1 flex-row items-center gap-3 rounded-2xl border border-black/10 bg-white p-4 shadow-sm"
+              >
+                <View className="h-12 w-12 items-center justify-center rounded-2xl bg-[#C62828]">
+                  <Text className="text-2xl font-light text-white">＋</Text>
+                </View>
+                <View className="min-w-0 flex-1">
+                  <Text className="text-[15px] font-black text-[#17191D]">Create a listing</Text>
+                  <Text className="mt-0.5 text-xs text-black/50">Sell something to the community</Text>
+                </View>
+                <Text className="text-xl font-bold text-[#C62828]">›</Text>
+              </Pressable>
             }
             ListEmptyComponent={
               <Text className="py-16 text-center font-bold text-black/40">
@@ -309,6 +315,68 @@ export function MarketScreen() {
           <ViewButton label="Market Chats" active={false} onPress={() => router.push({ pathname: '/(app)/(tabs)/chat', params: { kind: 'market' } })} />
         </View>
       </View>
+      <Modal
+        visible={isComposerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          if (!posting) setIsComposerOpen(false);
+        }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          className="flex-1 justify-end bg-black/50"
+        >
+          <View className="max-h-[92%] rounded-t-[28px] bg-[#F7F7F8] pt-5">
+            <View className="flex-row items-center justify-between px-5 pb-4">
+              <View>
+                <Text className="text-xl font-black text-[#17191D]">New listing</Text>
+                <Text className="mt-1 text-xs text-black/50">Add the details buyers need</Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close new listing"
+                disabled={posting}
+                onPress={() => setIsComposerOpen(false)}
+                className="h-10 w-10 items-center justify-center rounded-full bg-white"
+              >
+                <Text className="text-xl text-[#17191D]">×</Text>
+              </Pressable>
+            </View>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerClassName="px-5 pb-8"
+            >
+              <MarketComposer
+                fields={fields}
+                media={selectedMedia}
+                onChange={setFields}
+                onMedia={() => void pickMedia()}
+                onRemoveMedia={(index) =>
+                  setSelectedMedia((current) =>
+                    current.filter((_, itemIndex) => itemIndex !== index),
+                  )
+                }
+              />
+            </ScrollView>
+            <View
+              className="border-t border-black/10 bg-white px-5 pt-3"
+              style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+            >
+              <Pressable
+                accessibilityRole="button"
+                disabled={posting}
+                onPress={() => void publish()}
+                className="items-center rounded-2xl bg-[#17191D] px-6 py-4 disabled:opacity-40"
+              >
+                <Text className="text-base font-black text-white">
+                  {posting ? "Publishing…" : "Publish listing"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
       {commentsPost && (
         <CommentsModal
           post={commentsPost}
@@ -347,88 +415,119 @@ export function MarketScreen() {
 function MarketComposer({
   fields,
   media,
-  posting,
   onChange,
   onMedia,
   onRemoveMedia,
-  onPublish,
 }: {
   fields: MarketPostFields;
   media: readonly ImagePicker.ImagePickerAsset[];
-  posting: boolean;
   onChange: (value: MarketPostFields) => void;
   onMedia: () => void;
   onRemoveMedia: (index: number) => void;
-  onPublish: () => void;
 }) {
   return (
-    <View className="mb-1 gap-2 rounded-2xl border border-black/10 bg-white p-4">
-      <TextInput
-        value={fields.content}
-        onChangeText={(content) => onChange({ ...fields, content })}
-        placeholder="What are you selling?"
-        multiline
-        maxLength={4000}
-        className="min-h-20 rounded-xl border border-black/15 px-3 py-2"
-        textAlignVertical="top"
-      />
-      <View className="flex-row gap-2">
-        <NumberField
-          value={fields.price || undefined}
-          placeholder="Price £"
-          onChange={(price) => onChange({ ...fields, price })}
-        />
-        <NumberField
-          value={fields.quantity}
-          placeholder="Quantity"
-          onChange={(quantity) =>
-            onChange({ ...fields, quantity: Math.floor(quantity) })
-          }
-        />
+    <View className="gap-5">
+      <View className="gap-2">
+        <Text className="text-xs font-black uppercase tracking-wider text-black/55">
+          Description
+        </Text>
         <TextInput
-          value={fields.city}
-          onChangeText={(city) => onChange({ ...fields, city })}
-          placeholder="City"
-          maxLength={100}
-          className="min-w-0 flex-1 rounded-xl border border-black/15 px-3 py-2"
+          accessibilityLabel="Listing description"
+          value={fields.content}
+          onChangeText={(content) => onChange({ ...fields, content })}
+          placeholder="What are you selling? Add condition and key details."
+          multiline
+          maxLength={4000}
+          className="min-h-28 rounded-2xl border border-black/10 bg-white px-4 py-3 text-base"
+          textAlignVertical="top"
         />
       </View>
-      <MarketCallOptions fields={fields} onChange={onChange} />
-      {media.length > 0 && (
-        <ScrollView horizontal contentContainerClassName="gap-2">
-          {media.map((asset, index) => (
-            <View key={asset.assetId ?? asset.uri} className="relative">
-              <Image
-                source={{ uri: asset.uri }}
-                className="h-20 w-20 rounded-xl"
-                contentFit="cover"
-              />
-              <Pressable
-                onPress={() => onRemoveMedia(index)}
-                className="absolute right-1 top-1 h-6 w-6 items-center justify-center rounded-full bg-black/70"
-              >
-                <Text className="font-black text-white">×</Text>
-              </Pressable>
-            </View>
-          ))}
-        </ScrollView>
-      )}
-      <View className="flex-row justify-between">
-        <Pressable
-          onPress={onMedia}
-          className="rounded-xl border border-black/15 px-4 py-3"
-        >
-          <Text className="text-xs font-black">
-            📎 {media.length ? `${media.length} selected` : "Media"}
+      <View className="flex-row gap-3">
+        <View className="min-w-0 flex-1 gap-2">
+          <Text className="text-xs font-black uppercase tracking-wider text-black/55">
+            Price (£)
           </Text>
-        </Pressable>
+          <NumberField
+            value={fields.price || undefined}
+            placeholder="0"
+            accessibilityLabel="Price in pounds"
+            elevated
+            onChange={(price) => onChange({ ...fields, price })}
+          />
+        </View>
+        <View className="min-w-0 flex-1 gap-2">
+          <Text className="text-xs font-black uppercase tracking-wider text-black/55">
+            Quantity
+          </Text>
+          <NumberField
+            value={fields.quantity}
+            placeholder="1"
+            accessibilityLabel="Quantity"
+            elevated
+            onChange={(quantity) =>
+              onChange({ ...fields, quantity: Math.floor(quantity) })
+            }
+          />
+        </View>
+      </View>
+      <View className="gap-2">
+        <Text className="text-xs font-black uppercase tracking-wider text-black/55">
+          City
+        </Text>
+        <TextInput
+          accessibilityLabel="City"
+          value={fields.city}
+          onChangeText={(city) => onChange({ ...fields, city })}
+          placeholder="Where is it located?"
+          maxLength={100}
+          className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-base"
+        />
+      </View>
+      <View className="gap-3 rounded-2xl bg-white p-4">
+        <Text className="text-xs font-black uppercase tracking-wider text-black/55">
+          Contact options
+        </Text>
+        <MarketCallOptions fields={fields} onChange={onChange} />
+      </View>
+      <View className="gap-3">
+        <View>
+          <Text className="text-xs font-black uppercase tracking-wider text-black/55">
+            Photos or video
+          </Text>
+          <Text className="mt-1 text-xs text-black/45">
+            Up to 2 photos or 1 video · 5 MB each
+          </Text>
+        </View>
+        {media.length > 0 && (
+          <ScrollView horizontal contentContainerClassName="gap-2">
+            {media.map((asset, index) => (
+              <View key={asset.assetId ?? asset.uri} className="relative">
+                <Image
+                  source={{ uri: asset.uri }}
+                  className="h-20 w-20 rounded-xl"
+                  contentFit="cover"
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove media ${index + 1}`}
+                  onPress={() => onRemoveMedia(index)}
+                  className="absolute right-1 top-1 h-6 w-6 items-center justify-center rounded-full bg-black/70"
+                >
+                  <Text className="font-black text-white">×</Text>
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
+        )}
         <Pressable
-          disabled={posting}
-          onPress={onPublish}
-          className="rounded-xl bg-[#222] px-6 py-3 disabled:opacity-40"
+          accessibilityRole="button"
+          onPress={onMedia}
+          className="items-center rounded-2xl border border-dashed border-black/20 bg-white px-4 py-4"
         >
-          <Text className="font-black text-white">
-            {posting ? "Posting…" : "Post"}
+          <Text className="text-sm font-black text-[#17191D]">
+            ＋ {media.length
+              ? `${media.length} selected · Add or change media`
+              : "Add photos or video"}
           </Text>
         </Pressable>
       </View>
@@ -810,19 +909,26 @@ function MarketCallOptions({
 function NumberField({
   value,
   placeholder,
+  accessibilityLabel,
+  elevated,
   onChange,
 }: {
   value?: number;
   placeholder: string;
+  accessibilityLabel?: string;
+  elevated?: boolean;
   onChange: (value: number) => void;
 }) {
   return (
     <TextInput
+      accessibilityLabel={accessibilityLabel}
       value={value ? String(value) : ""}
       onChangeText={(text) => onChange(Number(text.replace(",", ".")) || 0)}
       keyboardType="decimal-pad"
       placeholder={placeholder}
-      className="min-w-0 flex-1 rounded-xl border border-black/15 px-3 py-2"
+      className={elevated
+        ? "w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-base"
+        : "min-w-0 flex-1 rounded-xl border border-black/15 px-3 py-2"}
     />
   );
 }

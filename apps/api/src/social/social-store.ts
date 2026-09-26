@@ -25,7 +25,8 @@ export interface SocialStore {
   toggleCamp(viewerId: string, targetId: string, nowMs: number): Promise<{ camped: boolean }>;
   follow(viewerId: string, targetId: string, nowMs: number): Promise<void>;
   unfollow(viewerId: string, targetId: string): Promise<boolean>;
-  listFollowing(viewerId: string): Promise<readonly Readonly<{ publicId: string; followedAtMs: number }>[]>;
+  listFollowing(viewerId: string, limit?: number): Promise<readonly Readonly<{ publicId: string; followedAtMs: number }>[]>;
+  listDiscoveryCandidates(startAtPublicId: string, limit: number): Promise<readonly string[]>;
   getProfile(viewerId: string, publicId: string): Promise<(SocialProfile & { campedByViewer: boolean }) | null>;
   updateProfile(publicId: string, input: Partial<Omit<SocialProfile, 'publicId' | 'updatedAtMs'>>, nowMs: number): Promise<SocialProfile>;
   listAlerts(publicId: string, limit: number, cursor?: SocialCursor): Promise<SocialPage<SocialAlert>>;

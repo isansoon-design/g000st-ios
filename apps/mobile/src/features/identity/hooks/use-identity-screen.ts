@@ -14,6 +14,7 @@ import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useConfirmModal } from "@/providers/confirm-modal-provider";
 import { copyText } from "@/services/device/clipboard";
 import { recoveryIdStorage } from "@/services/session/recovery-id-storage";
+import { savedAccounts } from "@/services/session/saved-accounts";
 
 export type IdentityProfileFields = Readonly<{
   displayName: string;
@@ -50,6 +51,7 @@ function toFields(profile: SocialProfile | null): IdentityProfileFields {
 
 export function useIdentityScreen() {
   const { signOut, user } = useAuth();
+  const accountPublicId = user?.publicId;
   const { confirm } = useConfirmModal();
   const [profile, setProfile] = useState<SocialProfile | null>(null);
   const [fields, setFields] = useState<IdentityProfileFields>(EMPTY_FIELDS);
@@ -81,6 +83,7 @@ export function useIdentityScreen() {
         const loaded = await getSocialProfile(user.publicId);
         if (cancelled) return;
         setProfile(loaded);
+        void savedAccounts.updateProfile(loaded);
         setFields(toFields(loaded));
       } catch (error) {
         if (!cancelled) {
@@ -170,6 +173,7 @@ export function useIdentityScreen() {
       });
       const saved = await updateSocialProfile({ avatarMedia: media });
       setProfile(saved);
+      void savedAccounts.updateProfile(saved);
       Toast.show({
         text1: "Photo",
         text2: "Profile photo updated.",
@@ -204,6 +208,7 @@ export function useIdentityScreen() {
         sex: fields.sex || undefined,
       });
       setProfile(saved);
+      void savedAccounts.updateProfile(saved);
       setFields(toFields(saved));
       Toast.show({
         text1: "Profile",
@@ -225,43 +230,30 @@ export function useIdentityScreen() {
   }, [fields]);
 
   const requestSignOut = useCallback(async () => {
+    let canRestore = false;
+    try { canRestore = !!accountPublicId && !!(await recoveryIdStorage.get(accountPublicId)); } catch { /* Show the recovery warning. */ }
     const confirmed = await confirm({
       cancelLabel: "Cancel",
       confirmLabel: "Sign out",
       isDangerous: true,
-      message: "You will need your Recovery ID to sign back in on this device.",
+      message: canRestore
+        ? "This account will stay in your saved accounts so you can sign in again on this device."
+        : "Your Recovery ID is unavailable on this device. Save it before signing out or you may lose access.",
       title: "Sign out from this device?",
     });
     if (!confirmed) return;
 
-    let idToCopy: string | null = null;
     try {
-      if (user?.publicId) idToCopy = await recoveryIdStorage.get(user.publicId);
+      if (accountPublicId) {
+        const secret = await recoveryIdStorage.get(accountPublicId);
+        if (secret) await savedAccounts.save(accountPublicId, secret);
+      }
+      if (profile) await savedAccounts.updateProfile(profile);
+      await signOut();
     } catch {
-      // The final prompt still lets the user decide whether to sign out.
+      Toast.show({ type: "error", text1: "Could not sign out", text2: "Your account is still signed in." });
     }
-    const saveId = await confirm({
-      cancelLabel: "Cancel",
-      confirmLabel: "Copy",
-      message: idToCopy
-        ? "Save your Recovery ID to log in again. Copy it now, or choose Cancel to sign out without copying."
-        : "Your Recovery ID is not saved on this device. You may not be able to sign back in after signing out.",
-      title: "Save your ID to log in again?",
-    });
-    if (saveId) {
-      if (!idToCopy) {
-        Toast.show({ text1: "Copy failed", text2: "Recovery ID unavailable. You are still signed in.", type: "error" });
-        return;
-      }
-      try {
-        await copyText(idToCopy);
-      } catch {
-        Toast.show({ text1: "Copy failed", text2: "Could not copy your Recovery ID. You are still signed in.", type: "error" });
-        return;
-      }
-    }
-    await signOut();
-  }, [confirm, signOut, user?.publicId]);
+  }, [confirm, profile, signOut, accountPublicId]);
 
   const requestDeleteAccount = useCallback(async () => {
     const confirmed = await confirm({
@@ -277,7 +269,11 @@ export function useIdentityScreen() {
     setDeleting(true);
     try {
       await deleteAccount();
-      await signOut();
+      try {
+        if (accountPublicId) await savedAccounts.remove(accountPublicId);
+      } finally {
+        await signOut(true);
+      }
     } catch (error) {
       Toast.show({
         text1: "Delete account",
@@ -289,7 +285,7 @@ export function useIdentityScreen() {
       });
       setDeleting(false);
     }
-  }, [confirm, signOut]);
+  }, [confirm, signOut, accountPublicId]);
 
   return {
     avatarUrl: profile?.avatarUrl,

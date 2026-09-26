@@ -48,11 +48,13 @@ async function main(): Promise<void> {
     new ExpoPushGateway(notificationStore, environment.expoPushAccessToken),
   );
   const mediaService = environment.media ? new MediaService(environment.media) : undefined;
+  const contactsStore = new FirestoreContactsStore(firestore, environment.collectionPrefix);
   const socialService = new SocialService(
     new FirestoreSocialStore(firestore, environment.collectionPrefix, mediaService),
     store,
     Date.now,
     mediaService,
+    contactsStore,
   );
   const marketStore = new FirestoreMarketStore(firestore, environment.collectionPrefix, mediaService);
   const marketService = new MarketService(
@@ -64,7 +66,7 @@ async function main(): Promise<void> {
     new FirestorePresenceStore(firestore, environment.collectionPrefix),
   );
   const contactsService = new ContactsService(
-    new FirestoreContactsStore(firestore, environment.collectionPrefix),
+    contactsStore,
     store,
     socialService,
     presenceService,

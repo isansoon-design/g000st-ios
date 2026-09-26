@@ -1,5 +1,6 @@
 import { memo } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, TextInput, View } from 'react-native';
+import type { SavedAccount } from '@/services/session/saved-accounts';
 
 import { G000stWordmark } from '@/components/brand/g000st-wordmark';
 import { FieldError } from '@/components/forms/field-error';
@@ -8,7 +9,11 @@ import type { BusyAction } from '@/features/auth/hooks/use-id-gate';
 import type { IdGateErrors } from '@/features/auth/validation/id-validation';
 
 type IdGateFormProps = Readonly<{
+  accounts: SavedAccount[];
   busyAction: BusyAction;
+  selectedId: string | null;
+  onSelectAccount: (publicId: string) => void;
+  onRemoveAccount: (publicId: string) => void;
   errors: IdGateErrors;
   onChangeRecoveryId: (value: string) => void;
   onLogin: () => void;
@@ -17,14 +22,18 @@ type IdGateFormProps = Readonly<{
 }>;
 
 function IdGateFormComponent({
+  accounts,
   busyAction,
+  selectedId,
+  onSelectAccount,
+  onRemoveAccount,
   errors,
   onChangeRecoveryId,
   onLogin,
   onRegister,
   recoveryId,
 }: IdGateFormProps) {
-  const isBusy = busyAction !== null;
+  const isBusy = busyAction !== null || selectedId !== null;
   return (
     <KeyboardAwareScroll
       className="flex-1 bg-g000st-metal"
@@ -40,6 +49,22 @@ function IdGateFormComponent({
             By downloading the app you are agreeing to our Terms &amp; Conditions and Privacy
             Policy.
           </Text>
+
+          {accounts.length > 0 && (
+            <View className="mb-6">
+              <Text className="mb-2 text-sm font-black text-g000st-black">Saved accounts</Text>
+              {accounts.map((account) => (
+                <View key={account.publicId} className="mb-2 flex-row items-center rounded-xl bg-white p-2">
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Sign in as ${account.displayName || account.publicId.slice(0, 8)}`} disabled={isBusy} onPress={() => onSelectAccount(account.publicId)} className="min-w-0 flex-1 flex-row items-center">
+                    {account.avatarUrl ? <Image source={{ uri: account.avatarUrl }} className="mr-3 h-10 w-10 rounded-full" /> : <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-g000st-red"><Text className="font-black text-white">{(account.displayName || account.publicId).slice(0, 1).toUpperCase()}</Text></View>}
+                    <Text numberOfLines={1} className="flex-1 font-bold text-g000st-black">{account.displayName || account.publicId.slice(0, 8)}</Text>
+                    {selectedId === account.publicId && <ActivityIndicator color="#C62828" />}
+                  </Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Remove saved account ${account.displayName || account.publicId.slice(0, 8)}`} disabled={isBusy} onPress={() => onRemoveAccount(account.publicId)} className="px-3 py-2"><Text className="text-xs font-bold text-g000st-red">Remove</Text></Pressable>
+                </View>
+              ))}
+            </View>
+          )}
 
           <TextInput
             accessibilityLabel="Account ID"

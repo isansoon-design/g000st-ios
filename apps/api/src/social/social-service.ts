@@ -1,9 +1,13 @@
+import { createHash } from 'node:crypto';
+
 import type { AuthStore } from '../auth/auth-store.js';
+import type { ContactsStore } from '../contacts/contacts-store.js';
+import { G000ST_ID_ALPHABET } from '../core/identity.js';
 import { ApiError } from '../http/api-error.js';
 import { decodeSocialCursor } from './social-cursor.js';
 import type { MediaService } from '../media/media-service.js';
 import type { SocialStore } from './social-store.js';
-import { publicDisplayName } from './social-identity.js';
+import { publicDisplayName, socialAlias } from './social-identity.js';
 import { validateSocialMediaBatch } from './social-policy.js';
 import type {
   CreateSocialCommentInput,
@@ -13,6 +17,8 @@ import type {
   SocialPost,
   SharedSocialPostView,
   SocialProfile,
+  SocialSuggestion,
+  SocialSuggestions,
   UpdateSocialProfileInput,
 } from './social-types.js';
 
@@ -22,7 +28,80 @@ export class SocialService {
     private readonly authStore: AuthStore,
     private readonly now: () => number = Date.now,
     private readonly mediaService?: MediaService,
+    private readonly contactsStore?: ContactsStore,
   ) {}
+
+  async listSuggestions(viewerId: string): Promise<SocialSuggestions> {
+    const contactsStore = this.contactsStore;
+    if (!contactsStore) throw new ApiError(503, 'SUGGESTIONS_UNAVAILABLE', 'Suggestions are unavailable.');
+    const day = new Date(this.now()).toISOString().slice(0, 10);
+    const digest = (value: string) => createHash('sha256').update(`${viewerId}:${day}:${value}`).digest();
+    const dailyOrder = (ids: readonly string[]) => ids
+      .map((id) => ({ id, score: digest(id).toString('hex') }))
+      .sort((left, right) => left.score.localeCompare(right.score) || left.id.localeCompare(right.id))
+      .map(({ id }) => id);
+    const following = await this.store.listFollowing(viewerId);
+    const excluded = new Set([viewerId, ...following.map(({ publicId }) => publicId)]);
+    const sourceIds = dailyOrder(following.map(({ publicId }) => publicId)).slice(0, 10);
+    const activeSources = (await Promise.all(sourceIds.map(async (id) => {
+      const [active, mine, theirs] = await Promise.all([
+        this.authStore.isUserActive(id),
+        contactsStore.getPeerPreferences(viewerId, id),
+        contactsStore.getPeerPreferences(id, viewerId),
+      ]);
+      return active && !mine.blocked && !theirs.blocked ? id : null;
+    })))
+      .filter((id): id is string => id !== null);
+    const friendLists = await Promise.all(activeSources.map((id) => this.store.listFollowing(id, 30)));
+    const mutualCounts = new Map<string, number>();
+    for (const friends of friendLists) {
+      for (const { publicId } of friends) {
+        if (!excluded.has(publicId)) mutualCounts.set(publicId, (mutualCounts.get(publicId) ?? 0) + 1);
+      }
+    }
+    const dailyRanks = new Map(dailyOrder([...mutualCounts.keys()]).map((id, index) => [id, index]));
+    const graphCandidates = [...mutualCounts.keys()].sort((left, right) =>
+      (mutualCounts.get(right) ?? 0) - (mutualCounts.get(left) ?? 0)
+      || (dailyRanks.get(left) ?? 0) - (dailyRanks.get(right) ?? 0));
+    const pivot = [...digest('discovery')].map((byte) => G000ST_ID_ALPHABET[byte % G000ST_ID_ALPHABET.length]).join('');
+    const discoveryCandidates = (await this.store.listDiscoveryCandidates(pivot, 120))
+      .filter((id) => !mutualCounts.has(id));
+    const items: SocialSuggestion[] = [];
+    const seen = new Set(excluded);
+    const addCandidates = async (ids: readonly string[], target: number) => {
+      for (let index = 0; index < ids.length && items.length < target; index += 10) {
+        const batch = ids.slice(index, index + 10).filter((id) => !seen.has(id));
+        const eligible = await Promise.all(batch.map(async (id): Promise<SocialSuggestion | null> => {
+          if (!(await this.authStore.isUserActive(id))) return null;
+          const [mine, theirs] = await Promise.all([
+            contactsStore.getPeerPreferences(viewerId, id),
+            contactsStore.getPeerPreferences(id, viewerId),
+          ]);
+          if (mine?.blocked || theirs?.blocked) return null;
+          const profile = await this.getProfile(viewerId, id);
+          const mutualCount = mutualCounts.get(id) ?? 0;
+          return {
+            publicId: id,
+            displayName: profile.displayName ?? socialAlias(id),
+            ...(profile.avatarUrl ? { avatarUrl: profile.avatarUrl } : {}),
+            reason: mutualCount > 0 ? 'friends_of_friends' : 'discover',
+            mutualCount,
+          };
+        }));
+        eligible.forEach((item, position) => {
+          if (!item) seen.add(batch[position]!);
+          else if (items.length < target) {
+            items.push(item);
+            seen.add(item.publicId);
+          }
+        });
+      }
+    };
+    await addCandidates(graphCandidates, 7);
+    await addCandidates(discoveryCandidates, 10);
+    await addCandidates(graphCandidates, 10);
+    return { day, items };
+  }
 
   async listPosts(viewerId: string, limit: number, cursor?: string, ownerId?: string) {
     const page = await this.store.listPosts(viewerId, limit, decodeSocialCursor(cursor), ownerId);

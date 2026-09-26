@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import type { AuthStore } from '../src/auth/auth-store.js';
+import type { ContactsStore } from '../src/contacts/contacts-store.js';
 import { publicDisplayName, socialAlias } from '../src/social/social-identity.js';
 import { SocialService } from '../src/social/social-service.js';
 import type { SocialStore } from '../src/social/social-store.js';
@@ -58,7 +59,7 @@ describe('Social display identity', () => {
         return true;
       },
     } as unknown as AuthStore;
-    const service = new SocialService(store, authStore);
+    const service = new SocialService(store, authStore, Date.now, undefined, {} as ContactsStore);
 
     assert.equal((await service.getProfile(PUBLIC_ID, PUBLIC_ID)).displayName, 'Real Name');
     assert.equal((await service.getProfile('viewer', PUBLIC_ID)).displayName, '1234AbCd');

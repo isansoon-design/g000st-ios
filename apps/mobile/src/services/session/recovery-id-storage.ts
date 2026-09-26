@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { savedAccounts } from '@/services/session/saved-accounts';
 
 const RECOVERY_ID_KEY = 'g000st.recovery-id.v1';
 
@@ -7,7 +8,7 @@ type StoredRecoveryId = Readonly<{ publicId: string; recoveryId: string }>;
 export const recoveryIdStorage = {
   async get(publicId: string): Promise<string | null> {
     const serialized = await SecureStore.getItemAsync(RECOVERY_ID_KEY);
-    if (!serialized) return null;
+    if (!serialized) return savedAccounts.getSecret(publicId);
 
     try {
       const stored: StoredRecoveryId = JSON.parse(serialized);
@@ -17,7 +18,7 @@ export const recoveryIdStorage = {
     } catch {
       // An invalid or older value cannot be shown as a Recovery ID.
     }
-    return null;
+    return savedAccounts.getSecret(publicId);
   },
 
   async save(publicId: string, recoveryId: string): Promise<void> {

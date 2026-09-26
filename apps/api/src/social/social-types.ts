@@ -27,6 +27,16 @@ export type SocialProfile = Readonly<{
 
 export type SocialProfileView = Omit<SocialProfile, 'avatarObjectKey' | 'coverObjectKey'> & Readonly<{ avatarUrl?: string; coverUrl?: string }>;
 
+export type SocialSuggestion = Readonly<{
+  publicId: string;
+  displayName: string;
+  avatarUrl?: string;
+  reason: 'friends_of_friends' | 'discover';
+  mutualCount: number;
+}>;
+
+export type SocialSuggestions = Readonly<{ day: string; items: readonly SocialSuggestion[] }>;
+
 export type PendingAvatarMedia = Readonly<{
   byteSize: number;
   contentType: string;

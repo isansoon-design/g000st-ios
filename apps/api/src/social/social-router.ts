@@ -49,6 +49,13 @@ export function createSocialRouter(authService: AuthService, service: SocialServ
     const query = cursorQuery.extend({ ownerId: publicId.optional() }).parse(request.query);
     response.json(await service.listPosts(request.authenticatedPublicId, query.limit, query.cursor, query.ownerId));
   }));
+  router.get('/suggestions', limiter(30), asyncRoute(async (request, response) => {
+    response.json(await service.listSuggestions(request.authenticatedPublicId));
+  }));
+  router.post('/profiles/:publicId/follow', limiter(60), asyncRoute(async (request, response) => {
+    await service.follow(request.authenticatedPublicId, publicId.parse(request.params.publicId));
+    response.json({ following: true });
+  }));
   router.post('/posts', limiter(12), asyncRoute(async (request, response) => {
     const { clientPostId, ...body } = createPostBody.parse(request.body);
     response.status(201).json({ post: await service.createPost(request.authenticatedPublicId, body, clientPostId) });

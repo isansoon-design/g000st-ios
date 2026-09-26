@@ -6,6 +6,8 @@ export type SocialPost = { id: string; ownerPublicId?: string; author: SocialAut
 export type SocialComment = { id: string; postId: string; ownerPublicId?: string; author: SocialAuthor; content: string; visibility: SocialVisibility; createdAtMs: number; ownedByViewer: boolean };
 export type SocialAlert = { id: string; kind: 'like' | 'comment' | 'camp'; actor: SocialAuthor; postId?: string; commentId?: string; createdAtMs: number; readAtMs?: number };
 export type SocialProfile = { publicId: string; displayName?: string; showDisplayName: boolean; avatarUrl?: string; coverUrl?: string; country?: string; age?: number; sex?: 'male' | 'female'; hobby?: string; bio?: string; updatedAtMs: number; campedByViewer: boolean };
+export type SocialSuggestion = { publicId: string; displayName: string; avatarUrl?: string; reason: 'friends_of_friends' | 'discover'; mutualCount: number };
+export type SocialSuggestions = { day: string; items: SocialSuggestion[] };
 export type SocialPage<T> = { items: T[]; nextCursor?: string };
 export type SocialMedia = { byteSize: number; contentType: string; fileName: string; id: string; kind: 'image' | 'video'; url: string };
 export type PendingSocialMedia = { byteSize: number; contentType: string; fileName: string; id: string; objectKey: string };
@@ -21,6 +23,8 @@ export async function listSocialComments(postId: string, cursor?: string) { cons
 export async function createSocialComment(postId: string, content: string, visibility: SocialVisibility) { const { data } = await axios.post<{ comment: SocialComment }>(`/social/posts/${postId}/comments`, { content, visibility }); return data.comment; }
 export async function deleteSocialComment(postId: string, commentId: string) { await axios.delete(`/social/posts/${postId}/comments/${commentId}`); }
 export async function toggleSocialCamp(publicId: string) { const { data } = await axios.post<{ camped: boolean }>(`/social/profiles/${publicId}/camp`); return data; }
+export async function listSocialSuggestions() { const { data } = await axios.get<SocialSuggestions>('/social/suggestions'); return data; }
+export async function followSocialProfile(publicId: string) { await axios.post(`/social/profiles/${publicId}/follow`); }
 export async function getSocialProfile(publicId: string) { const { data } = await axios.get<{ profile: SocialProfile }>(`/social/profiles/${publicId}`); return data.profile; }
 export async function uploadAvatarMedia(file: File): Promise<PendingAvatarMedia> { const { data } = await axios.post<{ upload: { media: PendingAvatarMedia; headers: Record<string, string>; uploadUrl: string } }>('/social/avatar-uploads', { byteSize: file.size, contentType: file.type, fileName: file.name }); const uploaded = await fetch(data.upload.uploadUrl, { method: 'PUT', headers: data.upload.headers, body: file }); if (!uploaded.ok) throw new Error('Photo upload failed.'); return data.upload.media; }
 export async function uploadCoverMedia(file: File): Promise<PendingAvatarMedia> { const { data } = await axios.post<{ upload: { media: PendingAvatarMedia; headers: Record<string, string>; uploadUrl: string } }>('/social/cover-uploads', { byteSize: file.size, contentType: file.type, fileName: file.name }); const uploaded = await fetch(data.upload.uploadUrl, { method: 'PUT', headers: data.upload.headers, body: file }); if (!uploaded.ok) throw new Error('Cover upload failed.'); return data.upload.media; }
