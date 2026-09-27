@@ -26,6 +26,7 @@ type ProfileFields = {
   hobby: string;
   bio: string;
   whatsappNumber: string;
+  landlineNumber: string;
   contactEmail: string;
   facebookUrl: string;
   instagramUrl: string;
@@ -33,7 +34,7 @@ type ProfileFields = {
   linkedinUrl: string;
 };
 
-const EMPTY_FIELDS: ProfileFields = { age: "", bio: "", country: "", displayName: "", hobby: "", sex: "", showDisplayName: false, whatsappNumber: "", contactEmail: "", facebookUrl: "", instagramUrl: "", tiktokUrl: "", linkedinUrl: "" };
+const EMPTY_FIELDS: ProfileFields = { age: "", bio: "", country: "", displayName: "", hobby: "", sex: "", showDisplayName: false, whatsappNumber: "", landlineNumber: "", contactEmail: "", facebookUrl: "", instagramUrl: "", tiktokUrl: "", linkedinUrl: "" };
 
 function toFields(profile: SocialProfile | null): ProfileFields {
   if (!profile) return EMPTY_FIELDS;
@@ -45,6 +46,7 @@ function toFields(profile: SocialProfile | null): ProfileFields {
     showDisplayName: profile.showDisplayName ?? false,
     hobby: profile.hobby ?? "",
     whatsappNumber: profile.whatsappNumber ?? "",
+    landlineNumber: profile.landlineNumber ?? "",
     contactEmail: profile.contactEmail ?? "",
     facebookUrl: profile.facebookUrl ?? "",
     instagramUrl: profile.instagramUrl ?? "",
@@ -176,7 +178,7 @@ export default function ProfilePage() {
         ...(!isPage && fields.country.trim() ? { country: fields.country.trim() } : {}),
         displayName: fields.displayName.trim() || undefined,
         showDisplayName: isPage ? true : fields.showDisplayName,
-        ...(isPage ? { whatsappNumber: fields.whatsappNumber, contactEmail: fields.contactEmail, facebookUrl: fields.facebookUrl, instagramUrl: fields.instagramUrl, tiktokUrl: fields.tiktokUrl, linkedinUrl: fields.linkedinUrl } : {}),
+        ...(isPage ? { whatsappNumber: fields.whatsappNumber, landlineNumber: fields.landlineNumber, contactEmail: fields.contactEmail, facebookUrl: fields.facebookUrl, instagramUrl: fields.instagramUrl, tiktokUrl: fields.tiktokUrl, linkedinUrl: fields.linkedinUrl } : {}),
         ...(!isPage && fields.hobby.trim() ? { hobby: fields.hobby.trim() } : {}),
         ...(!isPage && fields.sex ? { sex: fields.sex } : {}),
       });
@@ -448,6 +450,9 @@ export default function ProfilePage() {
                 <label className="mb-1 block text-xs font-black text-[#127446]">✆ WhatsApp</label>
                 <input aria-label="WhatsApp number" className={`mb-2 ${fieldClass}`} inputMode="tel" onChange={(event) => setField('whatsappNumber', event.target.value)} placeholder="+963... or 00963..." value={fields.whatsappNumber} />
                 <p className="mb-4 text-[11px] text-black/45 dark:text-night-muted">Include your country code. Visitors will open a direct chat.</p>
+                <label className="mb-1 block text-xs font-black text-[#2d4669] dark:text-[#a9c7ed]">☎ Landline</label>
+                <input aria-label="Landline number" className={`mb-2 ${fieldClass}`} inputMode="tel" onChange={(event) => setField('landlineNumber', event.target.value)} placeholder="+963 11 234 5678 or local number" value={fields.landlineNumber} />
+                <p className="mb-4 text-[11px] text-black/45 dark:text-night-muted">Visitors can tap the number to open their phone dialer.</p>
                 {([
                   ['contactEmail', 'Email', 'name@example.com'],
                   ['facebookUrl', 'Facebook', 'https://www.facebook.com/yourpage'],

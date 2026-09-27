@@ -34,9 +34,10 @@ it('keeps the owner private while allowing an unnamed page to save its contact d
     async updateProfile(_id: string, input: Record<string, unknown>) { return { ...stored, ...input }; },
   } as unknown as SocialStore;
   const service = new SocialService(store, authStore);
-  const saved = await service.updateProfile(pageId, { whatsappNumber: '+963912345678', contactEmail: 'page@example.com' });
+  const saved = await service.updateProfile(pageId, { whatsappNumber: '+963912345678', landlineNumber: '+963112345678', contactEmail: 'page@example.com' });
   assert.equal(saved.isPage, true);
   assert.equal(saved.whatsappNumber, '+963912345678');
+  assert.equal(saved.landlineNumber, '+963112345678');
   const publicProfile = await service.getProfile('V'.repeat(50), pageId);
   assert.equal(publicProfile.isPage, true);
   assert.equal('ownerPublicId' in publicProfile, false);

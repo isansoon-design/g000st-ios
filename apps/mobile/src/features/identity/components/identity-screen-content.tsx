@@ -315,6 +315,9 @@ function IdentityScreenContentComponent({
           <Text className="mb-1 text-xs font-black text-[#127446] dark:text-[#56d69a]">✆ WhatsApp</Text>
           <TextInput accessibilityLabel="WhatsApp number" className={`mb-2 ${FIELD_INPUT}`} keyboardType="phone-pad" onChangeText={(value) => onSetField('whatsappNumber', value)} placeholder="+963... or 00963..." value={fields.whatsappNumber} />
           <Text className="mb-4 text-[11px] text-black/45 dark:text-night-muted">Include your country code. Visitors will open a direct chat.</Text>
+          <Text className="mb-1 text-xs font-black text-[#2d4669] dark:text-[#a9c7ed]">☎ Landline</Text>
+          <TextInput accessibilityLabel="Landline number" className={`mb-2 ${FIELD_INPUT}`} keyboardType="phone-pad" onChangeText={(value) => onSetField('landlineNumber', value)} placeholder="+963 11 234 5678 or local number" value={fields.landlineNumber} />
+          <Text className="mb-4 text-[11px] text-black/45 dark:text-night-muted">Visitors can tap the number to open their phone dialer.</Text>
           {([
             ['contactEmail', 'Email', 'name@example.com'],
             ['facebookUrl', 'Facebook', 'https://www.facebook.com/yourpage'],

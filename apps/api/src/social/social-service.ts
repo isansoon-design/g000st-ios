@@ -232,7 +232,7 @@ export class SocialService {
     if (isPage && (input.showDisplayName === false || input.displayName?.trim() === '')) {
       throw new ApiError(400, 'PAGE_NAME_REQUIRED', 'A page must show its name.');
     }
-    if (!isPage && (input.whatsappNumber !== undefined || input.contactEmail !== undefined || input.facebookUrl !== undefined || input.instagramUrl !== undefined || input.tiktokUrl !== undefined || input.linkedinUrl !== undefined)) {
+    if (!isPage && (input.whatsappNumber !== undefined || input.landlineNumber !== undefined || input.contactEmail !== undefined || input.facebookUrl !== undefined || input.instagramUrl !== undefined || input.tiktokUrl !== undefined || input.linkedinUrl !== undefined)) {
       throw new ApiError(400, 'PAGE_CONTACTS_ONLY', 'These contact fields belong to pages.');
     }
     const { avatarMedia, coverMedia, ...fields } = input;

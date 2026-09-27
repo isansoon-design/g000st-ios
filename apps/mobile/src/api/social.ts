@@ -190,7 +190,7 @@ export async function updateSocialProfile(
   profile: Partial<
     Pick<
       SocialProfile,
-      "displayName" | "showDisplayName" | "country" | "age" | "sex" | "hobby" | "bio" | "whatsappNumber" | "contactEmail" | "facebookUrl" | "instagramUrl" | "tiktokUrl" | "linkedinUrl"
+      "displayName" | "showDisplayName" | "country" | "age" | "sex" | "hobby" | "bio" | "whatsappNumber" | "landlineNumber" | "contactEmail" | "facebookUrl" | "instagramUrl" | "tiktokUrl" | "linkedinUrl"
     >
   > & { avatarMedia?: PendingAvatarMedia; coverMedia?: PendingAvatarMedia },
 ) {

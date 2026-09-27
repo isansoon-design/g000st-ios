@@ -23,6 +23,7 @@ export type SocialProfile = Readonly<{
   hobby?: string;
   bio?: string;
   whatsappNumber?: string;
+  landlineNumber?: string;
   contactEmail?: string;
   facebookUrl?: string;
   instagramUrl?: string;
@@ -133,6 +134,7 @@ export type UpdateSocialProfileInput = Readonly<{
   hobby?: string;
   bio?: string;
   whatsappNumber?: string;
+  landlineNumber?: string;
   contactEmail?: string;
   facebookUrl?: string;
   instagramUrl?: string;

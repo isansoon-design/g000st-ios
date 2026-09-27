@@ -13,6 +13,13 @@ export function normalizeWhatsAppNumber(value: string): string | null {
   return /^\+[1-9]\d{7,14}$/.test(international) ? international : null;
 }
 
+export function normalizeLandlineNumber(value: string): string | null {
+  const compact = value.trim().replace(/[\s().-]/g, '');
+  const number = compact.startsWith('00') ? `+${compact.slice(2)}` : compact;
+  if (/^\+[1-9]\d{4,14}$/.test(number) || /^(?!0+$)\d{5,15}$/.test(number)) return number;
+  return null;
+}
+
 export function normalizePageSocialUrl(value: string, platform: PageSocialPlatform): string | null {
   try {
     const url = new URL(value.trim());

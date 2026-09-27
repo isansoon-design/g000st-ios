@@ -8,7 +8,7 @@ import { asyncRoute } from '../http/async-route.js';
 import { ApiError } from '../http/api-error.js';
 import { SocialService } from './social-service.js';
 import { MAX_AVATAR_BYTES, MAX_SOCIAL_IMAGES, MAX_SOCIAL_MEDIA_BYTES } from './social-policy.js';
-import { normalizePageSocialUrl, normalizeWhatsAppNumber, type PageSocialPlatform } from './page-contact-policy.js';
+import { normalizeLandlineNumber, normalizePageSocialUrl, normalizeWhatsAppNumber, type PageSocialPlatform } from './page-contact-policy.js';
 
 const uuid = z.string().uuid();
 const publicId = z.string().length(G000ST_ID_LENGTH).regex(/^[A-Za-z0-9]+$/);
@@ -30,7 +30,8 @@ const avatarUploadBody = z.object({ byteSize: z.number().int().positive().max(MA
 const pendingAvatarMedia = z.object({ byteSize: z.number().int().positive().max(MAX_AVATAR_BYTES), contentType: avatarContentType, fileName: z.string().min(1).max(255), id: uuid, objectKey: z.string().min(1).max(600) }).strict();
 const socialLink = (platform: PageSocialPlatform) => z.string().trim().max(300).refine((value) => !value || !!normalizePageSocialUrl(value, platform), 'Enter a valid HTTPS profile link.').transform((value) => value ? normalizePageSocialUrl(value, platform)! : '');
 const whatsappNumber = z.string().trim().max(32).refine((value) => !value || !!normalizeWhatsAppNumber(value), 'Enter a number with + or 00 and its country code.').transform((value) => value ? normalizeWhatsAppNumber(value)! : '');
-const profileBody = z.object({ displayName: z.string().trim().min(1).max(60).optional(), showDisplayName: z.boolean().optional(), avatarMedia: pendingAvatarMedia.optional(), coverMedia: pendingAvatarMedia.optional(), country: z.string().trim().min(1).max(80).optional(), age: z.number().int().min(13).max(120).optional(), sex: z.enum(['male', 'female']).optional(), hobby: z.string().trim().min(1).max(100).optional(), bio: z.string().trim().max(500).optional(), whatsappNumber: whatsappNumber.optional(), contactEmail: z.union([z.string().trim().email().max(254), z.literal('')]).optional(), facebookUrl: socialLink('facebook').optional(), instagramUrl: socialLink('instagram').optional(), tiktokUrl: socialLink('tiktok').optional(), linkedinUrl: socialLink('linkedin').optional() }).strict();
+const landlineNumber = z.string().trim().max(32).refine((value) => !value || !!normalizeLandlineNumber(value), 'Enter a valid landline number.').transform((value) => value ? normalizeLandlineNumber(value)! : '');
+const profileBody = z.object({ displayName: z.string().trim().min(1).max(60).optional(), showDisplayName: z.boolean().optional(), avatarMedia: pendingAvatarMedia.optional(), coverMedia: pendingAvatarMedia.optional(), country: z.string().trim().min(1).max(80).optional(), age: z.number().int().min(13).max(120).optional(), sex: z.enum(['male', 'female']).optional(), hobby: z.string().trim().min(1).max(100).optional(), bio: z.string().trim().max(500).optional(), whatsappNumber: whatsappNumber.optional(), landlineNumber: landlineNumber.optional(), contactEmail: z.union([z.string().trim().email().max(254), z.literal('')]).optional(), facebookUrl: socialLink('facebook').optional(), instagramUrl: socialLink('instagram').optional(), tiktokUrl: socialLink('tiktok').optional(), linkedinUrl: socialLink('linkedin').optional() }).strict();
 const reportBody = z.object({ postId: uuid, commentId: uuid.optional(), reason: z.enum(['spam', 'harassment', 'violence', 'sexual', 'privacy', 'other']), details: z.string().trim().max(1_000).optional() }).strict();
 
 function bearerToken(request: Request): string {

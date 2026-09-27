@@ -28,6 +28,7 @@ export type IdentityProfileFields = Readonly<{
   hobby: string;
   bio: string;
   whatsappNumber: string;
+  landlineNumber: string;
   contactEmail: string;
   facebookUrl: string;
   instagramUrl: string;
@@ -43,6 +44,7 @@ const EMPTY_FIELDS: IdentityProfileFields = {
   showDisplayName: false,
   hobby: "",
   whatsappNumber: "",
+  landlineNumber: "",
   contactEmail: "",
   facebookUrl: "",
   instagramUrl: "",
@@ -61,6 +63,7 @@ function toFields(profile: SocialProfile | null): IdentityProfileFields {
     showDisplayName: profile.showDisplayName,
     hobby: profile.hobby ?? "",
     whatsappNumber: profile.whatsappNumber ?? "",
+    landlineNumber: profile.landlineNumber ?? "",
     contactEmail: profile.contactEmail ?? "",
     facebookUrl: profile.facebookUrl ?? "",
     instagramUrl: profile.instagramUrl ?? "",
@@ -305,7 +308,7 @@ export function useIdentityScreen() {
         ...(!isPage && fields.country.trim() ? { country: fields.country.trim() } : {}),
         displayName: fields.displayName.trim() || undefined,
         showDisplayName: isPage ? true : fields.showDisplayName,
-        ...(isPage ? { whatsappNumber: fields.whatsappNumber, contactEmail: fields.contactEmail, facebookUrl: fields.facebookUrl, instagramUrl: fields.instagramUrl, tiktokUrl: fields.tiktokUrl, linkedinUrl: fields.linkedinUrl } : {}),
+        ...(isPage ? { whatsappNumber: fields.whatsappNumber, landlineNumber: fields.landlineNumber, contactEmail: fields.contactEmail, facebookUrl: fields.facebookUrl, instagramUrl: fields.instagramUrl, tiktokUrl: fields.tiktokUrl, linkedinUrl: fields.linkedinUrl } : {}),
         ...(!isPage && fields.hobby.trim() ? { hobby: fields.hobby.trim() } : {}),
         ...(!isPage && fields.sex ? { sex: fields.sex } : {}),
       });
