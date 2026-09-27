@@ -142,7 +142,7 @@ function IdentityScreenContentComponent({
         bottomOffset={20}
       >
         {/* <AppearanceCard /> */}
-        <BeaconSwitcher />
+        <BeaconSwitcher selectedDisplayName={isPage ? fields.displayName : undefined} />
         {isPage && <View className="mb-3 w-full"><Text className="text-[10px] font-black uppercase tracking-[2px] text-g000st-red">BEACON STUDIO</Text><Text className="mt-1 text-xl font-black text-[#17191d] dark:text-night-text">Design your page</Text><Text className="mt-1 text-xs text-black/55 dark:text-night-muted">Tap the cover or photo to choose an image. Your account stays private.</Text></View>}
         <Pressable
           accessibilityHint="Choose an image up to 3 MB for your public profile banner"
@@ -244,24 +244,6 @@ function IdentityScreenContentComponent({
           </Text>
         </View>
 
-        {isPage && <View className="mb-3 w-full rounded-[22px] border border-white/70 bg-white p-4 dark:border-white/20 dark:bg-night-header">
-          <Text className="text-[10px] font-black uppercase tracking-[2px] text-g000st-red">CONTACT & SOCIAL</Text>
-          <Text className="mt-1 mb-4 text-lg font-black text-[#17191d] dark:text-night-text">Help people find you</Text>
-          <Text className="mb-1 text-xs font-black text-[#127446] dark:text-[#56d69a]">✆ WhatsApp</Text>
-          <TextInput accessibilityLabel="WhatsApp number" className={`mb-2 ${FIELD_INPUT}`} keyboardType="phone-pad" onChangeText={(value) => onSetField('whatsappNumber', value)} placeholder="+963... or 00963..." value={fields.whatsappNumber} />
-          <Text className="mb-4 text-[11px] text-black/45 dark:text-night-muted">Include your country code. Visitors will open a direct chat.</Text>
-          {([
-            ['contactEmail', 'Email', 'name@example.com'],
-            ['facebookUrl', 'Facebook', 'https://www.facebook.com/yourpage'],
-            ['instagramUrl', 'Instagram', 'https://www.instagram.com/yourpage'],
-            ['tiktokUrl', 'TikTok', 'https://www.tiktok.com/@yourpage'],
-            ['linkedinUrl', 'LinkedIn', 'https://www.linkedin.com/company/yourpage'],
-          ] as const).map(([key, label, placeholder]) => <View className="mb-3" key={key}><Text className="mb-1 text-xs font-black text-[#17191d] dark:text-night-text">{label}</Text><TextInput accessibilityLabel={label} autoCapitalize="none" className={FIELD_INPUT} keyboardType={key === 'contactEmail' ? 'email-address' : 'url'} onChangeText={(value) => onSetField(key, value)} placeholder={placeholder} value={fields[key]} /></View>)}
-          <Text className="text-[11px] text-black/45 dark:text-night-muted">Paste a full HTTPS link for each social profile.</Text>
-        </View>}
-
-
-
         {/* Optional profile */}
         <View className={`mb-3 w-full ${CARD}`}>
           <Text className={LABEL}>{isPage ? 'Page description' : 'Optional profile'}</Text>
@@ -326,6 +308,24 @@ function IdentityScreenContentComponent({
             Nothing here is required. Fill in only what you want.
           </Text>}
         </View>
+
+        {isPage && <View className="mb-3 w-full rounded-[22px] border border-white/70 bg-white p-4 dark:border-white/20 dark:bg-night-header">
+          <Text className="text-[10px] font-black uppercase tracking-[2px] text-g000st-red">CONTACT & SOCIAL</Text>
+          <Text className="mt-1 mb-4 text-lg font-black text-[#17191d] dark:text-night-text">Help people find you</Text>
+          <Text className="mb-1 text-xs font-black text-[#127446] dark:text-[#56d69a]">✆ WhatsApp</Text>
+          <TextInput accessibilityLabel="WhatsApp number" className={`mb-2 ${FIELD_INPUT}`} keyboardType="phone-pad" onChangeText={(value) => onSetField('whatsappNumber', value)} placeholder="+963... or 00963..." value={fields.whatsappNumber} />
+          <Text className="mb-4 text-[11px] text-black/45 dark:text-night-muted">Include your country code. Visitors will open a direct chat.</Text>
+          {([
+            ['contactEmail', 'Email', 'name@example.com'],
+            ['facebookUrl', 'Facebook', 'https://www.facebook.com/yourpage'],
+            ['instagramUrl', 'Instagram', 'https://www.instagram.com/yourpage'],
+            ['tiktokUrl', 'TikTok', 'https://www.tiktok.com/@yourpage'],
+            ['linkedinUrl', 'LinkedIn', 'https://www.linkedin.com/company/yourpage'],
+          ] as const).map(([key, label, placeholder]) => <View className="mb-3" key={key}><Text className="mb-1 text-xs font-black text-[#17191d] dark:text-night-text">{label}</Text><TextInput accessibilityLabel={label} autoCapitalize="none" autoCorrect={false} className={FIELD_INPUT} keyboardType={key === 'contactEmail' ? 'email-address' : 'url'} onChangeText={(value) => onSetField(key, value)} placeholder={placeholder} value={fields[key]} /></View>)}
+          <Text className="text-[11px] text-black/45 dark:text-night-muted">Paste a full HTTPS link for each social profile.</Text>
+        </View>}
+
+
 
         {/* Save */}
         <Pressable

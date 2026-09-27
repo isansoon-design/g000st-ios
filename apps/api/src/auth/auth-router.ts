@@ -73,7 +73,7 @@ export function createAuthRouter(authService: AuthService): Router {
   }));
 
   router.post('/pages', authRateLimit(20), asyncRoute(async (request, response) => {
-    pageBody.parse(request.body);
+    pageBody.parse(request.body ?? {});
     response.status(201).json({ page: await authService.createPage(bearerToken(request)) });
   }));
 

@@ -6,7 +6,7 @@ import Toast from 'react-native-toast-message';
 import { createBeaconPage, listBeaconPages, type BeaconPage } from '@/api/auth';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 
-export function BeaconSwitcher() {
+export function BeaconSwitcher({ selectedDisplayName }: { selectedDisplayName?: string }) {
   const router = useRouter();
   const { activePublicId, setActivePublicId, user } = useAuth();
   const personalSelected = !!user && (activePublicId ?? user.publicId) === user.publicId;
@@ -46,7 +46,7 @@ export function BeaconSwitcher() {
     {pages.map((page) => {
       const selected = activePublicId === page.publicId;
       return <Pressable key={page.publicId} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setActivePublicId(page.publicId)} className={`mb-2 flex-row items-center justify-between rounded-xl px-4 py-3 ${selected ? 'bg-[#17191d]' : 'bg-white dark:bg-night-surface'}`}>
-        <View className="min-w-0 flex-1 pr-2"><Text className={`font-black ${selected ? 'text-white' : 'text-[#17191d] dark:text-night-text'}`}>{page.displayName || 'Untitled beacon'}</Text><Text className={`text-xs ${selected ? 'text-white/65' : 'text-black/50 dark:text-night-muted'}`}>{page.publicId.slice(0, 8)}</Text></View>
+        <View className="min-w-0 flex-1 pr-2"><Text className={`font-black ${selected ? 'text-white' : 'text-[#17191d] dark:text-night-text'}`}>{(selected ? selectedDisplayName : page.displayName) || 'Untitled beacon'}</Text><Text className={`text-xs ${selected ? 'text-white/65' : 'text-black/50 dark:text-night-muted'}`}>{page.publicId.slice(0, 8)}</Text></View>
         {selected && <Text className="text-xs font-bold text-white">✓ Active now</Text>}
       </Pressable>;
     })}

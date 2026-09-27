@@ -172,7 +172,7 @@ export default function ProfilePage() {
       const age = fields.age.trim() ? Number(fields.age.trim()) : undefined;
       const saved = await updateSocialProfile({
         ...(!isPage && age ? { age } : {}),
-        bio: fields.bio.trim() || undefined,
+        bio: fields.bio.trim(),
         ...(!isPage && fields.country.trim() ? { country: fields.country.trim() } : {}),
         displayName: fields.displayName.trim() || undefined,
         showDisplayName: isPage ? true : fields.showDisplayName,
@@ -267,7 +267,7 @@ export default function ProfilePage() {
         </div>
         <div className="mx-auto grid w-full max-w-5xl items-start gap-5 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
           <aside className="min-w-0 lg:sticky lg:top-0">
-            <BeaconSwitcher />
+            <BeaconSwitcher selectedDisplayName={isPage ? fields.displayName : undefined} />
           </aside>
           <div className="flex min-w-0 w-full flex-col items-center rounded-[24px] border border-white/75 dark:border-white/20 bg-white/35 dark:bg-night-surface p-3 shadow-[0_10px_30px_rgba(24,30,44,.08)] sm:p-5">
           {loading ? (

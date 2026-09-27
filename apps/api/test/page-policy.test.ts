@@ -20,3 +20,24 @@ it('requires the page name on social posts, shares, and comments', async () => {
   await assert.rejects(() => service.createComment(ownerId, crypto.randomUUID(), { content: 'hello', visibility: 'public' }), nameRequired);
   await assert.rejects(() => service.updateProfile(ownerId, { showDisplayName: false }), nameRequired);
 });
+
+it('keeps the owner private while allowing an unnamed page to save its contact details', async () => {
+  const pageId = 'P'.repeat(50);
+  const ownerId = 'O'.repeat(50);
+  const stored = { publicId: pageId, displayName: '', showDisplayName: true, updatedAtMs: 1, campedByViewer: false };
+  const authStore = {
+    async getPageOwner(id: string) { return id === pageId ? ownerId : null; },
+    async isUserActive() { return true; },
+  } as unknown as AuthStore;
+  const store = {
+    async getProfile() { return stored; },
+    async updateProfile(_id: string, input: Record<string, unknown>) { return { ...stored, ...input }; },
+  } as unknown as SocialStore;
+  const service = new SocialService(store, authStore);
+  const saved = await service.updateProfile(pageId, { whatsappNumber: '+963912345678', contactEmail: 'page@example.com' });
+  assert.equal(saved.isPage, true);
+  assert.equal(saved.whatsappNumber, '+963912345678');
+  const publicProfile = await service.getProfile('V'.repeat(50), pageId);
+  assert.equal(publicProfile.isPage, true);
+  assert.equal('ownerPublicId' in publicProfile, false);
+});

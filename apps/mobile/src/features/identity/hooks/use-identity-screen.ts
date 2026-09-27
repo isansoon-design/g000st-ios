@@ -301,7 +301,7 @@ export function useIdentityScreen() {
       const age = fields.age.trim() ? Number(fields.age.trim()) : undefined;
       const saved = await updateSocialProfile({
         ...(!isPage && age ? { age } : {}),
-        bio: fields.bio.trim() || undefined,
+        bio: fields.bio.trim(),
         ...(!isPage && fields.country.trim() ? { country: fields.country.trim() } : {}),
         displayName: fields.displayName.trim() || undefined,
         showDisplayName: isPage ? true : fields.showDisplayName,
