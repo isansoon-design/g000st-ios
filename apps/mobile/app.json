@@ -8,7 +8,7 @@
     "scheme": "g000st",
     "userInterfaceStyle": "automatic",
     "runtimeVersion": {
-      "policy": "fingerprint"
+      "policy": "appVersion"
     },
     "updates": {
       "url": "https://u.expo.dev/2cfd1331-dd33-43a8-9b21-c2cc2eddf965"
@@ -29,6 +29,9 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA",
         "android.permission.MANAGE_OWN_CALLS"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES"
       ]
     },
     "web": {

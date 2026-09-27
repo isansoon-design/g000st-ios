@@ -7,11 +7,11 @@ import toast from "react-hot-toast";
 import { deleteAccount, logout } from "@/app/api/auth";
 import { sessionStorage } from "@/app/api/session-storage";
 import {
-  getSocialProfile,
-  updateSocialProfile,
-  uploadAvatarMedia,
-  uploadCoverMedia,
-  type SocialProfile,
+    getSocialProfile,
+    updateSocialProfile,
+    uploadAvatarMedia,
+    uploadCoverMedia,
+    type SocialProfile,
 } from "@/app/api/social";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { ThemeToggle, useTheme } from "@/context/ThemeContext";
@@ -448,10 +448,10 @@ export default function ProfilePage() {
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#c62828]">CONTACT & SOCIAL</p>
                 <h2 className="mb-4 mt-1 text-lg font-black">Help people find you</h2>
                 <label className="mb-1 block text-xs font-black text-[#127446]">✆ WhatsApp</label>
-                <input aria-label="WhatsApp number" className={`mb-2 ${fieldClass}`} inputMode="tel" onChange={(event) => setField('whatsappNumber', event.target.value)} placeholder="+963... or 00963..." value={fields.whatsappNumber} />
+                <input aria-label="WhatsApp number" className={`mb-2 ${fieldClass}`} inputMode="tel" onChange={(event) => setField('whatsappNumber', event.target.value)} placeholder="+... or 00..." value={fields.whatsappNumber} />
                 <p className="mb-4 text-[11px] text-black/45 dark:text-night-muted">Include your country code. Visitors will open a direct chat.</p>
                 <label className="mb-1 block text-xs font-black text-[#2d4669] dark:text-[#a9c7ed]">☎ Landline</label>
-                <input aria-label="Landline number" className={`mb-2 ${fieldClass}`} inputMode="tel" onChange={(event) => setField('landlineNumber', event.target.value)} placeholder="+963 11 234 5678 or local number" value={fields.landlineNumber} />
+                <input aria-label="Landline number" className={`mb-2 ${fieldClass}`} inputMode="tel" onChange={(event) => setField('landlineNumber', event.target.value)} placeholder="+1 11 234 5678 or local number" value={fields.landlineNumber} />
                 <p className="mb-4 text-[11px] text-black/45 dark:text-night-muted">Visitors can tap the number to open their phone dialer.</p>
                 {([
                   ['contactEmail', 'Email', 'name@example.com'],

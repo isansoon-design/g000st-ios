@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { PresenceHeartbeat } from "@/features/presence/presence-heartbeat";
-import { NoticeBanner } from "@/features/admin/notice-banner";
 import axios from "@/app/api/axios";
 import { ThemeToggle } from "@/context/ThemeContext";
+import { NoticeBanner } from "@/features/admin/notice-banner";
+import { PresenceHeartbeat } from "@/features/presence/presence-heartbeat";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -18,19 +18,19 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   }, []);
   const pageKey = pathname.startsWith('/profile') || pathname.startsWith('/users/') ? 'mypage'
     : pathname.startsWith('/social-chat') || pathname.startsWith('/chat') ? 'whisper'
-    : pathname.startsWith('/social') ? 'centre'
-    : pathname.startsWith('/contacts') ? 'network'
-    : pathname.startsWith('/market') ? 'trading'
-    : pathname.startsWith('/mobile') ? 'mobile' : null;
+      : pathname.startsWith('/social') ? 'centre'
+        : pathname.startsWith('/contacts') ? 'network'
+          : pathname.startsWith('/market') ? 'trading'
+            : pathname.startsWith('/mobile') ? 'mobile' : null;
   const pageEnabled = experience?.pages.site !== false && (!pageKey || experience?.pages[pageKey] !== false);
   const hiddenParts = Object.entries(experience?.parts ?? {}).filter(([, enabled]) => !enabled).map(([key]) => key).join(' ');
 
   const navItems = [
     { href: "/social", label: "SOCIAL", icon: "◎" },
-    { href: "/market", label: "MARKET", icon: "🛍" },
     { href: "/chat", label: "CHAT", icon: "💬" },
     { href: "/contacts", label: "FRIENDS", icon: "👥" },
     { href: "/profile", label: "ID", icon: "🪪" },
+    { href: "/market", label: "TRAIDING", icon: "🛍" },
     { href: "/mobile", label: "MOBILE", icon: "📞" },
   ];
 

@@ -21,6 +21,12 @@ export function BeaconSwitcher({ selectedDisplayName }: { selectedDisplayName?: 
     return () => { mounted = false; };
   }, [user?.publicId]);
 
+  const switchTo = (publicId: string, displayName: string) => {
+    if (activePublicId !== publicId) setActivePublicId(publicId);
+    Toast.show({ type: 'success', text1: 'أنت الآن تتفاعل باسم', text2: displayName });
+    router.replace('/(app)/(tabs)/social');
+  };
+
   const create = async () => {
     if (creating) return;
     setCreating(true);
@@ -39,13 +45,13 @@ export function BeaconSwitcher({ selectedDisplayName }: { selectedDisplayName?: 
 
   return <View className="mb-4 w-full rounded-[22px] border border-white/60 dark:border-white/20 bg-[#D0D0D0] dark:bg-night-header p-4">
     <Text className="mb-1 text-[10px] font-black uppercase tracking-[1px] text-black/45 dark:text-night-muted">Interact as</Text>
-    {user && <Pressable accessibilityRole="button" accessibilityState={{ selected: personalSelected }} onPress={() => setActivePublicId(user.publicId)} className={`mb-2 flex-row items-center justify-between rounded-xl px-4 py-3 ${personalSelected ? 'bg-[#17191d]' : 'bg-white dark:bg-night-surface'}`}>
+    {user && <Pressable accessibilityRole="button" accessibilityState={{ selected: personalSelected }} onPress={() => switchTo(user.publicId, 'ملفك الشخصي')} className={`mb-2 flex-row items-center justify-between rounded-xl px-4 py-3 ${personalSelected ? 'bg-[#17191d]' : 'bg-white dark:bg-night-surface'}`}>
       <View className="min-w-0 flex-1 pr-2"><Text className={`font-black ${personalSelected ? 'text-white' : 'text-[#17191d] dark:text-night-text'}`}>My personal profile</Text><Text className={`text-xs ${personalSelected ? 'text-white/65' : 'text-black/50 dark:text-night-muted'}`}>{user.publicId.slice(0, 8)}</Text></View>
       {personalSelected && <Text className="text-xs font-bold text-white">✓ Active now</Text>}
     </Pressable>}
     {pages.map((page) => {
       const selected = activePublicId === page.publicId;
-      return <Pressable key={page.publicId} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setActivePublicId(page.publicId)} className={`mb-2 flex-row items-center justify-between rounded-xl px-4 py-3 ${selected ? 'bg-[#17191d]' : 'bg-white dark:bg-night-surface'}`}>
+      return <Pressable key={page.publicId} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => switchTo(page.publicId, page.displayName || 'صفحة بلا اسم')} className={`mb-2 flex-row items-center justify-between rounded-xl px-4 py-3 ${selected ? 'bg-[#17191d]' : 'bg-white dark:bg-night-surface'}`}>
         <View className="min-w-0 flex-1 pr-2"><Text className={`font-black ${selected ? 'text-white' : 'text-[#17191d] dark:text-night-text'}`}>{(selected ? selectedDisplayName : page.displayName) || 'Untitled beacon'}</Text><Text className={`text-xs ${selected ? 'text-white/65' : 'text-black/50 dark:text-night-muted'}`}>{page.publicId.slice(0, 8)}</Text></View>
         {selected && <Text className="text-xs font-bold text-white">✓ Active now</Text>}
       </Pressable>;
