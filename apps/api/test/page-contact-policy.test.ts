@@ -10,7 +10,7 @@ import {
 it("normalizes international WhatsApp numbers for direct chat links", () => {
   assert.equal(normalizeWhatsAppNumber("+1 912 345 678"), "+1912345678");
   assert.equal(normalizeWhatsAppNumber("001-912-345-678"), "+1912345678");
-  assert.equal(normalizeWhatsAppNumber("001912345678"), null);
+  assert.equal(normalizeWhatsAppNumber("1912345678"), null);
   assert.equal(normalizeWhatsAppNumber("+0123456789"), null);
   assert.equal(normalizeWhatsAppNumber("+1912345678;evil"), null);
 });
