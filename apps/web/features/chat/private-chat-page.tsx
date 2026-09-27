@@ -1,15 +1,15 @@
 "use client";
 
-import { useConfirmModal } from "@/context/ConfirmModalContext";
-import { Mic, Send, Square, Trash2, UserRound } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { getPeerPreferences, listContactNicknames, updateContactNickname, updatePeerPreferences, type PeerPreferences } from "@/app/api/contacts";
 import { getSocialProfile, toggleSocialCamp } from "@/app/api/social";
+import { useConfirmModal } from "@/context/ConfirmModalContext";
+import { Mic, Send, Square, Trash2, UserRound } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import { useCalling } from "@/features/calling/use-calling";
-import { editChatMessage, getChatAttachmentDownload } from "@/features/chat/api";
+import { deleteChatMessage, editChatMessage, getChatAttachmentDownload } from "@/features/chat/api";
 import type { ChatConversationSummary, ChatMessage } from "@/features/chat/types";
 import { usePrivateChat } from "@/features/chat/use-private-chat";
 import { useVoiceRecorder } from "@/features/chat/use-voice-recorder";
@@ -167,6 +167,8 @@ type ConversationListProps = Readonly<{
   error: string | null;
   isLoading: boolean;
   onOpen: (conversation: ChatConversationSummary) => void;
+  onDelete: (conversation: ChatConversationSummary) => void;
+  deletingConversationId?: string | null;
   onRefresh: () => void;
   onStart: () => void;
 }>;
@@ -178,6 +180,8 @@ function ConversationList({
   error,
   isLoading,
   onOpen,
+  onDelete,
+  deletingConversationId,
   onRefresh,
   onStart,
 }: ConversationListProps) {
@@ -229,12 +233,11 @@ function ConversationList({
       ) : null}
       {visibleConversations.length === 0 && <div className="py-12 text-center"><p className="text-sm text-black/45">{kind === 'market' ? 'Your Market chats will appear here.' : 'Your private chats will appear here.'}</p>{kind === 'private' && <button className="mt-4 rounded-full bg-[#9A9A9A] px-6 py-3 font-black text-white" onClick={onStart} type="button">Start private chat</button>}</div>}
       {visibleConversations.map((conversation) => (
-        <button
-          className="mb-2 flex w-full items-center rounded-[18px] border border-white/60 bg-[#E2E2E2] p-3 text-left"
+        <div
+          className="mb-2 flex w-full items-center rounded-[18px] border border-white/60 bg-[#E2E2E2]"
           key={conversation.conversationId}
-          onClick={() => onOpen(conversation)}
-          type="button"
         >
+          <button className="flex min-w-0 flex-1 items-center p-3 text-left" onClick={() => onOpen(conversation)} type="button">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#9A9A9A] text-base font-black text-white">
             g
           </span>
@@ -259,7 +262,15 @@ function ConversationList({
               </span>
             ) : null}
           </span>
-        </button>
+          </button>
+          <button
+            aria-label="Delete conversation"
+            className="mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#C62828] hover:bg-black/5 disabled:opacity-40"
+            disabled={deletingConversationId === conversation.conversationId}
+            onClick={() => onDelete(conversation)}
+            type="button"
+          ><Trash2 size={18} /></button>
+        </div>
       ))}
     </div>
   );
@@ -271,12 +282,26 @@ export default function PrivateChatPage() {
   const chat = usePrivateChat(requestedConversationId);
   const activeIsMarket = chat.conversations.find((item) => item.conversationId === chat.activeConversation?.conversationId)?.kind === 'market';
   const [blurMessages, setBlurMessages] = useState(false);
+  const [isWindowBlurred, setIsWindowBlurred] = useState(false);
   const [fontSize, setFontSize] = useState(14);
   const [namesByPublicId, setNamesByPublicId] = useState<Record<string, string>>({});
   const [isNameOpen, setIsNameOpen] = useState(false);
   const [nickname, setNickname] = useState("");
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
+  const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
   const [messageDraft, setMessageDraft] = useState("");
+  const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleBlur = () => setIsWindowBlurred(true);
+    const handleFocus = () => setIsWindowBlurred(false);
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
   const [peerPreferences, setPeerPreferences] = useState<PeerPreferences | null>(null);
   const [followingPeer, setFollowingPeer] = useState<boolean | null>(null);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
@@ -287,6 +312,20 @@ export default function PrivateChatPage() {
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const didScrollToUnreadRef = useRef<string | null>(null);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  function cancelMessageHold() {
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = null;
+    holdStartRef.current = null;
+  }
+
+  useEffect(() => () => {
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+  }, []);
+
+  useEffect(() => { setActionMessage(null); cancelMessageHold(); }, [chat.activeConversation?.conversationId]);
 
   useEffect(() => { void listContactNicknames().then((contacts) => setNamesByPublicId(Object.fromEntries(contacts.map((contact) => [contact.publicId, contact.nickname])))).catch(() => undefined); }, []);
 
@@ -337,6 +376,37 @@ export default function PrivateChatPage() {
       setEditingMessage(null);
       await Promise.all([chat.refreshMessages(), chat.refreshConversations()]);
     } catch (error) { toast.error(error instanceof Error ? error.message : "Could not edit message."); }
+  }
+
+  async function removeMessage(message: ChatMessage) {
+    setActionMessage(null);
+    const approved = await confirm({
+      title: "Delete message?",
+      message: "This message will be removed from the conversation for both people.",
+      confirmLabel: "Delete",
+      isDangerous: true,
+    });
+    if (!approved) return;
+    try {
+      await deleteChatMessage(message.conversationId, message.id);
+      await Promise.all([chat.refreshMessages(), chat.refreshConversations()]);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not delete message."); }
+  }
+
+  async function removeConversation(conversation: ChatConversationSummary) {
+    if (deletingConversationId) return;
+    const approved = await confirm({
+      title: "Delete conversation?",
+      message: "This conversation will leave your list. It will appear again if either person sends a new message.",
+      confirmLabel: "Delete",
+      isDangerous: true,
+    });
+    if (!approved) return;
+    setDeletingConversationId(conversation.conversationId);
+    try {
+      await chat.deleteConversation(conversation.conversationId);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not delete conversation."); }
+    finally { setDeletingConversationId(null); }
   }
 
   useEffect(() => {
@@ -400,7 +470,12 @@ export default function PrivateChatPage() {
   };
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden border-x border-black/10 bg-[#D8D8D8] shadow-2xl">
+    <div className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden border-x border-black/10 bg-[#D8D8D8] shadow-2xl select-none">
+      {isWindowBlurred ? (
+        <div className="fixed inset-0 z-[9999] grid place-items-center bg-[#D8D8D8] text-center text-black/50">
+          <p className="font-bold">Screenshots and background capture prevented.</p>
+        </div>
+      ) : null}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-black/15 bg-gradient-to-b from-[#fafafa] via-[#d8d8d8] to-[#b0b0b0] px-3 shadow-md">
         <div className="flex items-center gap-1.5">
           <Brand />
@@ -592,10 +667,26 @@ export default function PrivateChatPage() {
                       ) : null}
                       <div className={`chat-message-enter mb-3 flex ${mine ? "justify-end" : "justify-start"}`}>
                         <div
-                          className={`max-w-[78%] px-3 py-2 text-left ${mine
-                            ? "rounded-[18px] rounded-br border border-[#9A9A9A] bg-[#E0E0E0]"
-                            : "rounded-[18px] rounded-bl border-2 border-[#9A9A9A] bg-[#A8A8A8]"
+                          className={`min-w-0 max-w-[78%] px-3 py-2 text-left ${mine
+                            ? "rounded-[18px] rounded-br bg-[#79201D]"
+                            : "rounded-[18px] rounded-bl bg-[#29292B]"
                             }`}
+                          onPointerDown={(event) => {
+                            if (!mine || event.button !== 0 || (event.target instanceof Element && event.target.closest("button, a, input, audio, video"))) return;
+                            cancelMessageHold();
+                            holdStartRef.current = { x: event.clientX, y: event.clientY };
+                            holdTimerRef.current = setTimeout(() => {
+                              setActionMessage(message);
+                              holdTimerRef.current = null;
+                            }, 2000);
+                          }}
+                          onPointerMove={(event) => {
+                            if (holdStartRef.current && (Math.abs(event.clientX - holdStartRef.current.x) > 12 || Math.abs(event.clientY - holdStartRef.current.y) > 12)) cancelMessageHold();
+                          }}
+                          onPointerUp={cancelMessageHold}
+                          onPointerCancel={cancelMessageHold}
+                          onPointerLeave={cancelMessageHold}
+                          onContextMenu={(event) => { if (mine) { event.preventDefault(); cancelMessageHold(); setActionMessage(message); } }}
                           onClick={() => message.locked && void chat.openBurnMessage(message.id)}
                           onKeyDown={(event) => {
                             if (!message.locked || (event.key !== "Enter" && event.key !== " ")) return;
@@ -605,7 +696,7 @@ export default function PrivateChatPage() {
                           role={message.locked ? "button" : undefined}
                           tabIndex={message.locked ? 0 : undefined}
                         >
-                          {message.locked || message.content ? <p aria-label={!message.locked && blurMessages ? "Message hidden by blur" : undefined} className={`whitespace-pre-wrap break-words font-bold ${mine ? "text-black" : "text-white"} ${!message.locked && blurMessages ? "pointer-events-none select-none" : ""}`} style={!message.locked && blurMessages ? { filter: "blur(10px)", fontSize } : { fontSize }}>{message.locked ? "🔒 Click to open · burns in 5s" : message.content}</p> : null}
+                          {message.locked || message.content ? <p aria-label={!message.locked && blurMessages ? "Message hidden by blur" : undefined} className={`whitespace-pre-wrap font-bold text-white ${!message.locked && blurMessages ? "pointer-events-none select-none" : ""}`} style={{ fontSize, overflowWrap: "anywhere", ...(!message.locked && blurMessages ? { filter: "blur(10px)" } : {}) }}>{message.locked ? "🔒 Click to open · burns in 5s" : message.content}</p> : null}
                           {!message.locked && message.attachments?.length ? (
                             <div className="mt-2 flex flex-col gap-1">
                               {message.attachments.map((attachment) => (
@@ -619,9 +710,9 @@ export default function PrivateChatPage() {
                               ))}
                             </div>
                           ) : null}
-                          <p className={`mt-1 text-right text-[10px] font-bold ${mine ? "text-black/40" : "text-white/75"}`}>
+                          <p className="mt-1 text-right text-[10px] font-bold text-white/75">
                             {message.burnAfterReadSeconds ? (
-                              <span className={mine ? "text-[#C62828]" : "text-white"}>
+                              <span className="text-white">
                                 {secondsLeft === null ? "🔥 Burn 5s · " : `🔥 ${secondsLeft}s · `}
                               </span>
                             ) : null}
@@ -629,7 +720,7 @@ export default function PrivateChatPage() {
                             {message.editedAtMs ? " · edited" : null}
                             {deliveryLabel ? ` · ${deliveryLabel}` : null}
                           </p>
-                          {mine && !message.locked && !message.burnAfterReadSeconds && !message.attachments?.length && message.type === "text" && message.content ? <button type="button" className="mt-1 text-[10px] font-bold text-[#C62828]" onClick={() => { setEditingMessage(message); setMessageDraft(message.content); }}>Edit</button> : null}
+                          {mine ? <button type="button" className="mt-1 text-[10px] font-bold text-white" onClick={() => setActionMessage(message)}>Options</button> : null}
                         </div>
                       </div>
                     </div>
@@ -751,7 +842,7 @@ export default function PrivateChatPage() {
                 </div>
               ) : null}
               <p className="pt-0.5 text-center text-[10px] font-bold leading-3 text-black/40">
-                Kept {activeIsMarket ? '30 days' : '2 hours'}{activeIsMarket ? '' : ` · Burn 5s ${chat.burnAfterRead ? 'ON' : 'OFF'}`} · Screenshots possible
+                messages will be burned in {activeIsMarket ? '30 days' : '2 hours'} automatically... screenshot NOT available
               </p>
             </div>
           )}
@@ -764,12 +855,15 @@ export default function PrivateChatPage() {
           error={chat.conversationsError}
           isLoading={chat.isLoadingConversations}
           onOpen={chat.openConversation}
+          onDelete={(conversation) => void removeConversation(conversation)}
+          deletingConversationId={deletingConversationId}
           onRefresh={() => void chat.refreshConversations()}
           onStart={chat.openNewChat}
         />
       )}
 
       {editingMessage ? <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-5"><div className="w-full max-w-[400px] space-y-3 rounded-2xl bg-white p-5"><h2 className="text-lg font-black">Edit message</h2><textarea value={messageDraft} maxLength={4000} onChange={(event) => setMessageDraft(event.target.value)} className="min-h-24 w-full rounded-xl border border-black/15 p-3" /><div className="flex gap-2"><button onClick={() => setEditingMessage(null)} className="flex-1 rounded-xl bg-[#ddd] p-3 font-bold">Cancel</button><button disabled={!messageDraft.trim()} onClick={() => void saveMessage()} className="flex-1 rounded-xl bg-black p-3 font-bold text-white disabled:opacity-40">Save</button></div></div></div> : null}
+      {actionMessage ? <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-5" onMouseDown={(event) => { if (event.target === event.currentTarget) setActionMessage(null); }}><div role="dialog" aria-modal="true" aria-label="Message options" className="w-full max-w-[360px] space-y-2 rounded-2xl bg-white p-5"><h2 className="mb-3 text-lg font-black">Message options</h2><button type="button" disabled={!!actionMessage.burnAfterReadSeconds || !!actionMessage.attachments?.length || actionMessage.type !== "text" || !actionMessage.content} onClick={() => { setEditingMessage(actionMessage); setMessageDraft(actionMessage.content); setActionMessage(null); }} className="w-full rounded-xl bg-[#eee] p-3 font-bold disabled:opacity-40">Edit</button>{actionMessage.burnAfterReadSeconds || actionMessage.attachments?.length || actionMessage.type !== "text" || !actionMessage.content ? <p className="text-center text-xs text-black/50">Only plain text messages can be edited.</p> : null}<button type="button" onClick={() => void removeMessage(actionMessage)} className="w-full rounded-xl bg-[#C62828] p-3 font-bold text-white">Delete</button><button type="button" onClick={() => setActionMessage(null)} className="w-full p-2 font-bold">Cancel</button></div></div> : null}
       {isNameOpen && chat.activeConversation ? <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-5"><div className="w-full max-w-[400px] space-y-3 rounded-2xl bg-white p-5"><h2 className="text-lg font-black">Friend's name</h2><input value={nickname} maxLength={80} onChange={(event) => setNickname(event.target.value)} placeholder="Name shown only to you" className="w-full rounded-xl border border-black/15 p-3" /><div className="flex gap-2"><button onClick={() => setIsNameOpen(false)} className="flex-1 rounded-xl bg-[#ddd] p-3 font-bold">Cancel</button><button onClick={() => void saveName(chat.activeConversation!.participantPublicId)} className="flex-1 rounded-xl bg-black p-3 font-bold text-white">Save</button></div></div></div> : null}
       {chat.isNewChatOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5">

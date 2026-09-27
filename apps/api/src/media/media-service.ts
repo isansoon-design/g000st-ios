@@ -207,15 +207,15 @@ export class MediaService {
     };
   }
 
-  async promoteAvatar(input: Readonly<{ media: PendingAttachmentInput; publicId: string; previousObjectKey?: string }>): Promise<Readonly<{ objectKey: string }>> {
+  async promoteAvatar(input: Readonly<{ media: PendingAttachmentInput; publicId: string }>): Promise<Readonly<{ objectKey: string }>> {
     return this.promoteProfileImage(input, 'avatar');
   }
 
-  async promoteCover(input: Readonly<{ media: PendingAttachmentInput; publicId: string; previousObjectKey?: string }>) {
+  async promoteCover(input: Readonly<{ media: PendingAttachmentInput; publicId: string }>) {
     return this.promoteProfileImage(input, 'cover');
   }
 
-  private async promoteProfileImage(input: Readonly<{ media: PendingAttachmentInput; publicId: string; previousObjectKey?: string }>, purpose: 'avatar' | 'cover') {
+  private async promoteProfileImage(input: Readonly<{ media: PendingAttachmentInput; publicId: string }>, purpose: 'avatar' | 'cover') {
     const kind = this.validateFile(input.media);
     if (kind !== 'image') throw new ApiError(400, 'UNSUPPORTED_AVATAR', 'Profile photos must be an image.');
     const expected = `pending-${purpose}/${input.publicId}/${input.media.id}`;
@@ -229,10 +229,11 @@ export class MediaService {
     }
     await this.client.send(new CopyObjectCommand({ Bucket: this.config.bucket, CopySource: `/${this.config.bucket}/${encodeURIComponent(expected).replaceAll('%2F', '/')}`, Key: finalKey, MetadataDirective: 'COPY' }));
     await this.client.send(new DeleteObjectCommand({ Bucket: this.config.bucket, Key: expected }));
-    if (input.previousObjectKey && input.previousObjectKey !== finalKey) {
-      await this.client.send(new DeleteObjectCommand({ Bucket: this.config.bucket, Key: input.previousObjectKey })).catch(() => undefined);
-    }
     return { objectKey: finalKey };
+  }
+
+  async deleteProfileImage(objectKey: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.config.bucket, Key: objectKey }));
   }
 
   async promoteSocialMedia(input: Readonly<{ media: PendingAttachmentInput; postId: string; publicId: string }>): Promise<PendingAttachmentInput & { kind: 'image' | 'video' }> {

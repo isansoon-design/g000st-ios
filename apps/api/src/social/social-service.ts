@@ -220,25 +220,30 @@ export class SocialService {
     const { avatarMedia, coverMedia, ...fields } = input;
     let avatarObjectKey: string | undefined;
     let coverObjectKey: string | undefined;
+    const current = avatarMedia || coverMedia ? await this.store.getProfile(publicId, publicId) : null;
     if (avatarMedia) {
-      const current = await this.store.getProfile(publicId, publicId);
       avatarObjectKey = (
         await this.requireMedia().promoteAvatar({
           media: avatarMedia,
-          previousObjectKey: current?.avatarObjectKey,
           publicId,
         })
       ).objectKey;
     }
     if (coverMedia) {
-      const current = await this.store.getProfile(publicId, publicId);
-      coverObjectKey = (await this.requireMedia().promoteCover({ media: coverMedia, previousObjectKey: current?.coverObjectKey, publicId })).objectKey;
+      coverObjectKey = (await this.requireMedia().promoteCover({ media: coverMedia, publicId })).objectKey;
     }
     const profile = await this.store.updateProfile(
       publicId,
       { ...fields, ...(avatarObjectKey ? { avatarObjectKey } : {}), ...(coverObjectKey ? { coverObjectKey } : {}) },
       this.now(),
     );
+    // Keep the previous image until its replacement key is safely stored.
+    if (avatarObjectKey && current?.avatarObjectKey && current.avatarObjectKey !== avatarObjectKey) {
+      await this.requireMedia().deleteProfileImage(current.avatarObjectKey).catch(() => undefined);
+    }
+    if (coverObjectKey && current?.coverObjectKey && current.coverObjectKey !== coverObjectKey) {
+      await this.requireMedia().deleteProfileImage(current.coverObjectKey).catch(() => undefined);
+    }
     return this.withProfileAvatar({ ...profile, showDisplayName: profile.showDisplayName === true });
   }
 

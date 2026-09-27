@@ -63,3 +63,27 @@ export async function playIncomingMessageSound(): Promise<void> {
   secondTone.start(startedAt + 0.13);
   secondTone.stop(startedAt + 0.32);
 }
+
+export async function playFocusedConversationSound(): Promise<void> {
+  if (!isUnlocked) return;
+  const context = getAudioContext();
+  if (!context || context.state !== "running") return;
+
+  const startedAt = context.currentTime;
+  for (const [offset, duration, frequency] of [
+    [0, 0.105, 620],
+    [0.135, 0.14, 465],
+  ]) {
+    const tone = context.createOscillator();
+    const gain = context.createGain();
+    tone.type = "sine";
+    tone.frequency.setValueAtTime(frequency, startedAt + offset);
+    gain.gain.setValueAtTime(0.0001, startedAt + offset);
+    gain.gain.exponentialRampToValueAtTime(0.15, startedAt + offset + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startedAt + offset + duration);
+    tone.connect(gain);
+    gain.connect(context.destination);
+    tone.start(startedAt + offset);
+    tone.stop(startedAt + offset + duration);
+  }
+}

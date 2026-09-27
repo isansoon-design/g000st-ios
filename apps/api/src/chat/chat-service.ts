@@ -101,6 +101,11 @@ export class ChatService {
     );
   }
 
+  async hideConversation(publicId: string, conversationId: string): Promise<void> {
+    await this.requireParticipant(publicId, conversationId);
+    await this.store.hideConversation(conversationId, publicId, this.now());
+  }
+
   async listMessages(
     publicId: string,
     conversationId: string,
@@ -230,6 +235,14 @@ export class ChatService {
     if (result.status === 'forbidden') throw new ApiError(403, 'MESSAGE_NOT_OWNED', 'Only the sender can edit this message.');
     if (result.status === 'not_editable') throw new ApiError(400, 'MESSAGE_NOT_EDITABLE', 'Burn messages and messages with attachments cannot be edited.');
     throw new ApiError(400, 'MESSAGE_NOT_EDITABLE', 'This message cannot be edited.');
+  }
+
+  async deleteMessage(publicId: string, conversationId: string, messageId: string): Promise<void> {
+    await this.requireParticipant(publicId, conversationId);
+    const result = await this.store.deleteMessage(conversationId, messageId, publicId, this.now());
+    if (result.status === 'not_found') throw new ApiError(404, 'MESSAGE_NOT_FOUND', 'Message not found or already expired.');
+    if (result.status === 'forbidden') throw new ApiError(403, 'MESSAGE_NOT_OWNED', 'Only the sender can delete this message.');
+    await this.mediaService?.deleteAttachments(result.message.attachments).catch(() => undefined);
   }
 
   async createUpload(

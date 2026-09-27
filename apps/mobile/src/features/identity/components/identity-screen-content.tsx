@@ -1,11 +1,12 @@
 import { Image } from 'expo-image';
 import { useRouter, type Href } from 'expo-router';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { ActivityIndicator, Pressable, Switch, Text, TextInput, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { FeatureScreen } from '@/components/layout/feature-screen';
 import type { IdentityProfileFields } from '@/features/identity/hooks/use-identity-screen';
+import { avatarImageSource } from '@/services/media/avatar-image-source';
 
 type IdentityScreenContentProps = Readonly<{
   avatarUrl?: string;
@@ -28,6 +29,29 @@ type IdentityScreenContentProps = Readonly<{
 const CARD = 'rounded-[22px] border border-white/60 bg-[#D0D0D0] p-4';
 const LABEL = 'mb-1 text-[10px] font-black uppercase tracking-[1px] text-black/45';
 const FIELD_INPUT = 'h-12 pb-2 rounded-field border border-black/10 bg-white px-3 text-[13px] font-bold text-g000st-black';
+
+function IdentityAvatarImage({ avatarUrl }: { avatarUrl: string }) {
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  return (
+    <>
+      <Image
+        contentFit="cover"
+        onDisplay={() => setLoading(false)}
+        onError={() => { setLoading(false); setFailed(true); }}
+        source={avatarImageSource(avatarUrl)}
+        style={{ height: 92, width: 92 }}
+      />
+      {loading ? (
+        <View className="absolute inset-0 items-center justify-center bg-[#C8C8C8]">
+          <ActivityIndicator color="#C62828" />
+        </View>
+      ) : failed ? (
+        <Text className="absolute text-xs font-black text-g000st-red">Photo error</Text>
+      ) : null}
+    </>
+  );
+}
 
 function IdentityScreenContentComponent({
   avatarUrl,
@@ -70,19 +94,20 @@ function IdentityScreenContentComponent({
           accessibilityLabel="Change profile photo"
           accessibilityRole="button"
           className="h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#C8C8C8] active:opacity-80"
+          disabled={uploadingPhoto}
           onPress={onChangePhoto}
         >
           {uploadingPhoto ? (
             <ActivityIndicator color="#C62828" />
           ) : avatarUrl ? (
-            <Image contentFit="cover" source={{ uri: avatarUrl }} style={{ height: '100%', width: '100%' }} />
+            <IdentityAvatarImage avatarUrl={avatarUrl} key={avatarUrl} />
           ) : (
             <Text className="text-3xl">◎</Text>
           )}
         </Pressable>
-        <Pressable accessibilityRole="button" className="mt-2 mb-4" onPress={onChangePhoto}>
+        <Pressable accessibilityRole="button" className="mt-2 mb-4" disabled={uploadingPhoto} onPress={onChangePhoto}>
           <Text className="text-xs font-black text-g000st-red">
-            {avatarUrl ? 'Change photo' : 'Add photo'}
+            {uploadingPhoto ? 'Uploading photo…' : avatarUrl ? 'Change photo' : 'Add photo'}
           </Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => router.push(`/users/${publicId}` as Href)} className="mb-4 rounded-full bg-[#17191d] px-5 py-3"><Text className="text-xs font-black text-white">View public profile</Text></Pressable>

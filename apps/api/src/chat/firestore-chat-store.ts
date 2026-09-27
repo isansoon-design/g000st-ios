@@ -26,7 +26,9 @@ type StoredConversation = Readonly<{
   updatedAtMs: number;
 }>;
 
-type StoredConversationSummary = Omit<ChatConversationMemberSummary, 'conversationId'>;
+type StoredConversationSummary = Omit<ChatConversationMemberSummary, 'conversationId'> & {
+  hiddenAtMs?: number;
+};
 
 export class FirestoreChatStore implements ChatStore {
   constructor(
@@ -48,7 +50,12 @@ export class FirestoreChatStore implements ChatStore {
 
     return await this.db.runTransaction(async (transaction) => {
       const existing = await transaction.get(conversationRef);
-      if (existing.exists) return this.toConversation(existing.id, existing.data());
+      if (existing.exists) {
+        transaction.set(this.memberConversation(firstPublicId, conversationId), {
+          hiddenAtMs: FieldValue.delete(),
+        }, { merge: true });
+        return this.toConversation(existing.id, existing.data());
+      }
 
       const conversation: StoredConversation = {
         createdAtMs: nowMs,
@@ -94,6 +101,25 @@ export class FirestoreChatStore implements ChatStore {
       : null;
   }
 
+  async hideConversation(conversationId: string, publicId: string, nowMs: number): Promise<void> {
+    const memberRef = this.memberConversation(publicId, conversationId);
+    await this.db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(memberRef);
+      if (!snapshot.exists) throw new Error('Conversation membership disappeared.');
+      const summary = snapshot.data() as StoredConversationSummary;
+      transaction.set(memberRef, {
+        hiddenAtMs: nowMs,
+        firstUnreadCreatedAtMs: FieldValue.delete(),
+        firstUnreadExpiresAtMs: FieldValue.delete(),
+        firstUnreadMessageId: FieldValue.delete(),
+        lastReadObservedAtMs: nowMs,
+        ...(summary.lastMessageCreatedAtMs === undefined ? {} : { lastReadAtMs: summary.lastMessageCreatedAtMs }),
+        ...(summary.lastMessageId === undefined ? {} : { lastReadMessageId: summary.lastMessageId }),
+        unreadCount: 0,
+      }, { merge: true });
+    });
+  }
+
   async findMessage(conversationId: string, messageId: string): Promise<ChatMessage | null> {
     const snapshot = await this.messages(conversationId).doc(messageId).get();
     return snapshot.exists ? this.toMessage(snapshot.id, snapshot.data()) : null;
@@ -104,24 +130,26 @@ export class FirestoreChatStore implements ChatStore {
     limit: number,
     nowMs: number,
   ): Promise<readonly ChatConversationMemberSummary[]> {
-    const snapshot = await this.memberConversations(publicId)
-      .orderBy('updatedAtMs', 'desc')
-      .limit(limit)
-      .get();
-
-    return await Promise.all(
-      snapshot.docs.map((document) =>
-        this.reconcileUnreadSummary(
-          publicId,
-          {
-            ...(document.data() as StoredConversationSummary),
-            conversationId: document.id,
-            kind: (document.data() as StoredConversationSummary).kind ?? 'private',
-          },
-          nowMs,
-        ),
-      ),
-    );
+    const visible: ChatConversationMemberSummary[] = [];
+    let cursor: FirebaseFirestore.QueryDocumentSnapshot | undefined;
+    while (visible.length < limit) {
+      let query = this.memberConversations(publicId).orderBy('updatedAtMs', 'desc');
+      if (cursor) query = query.startAfter(cursor);
+      const snapshot = await query.limit(Math.max(limit, 50)).get();
+      for (const document of snapshot.docs) {
+        const { hiddenAtMs, ...summary } = document.data() as StoredConversationSummary;
+        if (hiddenAtMs !== undefined) continue;
+        visible.push({
+          ...summary,
+          conversationId: document.id,
+          kind: summary.kind ?? 'private',
+        });
+        if (visible.length === limit) break;
+      }
+      if (snapshot.size < Math.max(limit, 50) || visible.length === limit) break;
+      cursor = snapshot.docs.at(-1);
+    }
+    return await Promise.all(visible.map((summary) => this.reconcileUnreadSummary(publicId, summary, nowMs)));
   }
 
   async listMessages(
@@ -214,13 +242,14 @@ export class FirestoreChatStore implements ChatStore {
       transaction.update(conversationRef, { updatedAtMs: message.createdAtMs });
       transaction.set(
         this.memberConversation(message.senderPublicId, message.conversationId),
-        { ...summary, participantPublicId: recipientPublicId },
+        { ...summary, hiddenAtMs: FieldValue.delete(), participantPublicId: recipientPublicId },
         { merge: true },
       );
       transaction.set(
         recipientMemberRef,
         {
           ...summary,
+          hiddenAtMs: FieldValue.delete(),
           ...(recipientSummary?.unreadCount
             ? {}
             : {
@@ -250,6 +279,92 @@ export class FirestoreChatStore implements ChatStore {
       const next = { ...message, content, editedAtMs: nowMs };
       transaction.update(messageRef, { content, editedAtMs: nowMs });
       return { status: 'updated' as const, message: next };
+    });
+  }
+
+  async deleteMessage(conversationId: string, messageId: string, senderPublicId: string, nowMs: number) {
+    const conversationRef = this.conversations().doc(conversationId);
+    const messageRef = this.messages(conversationId).doc(messageId);
+    return this.db.runTransaction(async (transaction) => {
+      const [messageSnapshot, conversationSnapshot] = await Promise.all([
+        transaction.get(messageRef),
+        transaction.get(conversationRef),
+      ]);
+      if (!messageSnapshot.exists || !conversationSnapshot.exists) return { status: 'not_found' as const };
+      const message = this.toMessage(messageSnapshot.id, messageSnapshot.data());
+      if (message.expiresAtMs <= nowMs) return { status: 'not_found' as const };
+      if (message.senderPublicId !== senderPublicId) return { status: 'forbidden' as const };
+
+      const conversation = this.toConversation(conversationSnapshot.id, conversationSnapshot.data());
+      const memberRefs = conversation.participants.map((id) => this.memberConversation(id, conversationId));
+      const members = await Promise.all(memberRefs.map((ref) => transaction.get(ref)));
+      const updates = members.map((snapshot, index) => {
+        const summary = snapshot.data() as StoredConversationSummary | undefined;
+        if (!summary) return null;
+        const publicId = conversation.participants[index];
+        const wasUnread = publicId !== senderPublicId && summary.unreadCount > 0 &&
+          (summary.lastReadAtMs === undefined || summary.lastReadMessageId === undefined ||
+            message.createdAtMs > summary.lastReadAtMs ||
+            (message.createdAtMs === summary.lastReadAtMs && message.id > summary.lastReadMessageId));
+        const unreadCount = wasUnread ? Math.max(0, summary.unreadCount - 1) : summary.unreadCount;
+        return {
+          ...(summary.lastMessageId === messageId ? { lastMessage: true } : {}),
+          ...(wasUnread ? {
+            unreadCount,
+            ...(unreadCount > 0
+              ? { firstUnreadExpiresAtMs: 0 }
+              : {
+                  firstUnreadCreatedAtMs: FieldValue.delete(),
+                  firstUnreadExpiresAtMs: FieldValue.delete(),
+                  firstUnreadMessageId: FieldValue.delete(),
+                }),
+          } : {}),
+        };
+      });
+      const replacingLast = updates.some((update) => update?.lastMessage);
+      let previous: ChatMessage | undefined;
+      let cursor: ChatMessageCursor | undefined;
+      while (replacingLast && !previous) {
+        let query = this.messages(conversationId)
+          .orderBy('createdAtMs', 'desc')
+          .orderBy(FieldPath.documentId(), 'desc');
+        if (cursor) query = query.startAfter(cursor.createdAtMs, cursor.id);
+        const snapshot = await transaction.get(query.limit(100));
+        previous = snapshot.docs
+          .map((document) => this.toMessage(document.id, document.data()))
+          .find((candidate) => candidate.id !== messageId && candidate.expiresAtMs > nowMs);
+        const last = snapshot.docs.at(-1);
+        if (!last || snapshot.size < 100) break;
+        cursor = { createdAtMs: last.get('createdAtMs') as number, id: last.id };
+      }
+
+      transaction.delete(messageRef);
+      members.forEach((snapshot, index) => {
+        const update = updates[index];
+        if (!snapshot.exists || !update) return;
+        const { lastMessage: _lastMessage, ...unreadUpdate } = update;
+        if (!update.lastMessage && Object.keys(unreadUpdate).length === 0) return;
+        transaction.set(memberRefs[index]!, {
+          ...unreadUpdate,
+          ...(update.lastMessage ? previous
+            ? {
+                lastMessageCreatedAtMs: previous.createdAtMs,
+                lastMessageId: previous.id,
+                lastMessagePreview: this.messagePreview(previous),
+                lastMessageSenderId: previous.senderPublicId,
+                updatedAtMs: previous.createdAtMs,
+              }
+            : {
+                lastMessageCreatedAtMs: FieldValue.delete(),
+                lastMessageId: FieldValue.delete(),
+                lastMessagePreview: '',
+                lastMessageSenderId: FieldValue.delete(),
+                updatedAtMs: conversation.createdAtMs,
+              } : {}),
+        }, { merge: true });
+      });
+      if (replacingLast) transaction.update(conversationRef, { updatedAtMs: previous?.createdAtMs ?? conversation.createdAtMs });
+      return { status: 'deleted' as const, message };
     });
   }
 

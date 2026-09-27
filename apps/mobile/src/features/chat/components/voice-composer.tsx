@@ -157,6 +157,29 @@ function VoiceComposerComponent({
     }
   };
 
+  const sendImmediately = useCallback(async () => {
+    if (isSending || !recorderState.isRecording) return;
+    const durationMs = Math.max(1, Math.min(MAX_DURATION_MS, recorderState.durationMillis));
+    try {
+      if (limitTimerRef.current) clearTimeout(limitTimerRef.current);
+      limitTimerRef.current = null;
+      await recorder.stop();
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+      if (!recorder.uri) throw new Error('Missing recording URI');
+      
+      const sent = await onSend(recorder.uri, durationMs);
+      if (sent) {
+        try {
+          new File(recorder.uri).delete();
+        } catch {}
+      } else {
+        setRecorded({ durationMs, uri: recorder.uri });
+      }
+    } catch {
+      onError('Could not process the recording. Please try again.');
+    }
+  }, [isSending, onError, onSend, recorder, recorderState.durationMillis, recorderState.isRecording]);
+
   useEffect(() => () => {
     if (limitTimerRef.current) clearTimeout(limitTimerRef.current);
     void setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
@@ -175,8 +198,8 @@ function VoiceComposerComponent({
             <Text className="text-lg font-black text-black/45">×</Text>
           </Pressable>
         </View>
-        <Pressable accessibilityLabel="Stop recording" accessibilityRole="button" className="h-[42px] w-[42px] items-center justify-center rounded-full bg-g000st-red" onPress={() => void stopRecording()}>
-          <View className="h-3.5 w-3.5 rounded-sm bg-white" />
+        <Pressable accessibilityLabel="Send voice message" accessibilityRole="button" className="h-[42px] w-[42px] items-center justify-center rounded-full bg-g000st-black" disabled={isSending} onPress={() => void sendImmediately()}>
+          {isSending ? <ActivityIndicator color="white" size="small" /> : <Text className="text-base font-black text-white">➤</Text>}
         </Pressable>
       </>
     );

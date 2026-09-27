@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sessionStorage } from "@/app/api/session-storage";
 import { getSocialProfile } from "@/app/api/social";
 import {
+  deleteChatConversation,
   listChatConversations,
   listChatMessages,
   markChatConversationRead,
@@ -15,6 +16,7 @@ import {
 } from "@/features/chat/api";
 import {
   listenForMessageSoundUnlock,
+  playFocusedConversationSound,
   playIncomingMessageSound,
 } from "@/features/chat/message-sound";
 import type { ChatConversationSummary, ChatMessage } from "@/features/chat/types";
@@ -43,6 +45,20 @@ function mergeMessages(
   );
 }
 
+function reconcileLatestMessages(
+  current: readonly ChatMessage[],
+  latest: readonly ChatMessage[],
+  hasOlder: boolean,
+): readonly ChatMessage[] {
+  const oldestLatest = latest[0];
+  if (!hasOlder || !oldestLatest) return latest;
+  const older = current.filter((message) =>
+    message.createdAtMs < oldestLatest.createdAtMs ||
+    (message.createdAtMs === oldestLatest.createdAtMs && message.id < oldestLatest.id),
+  );
+  return mergeMessages(older, latest);
+}
+
 export function usePrivateChat(initialConversationId?: string) {
   const [activeConversation, setActiveConversation] = useState<ActiveConversation | null>(null);
   const [burnAfterRead, setBurnAfterRead] = useState(true);
@@ -68,6 +84,8 @@ export function usePrivateChat(initialConversationId?: string) {
   const hasLoadedConversationsRef = useRef(false);
   const handledInitialConversationRef = useRef<string | undefined>(undefined);
   const unreadCountsRef = useRef(new Map<string, number>());
+  const activeConversationIdRef = useRef<string | null>(null);
+  const knownMessageIdsRef = useRef<{ conversationId: string; ids: Set<string> } | null>(null);
   const userPublicId = sessionStorage.get()?.user.publicId ?? "";
 
   const loadConversations = useCallback(async (showLoader = false) => {
@@ -78,6 +96,7 @@ export function usePrivateChat(initialConversationId?: string) {
         hasLoadedConversationsRef.current &&
         nextConversations.some(
           (conversation) =>
+            conversation.conversationId !== activeConversationIdRef.current &&
             conversation.unreadCount >
             (unreadCountsRef.current.get(conversation.conversationId) ?? 0),
         );
@@ -99,21 +118,43 @@ export function usePrivateChat(initialConversationId?: string) {
     }
   }, []);
 
+  const deleteConversation = useCallback(async (conversationId: string) => {
+    await deleteChatConversation(conversationId);
+    setConversations((current) => current.filter((item) => item.conversationId !== conversationId));
+    unreadCountsRef.current.delete(conversationId);
+    await loadConversations();
+  }, [loadConversations]);
+
   useEffect(() => listenForMessageSoundUnlock(), []);
 
   const loadMessages = useCallback(async (conversationId: string, showLoader = false) => {
     if (showLoader) setIsLoadingMessages(true);
     try {
       const page = await listChatMessages(conversationId);
-      setMessages((current) => (showLoader ? page.messages : mergeMessages(current, page.messages)));
-      setNextCursor((current) => current ?? page.nextCursor);
+      if (activeConversationIdRef.current !== conversationId) return;
+      const knownMessages = knownMessageIdsRef.current;
+      const hasNewFocusedMessage =
+        knownMessages?.conversationId === conversationId &&
+        page.messages.some((message) =>
+          message.senderPublicId !== userPublicId && !knownMessages.ids.has(message.id),
+        );
+      knownMessageIdsRef.current = {
+        conversationId,
+        ids: new Set([
+          ...(knownMessages?.conversationId === conversationId ? knownMessages.ids : []),
+          ...page.messages.map((message) => message.id),
+        ]),
+      };
+      if (hasNewFocusedMessage) void playFocusedConversationSound();
+      setMessages((current) => (showLoader ? page.messages : reconcileLatestMessages(current, page.messages, !!page.nextCursor)));
+      setNextCursor((current) => page.nextCursor ? current ?? page.nextCursor : undefined);
       setMessagesError(null);
     } catch (error) {
       setMessagesError(errorMessage(error));
     } finally {
       setIsLoadingMessages(false);
     }
-  }, []);
+  }, [userPublicId]);
 
   const loadOlderMessages = useCallback(async () => {
     if (!activeConversation || !nextCursor || isLoadingOlderMessages) return;
@@ -256,6 +297,8 @@ export function usePrivateChat(initialConversationId?: string) {
     try {
       const conversation = await startChatConversation(participantPublicId);
       setClockMs(Date.now());
+      activeConversationIdRef.current = conversation.id;
+      knownMessageIdsRef.current = null;
       setActiveConversation({
         conversationId: conversation.id,
         participantPublicId,
@@ -391,6 +434,8 @@ export function usePrivateChat(initialConversationId?: string) {
   const openConversation = useCallback((conversation: ChatConversationSummary) => {
     setClockMs(Date.now());
     setNextCursor(undefined);
+    activeConversationIdRef.current = conversation.conversationId;
+    knownMessageIdsRef.current = null;
     setActiveConversation({
       conversationId: conversation.conversationId,
       ...(conversation.firstUnreadMessageId
@@ -428,8 +473,13 @@ export function usePrivateChat(initialConversationId?: string) {
   return {
     activeConversation,
     burnAfterRead,
-    closeConversation: () => setActiveConversation(null),
+    closeConversation: () => {
+      activeConversationIdRef.current = null;
+      knownMessageIdsRef.current = null;
+      setActiveConversation(null);
+    },
     closeNewChat,
+    deleteConversation,
     conversations,
     conversationsError,
     draft,

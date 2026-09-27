@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { useAudioPlayer } from 'expo-audio';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -27,7 +28,7 @@ Notifications.setNotificationHandler({
       isFocusedConversationNotification(notification);
 
     return {
-      shouldPlaySound: true,
+      shouldPlaySound: !isFocusedConversation,
       shouldSetBadge: false,
       shouldShowBanner: !isFocusedConversation,
       shouldShowList: !isFocusedConversation,
@@ -104,6 +105,7 @@ function registerCurrentDeviceOnce(
 export function NotificationsBootstrap() {
   const { status } = useAuth();
   const queryClient = useQueryClient();
+  const focusedMessagePlayer = useAudioPlayer(require('../../../assets/sounds/focused-message.wav'));
 
   useEffect(() => {
     if (status !== 'authenticated') return;
@@ -117,6 +119,11 @@ export function NotificationsBootstrap() {
 
     const refreshChat = (notification: Notifications.Notification) => {
       const conversationId = conversationIdFromNotification(notification);
+      if (isFocusedConversationNotification(notification)) {
+        void focusedMessagePlayer.seekTo(0)
+          .then(() => focusedMessagePlayer.play())
+          .catch(() => undefined);
+      }
       void queryClient.invalidateQueries({ queryKey: chatConversationsQueryKey });
       if (conversationId) {
         void queryClient.invalidateQueries({
@@ -177,7 +184,7 @@ export function NotificationsBootstrap() {
       responseSubscription.remove();
       tokenSubscription.remove();
     };
-  }, [queryClient, status]);
+  }, [focusedMessagePlayer, queryClient, status]);
 
   return null;
 }

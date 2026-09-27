@@ -1,19 +1,20 @@
-import { useFocusEffect, useNavigation } from 'expo-router';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 
-import { editChatMessage } from '@/api/chat';
+import { deleteChatMessage, editChatMessage } from '@/api/chat';
 import { getPeerPreferences, listContactNicknames, updateContactNickname, updatePeerPreferences, type PeerPreferences } from '@/api/contacts';
 import { getSocialProfile, toggleSocialCamp } from '@/api/social';
 import { G000stWordmark } from '@/components/brand/g000st-wordmark';
 import { FeatureScreen } from '@/components/layout/feature-screen';
-import type { ChatMessage } from '@/domain/chat/types';
+import type { ChatConversationSummary, ChatMessage } from '@/domain/chat/types';
 import { useCalling } from '@/features/calling/hooks/use-calling';
 import { AttachmentPreviewModal } from '@/features/chat/components/attachment-preview-modal';
 import { ChatConversationList } from '@/features/chat/components/chat-conversation-list';
 import { ChatThread } from '@/features/chat/components/chat-thread';
 import { NewChatModal } from '@/features/chat/components/new-chat-modal';
 import { usePrivateChat } from '@/features/chat/hooks/use-private-chat';
+import { useConfirmModal } from '@/providers/confirm-modal-provider';
 import Toast from 'react-native-toast-message';
 
 function OnlineSignal() {
@@ -45,12 +46,15 @@ function PrivateChatScreenContentComponent({
   const [isNameOpen, setIsNameOpen] = useState(false);
   const [nickname, setNickname] = useState('');
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
+  const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
   const [messageDraft, setMessageDraft] = useState('');
+  const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
   const [peerPreferences, setPeerPreferences] = useState<PeerPreferences | null>(null);
   const [followingPeer, setFollowingPeer] = useState<boolean | null>(null);
   const navigation = useNavigation();
+  const { confirm } = useConfirmModal();
   const closeConversation = chat.closeConversation;
-
+  const router = useRouter();
   useFocusEffect(useCallback(() => {
     let active = true;
     void listContactNicknames().then((contacts) => {
@@ -113,6 +117,42 @@ function PrivateChatScreenContentComponent({
     }
   }
 
+  async function removeMessage(message: ChatMessage) {
+    setActionMessage(null);
+    const approved = await confirm({
+      title: 'Delete message?',
+      message: 'This message will be removed from the conversation for both people.',
+      confirmLabel: 'Delete',
+      isDangerous: true,
+    });
+    if (!approved) return;
+    try {
+      await deleteChatMessage(message.conversationId, message.id);
+      await Promise.all([chat.refreshMessages(), chat.refreshConversations()]);
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Chat', text2: error instanceof Error ? error.message : 'Could not delete message.' });
+    }
+  }
+
+  async function removeConversation(conversation: ChatConversationSummary) {
+    if (deletingConversationId) return;
+    const approved = await confirm({
+      title: 'Delete conversation?',
+      message: 'This conversation will leave your list. It will appear again if either person sends a new message.',
+      confirmLabel: 'Delete',
+      isDangerous: true,
+    });
+    if (!approved) return;
+    setDeletingConversationId(conversation.conversationId);
+    try {
+      await chat.deleteConversation(conversation.conversationId);
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Chat', text2: error instanceof Error ? error.message : 'Could not delete conversation.' });
+    } finally {
+      setDeletingConversationId(null);
+    }
+  }
+
   useEffect(() => {
     // @ts-expect-error tabPress is available on tab screens
     const unsubscribe = navigation.addListener('tabPress', () => {
@@ -142,8 +182,8 @@ function PrivateChatScreenContentComponent({
           messages={chat.messages}
           nowMs={chat.nowMs}
           onBack={chat.closeConversation}
-          onEditName={() => { setNickname(namesByPublicId[participantPublicId] ?? ''); setIsNameOpen(true); }}
-          onEditMessage={(message) => { setEditingMessage(message); setMessageDraft(message.content); }}
+          onViewProfile={() => router.push(`/users/${participantPublicId}`)}
+          onMessageActions={setActionMessage}
           onCallAudio={() => void callUser(participantPublicId, namesByPublicId[participantPublicId], 'audio')}
           onCallVideo={() => void callUser(participantPublicId, namesByPublicId[participantPublicId], 'video')}
           onToggleFollow={togglePeerFollow}
@@ -174,6 +214,23 @@ function PrivateChatScreenContentComponent({
         </Modal>
         <Modal visible={!!editingMessage} transparent animationType="fade" onRequestClose={() => setEditingMessage(null)}>
           <View className="flex-1 items-center justify-center bg-black/60 px-5"><View className="w-full max-w-[400px] gap-3 rounded-[22px] bg-white p-5"><Text className="text-lg font-black">Edit message</Text><TextInput value={messageDraft} onChangeText={setMessageDraft} multiline maxLength={4000} autoFocus className="min-h-24 rounded-xl border border-black/15 p-3" /><View className="flex-row gap-2"><Pressable onPress={() => setEditingMessage(null)} className="flex-1 rounded-xl bg-[#DDD] p-3"><Text className="text-center font-black">Cancel</Text></Pressable><Pressable disabled={!messageDraft.trim()} onPress={() => void saveMessage()} className="flex-1 rounded-xl bg-black p-3 disabled:opacity-40"><Text className="text-center font-black text-white">Save</Text></Pressable></View></View></View>
+        </Modal>
+        <Modal visible={!!actionMessage} transparent animationType="fade" onRequestClose={() => setActionMessage(null)}>
+          <View className="flex-1 items-center justify-center px-5">
+            <Pressable className="absolute inset-0 bg-black/60" onPress={() => setActionMessage(null)} />
+            <View className="w-full max-w-[360px] gap-2 rounded-[22px] bg-white p-5">
+              <Text className="mb-1 text-lg font-black">Message options</Text>
+              <Pressable
+                accessibilityRole="button"
+                disabled={!actionMessage || !!actionMessage.burnAfterReadSeconds || !!actionMessage.attachments?.length || actionMessage.type !== 'text' || !actionMessage.content}
+                onPress={() => { if (actionMessage) { setEditingMessage(actionMessage); setMessageDraft(actionMessage.content); setActionMessage(null); } }}
+                className="rounded-xl bg-[#EEE] p-3 disabled:opacity-40"
+              ><Text className="text-center font-black">Edit</Text></Pressable>
+              {actionMessage && (actionMessage.burnAfterReadSeconds || actionMessage.attachments?.length || actionMessage.type !== 'text' || !actionMessage.content) ? <Text className="text-center text-xs text-black/50">Only plain text messages can be edited.</Text> : null}
+              <Pressable accessibilityRole="button" onPress={() => { if (actionMessage) void removeMessage(actionMessage); }} className="rounded-xl bg-[#C62828] p-3"><Text className="text-center font-black text-white">Delete</Text></Pressable>
+              <Pressable accessibilityRole="button" onPress={() => setActionMessage(null)} className="p-2"><Text className="text-center font-bold">Cancel</Text></Pressable>
+            </View>
+          </View>
         </Modal>
         <AttachmentPreviewModal
           attachments={chat.attachments}
@@ -222,6 +279,8 @@ function PrivateChatScreenContentComponent({
         error={chat.conversationsError}
         isLoading={chat.isLoadingConversations}
         onOpen={chat.openConversation}
+        onDelete={(conversation) => void removeConversation(conversation)}
+        deletingConversationId={deletingConversationId}
         onRefresh={() => void chat.refreshConversations()}
         onStart={chat.openNewChat}
       />

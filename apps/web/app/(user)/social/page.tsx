@@ -5,6 +5,9 @@ import {
   Heart,
   MessageCircle,
   Send,
+  Share2,
+  UserCheck,
+  UserPlus,
   UserRound,
   X,
 } from "lucide-react";
@@ -347,8 +350,8 @@ export default function SocialPage() {
                       <div className="mt-1 h-8 text-[11px] text-black/55">
                         {person.reason === 'friends_of_friends' ? 'Followed by people you follow' : 'Discover someone new'}
                       </div>
-                      <button type="button" disabled={followingSuggestionId !== null} onClick={() => void followSuggestion(person.publicId)} className="mt-2 w-full rounded-lg bg-[#222] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">
-                        {followingSuggestionId === person.publicId ? 'Following…' : 'Follow'}
+                      <button type="button" disabled={followingSuggestionId !== null} onClick={() => void followSuggestion(person.publicId)} className="mt-2 flex w-full items-center justify-center rounded-lg bg-[#222] px-3 py-2 text-white disabled:opacity-40">
+                        {followingSuggestionId === person.publicId ? <UserCheck size={16} /> : <UserPlus size={16} />}
                       </button>
                     </div>
                   ))}
@@ -526,21 +529,21 @@ export default function SocialPage() {
                           void loadSuggestions();
                         }
                       }}
-                      className="flex-1 rounded-xl py-3 font-black"
+                      className="flex flex-1 items-center justify-center rounded-xl py-3 font-black"
                     >
-                      {post.campedByViewer ? "Following" : "+ Follow"}
+                      {post.campedByViewer ? <UserCheck size={18} /> : <UserPlus size={18} />}
                     </button>
                   )}
 
                   <button
-                    className="flex-1 rounded-xl py-3 font-black"
+                    className="flex flex-1 items-center justify-center rounded-xl py-3 font-black"
                     onClick={() => {
                       setShareDraft("");
                       setShareVisibility("anonymous");
                       setSharingPost(post);
                     }}
                   >
-                    Share
+                    <Share2 size={18} />
                   </button>
                   {post.ownerPublicId && !post.ownedByViewer && (
                     <button

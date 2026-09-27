@@ -76,7 +76,7 @@ function ChatScreenContentComponent() {
             </Pressable>
           </View>
           <Text className="pt-0.5 text-center text-[10px] font-bold leading-3 text-black/40">
-            Kept 2 hours · extra 5s burn if on · Screenshots possible
+            messages will be burned in 2 hours automatically... screenshot NOT available
           </Text>
         </View>
       </KeyboardAwareScroll>

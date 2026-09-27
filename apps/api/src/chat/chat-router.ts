@@ -101,6 +101,12 @@ export function createChatRouter(authService: AuthService, chatService: ChatServ
     response.status(200).json({ conversation: await chatService.startMarketConversation(request.authenticatedPublicId, postId) });
   }));
 
+  router.delete('/v1/conversations/:conversationId', chatRateLimit(30), asyncRoute(async (request, response) => {
+    const id = conversationId.parse(request.params.conversationId);
+    await chatService.hideConversation(request.authenticatedPublicId, id);
+    response.status(204).send();
+  }));
+
   router.get(
     '/conversations/:conversationId/messages',
     asyncRoute(async (request, response) => {
@@ -128,6 +134,13 @@ export function createChatRouter(authService: AuthService, chatService: ChatServ
     const id = conversationId.parse(request.params.conversationId);
     const parsedMessageId = messageId.parse(request.params.messageId);
     response.json({ message: await chatService.editMessage(request.authenticatedPublicId, id, parsedMessageId, editMessageBody.parse(request.body).content) });
+  }));
+
+  router.delete('/v1/conversations/:conversationId/messages/:messageId', chatRateLimit(30), asyncRoute(async (request, response) => {
+    const id = conversationId.parse(request.params.conversationId);
+    const parsedMessageId = messageId.parse(request.params.messageId);
+    await chatService.deleteMessage(request.authenticatedPublicId, id, parsedMessageId);
+    response.status(204).send();
   }));
 
   router.get(

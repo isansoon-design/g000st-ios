@@ -1,4 +1,5 @@
 import { Host, Text } from '@expo/ui/swift-ui';
+import { Text as ReactNativeText } from 'react-native';
 import {
   blur,
   font,
@@ -11,24 +12,27 @@ type BlurredMessageTextProps = Readonly<{
   blurred: boolean;
   content: string;
   fontSize?: number;
-  mine: boolean;
+  maxWidth: number;
 }>;
 
 export function BlurredMessageText({
   blurred,
   content,
   fontSize = 14,
-  mine,
+  maxWidth,
 }: BlurredMessageTextProps) {
+  if (!blurred) {
+    return <ReactNativeText style={{ color: '#FFFFFF', fontSize, fontWeight: 'bold', lineHeight: Math.round(fontSize * 1.4), maxWidth }}>{content}</ReactNativeText>;
+  }
   return (
-    <Host matchContents pointerEvents="none">
+    <Host matchContents={{ vertical: true }} pointerEvents="none" style={{ width: maxWidth }}>
       <Text
         modifiers={[
           font({ size: fontSize, weight: 'bold' }),
-          foregroundStyle(mine ? '#111111' : '#FFFFFF'),
+          foregroundStyle('#FFFFFF'),
           lineHeight(Math.round(fontSize * 1.4)),
           multilineTextAlignment('leading'),
-          ...(blurred ? [blur(7)] : []),
+          blur(7),
         ]}
       >
         {content}

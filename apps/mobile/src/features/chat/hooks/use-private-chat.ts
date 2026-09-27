@@ -11,6 +11,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  deleteChatConversation,
   listChatConversations,
   listChatMessages,
   markChatConversationRead,
@@ -106,6 +107,17 @@ export function usePrivateChat(
     queryKey: chatConversationsQueryKey,
     queryFn: listChatConversations,
     refetchInterval: 5_000,
+  });
+
+  const deleteConversationMutation = useMutation({
+    mutationFn: deleteChatConversation,
+    onSuccess: (_result, conversationId) => {
+      queryClient.setQueryData<readonly ChatConversationSummary[]>(
+        chatConversationsQueryKey,
+        (current) => current?.filter((item) => item.conversationId !== conversationId),
+      );
+      void queryClient.invalidateQueries({ queryKey: chatConversationsQueryKey });
+    },
   });
 
   const messagesQuery = useInfiniteQuery({
@@ -573,6 +585,7 @@ export function usePrivateChat(
     captureAttachment: chatAttachments.captureWithCamera,
     discardAttachments: chatAttachments.clearAttachments,
     closeConversation,
+    deleteConversation: deleteConversationMutation.mutateAsync,
     closeNewChat,
     conversations: conversationsQuery.data ?? [],
     conversationsError: conversationsQuery.error

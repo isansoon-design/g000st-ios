@@ -1,24 +1,28 @@
 import { Host, Text } from '@expo/ui/jetpack-compose';
 import { blur } from '@expo/ui/jetpack-compose/modifiers';
+import { Text as ReactNativeText } from 'react-native';
 
 type BlurredMessageTextProps = Readonly<{
   blurred: boolean;
   content: string;
   fontSize?: number;
-  mine: boolean;
+  maxWidth: number;
 }>;
 
 export function BlurredMessageText({
   blurred,
   content,
   fontSize = 14,
-  mine,
+  maxWidth,
 }: BlurredMessageTextProps) {
+  if (!blurred) {
+    return <ReactNativeText style={{ color: '#FFFFFF', fontSize, fontWeight: 'bold', lineHeight: Math.round(fontSize * 1.4), maxWidth }}>{content}</ReactNativeText>;
+  }
   return (
-    <Host matchContents pointerEvents="none">
+    <Host matchContents={{ vertical: true }} pointerEvents="none" style={{ width: maxWidth }}>
       <Text
-        color={mine ? '#111111' : '#FFFFFF'}
-        modifiers={blurred ? [blur(7)] : []}
+        color="#FFFFFF"
+        modifiers={[blur(7)]}
         style={{ fontSize, fontWeight: 'bold', lineHeight: Math.round(fontSize * 1.4) }}
       >
         {content}

@@ -1,4 +1,6 @@
 import { Image } from 'expo-image';
+import { useFocusEffect } from 'expo-router';
+import * as ScreenCapture from 'expo-screen-capture';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,14 +11,15 @@ import {
   Pressable,
   Switch,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Animated, { Easing, FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useConfirmModal } from '@/providers/confirm-modal-provider';
 import type { PeerPreferences } from '@/api/contacts';
+import { useConfirmModal } from '@/providers/confirm-modal-provider';
 
 import type { ChatMessage } from '@/domain/chat/types';
 import { BlurredMessageText } from '@/features/chat/components/blurred-message-text';
@@ -42,8 +45,8 @@ type ChatThreadProps = Readonly<{
   messages: readonly ChatThreadMessage[];
   nowMs: number;
   onBack: () => void;
-  onEditName: () => void;
-  onEditMessage: (message: ChatMessage) => void;
+  onViewProfile: () => void;
+  onMessageActions: (message: ChatMessage) => void;
   onCallAudio: () => void;
   onCallVideo: () => void;
   onToggleFollow: () => Promise<void>;
@@ -95,9 +98,10 @@ type MessageBubbleProps = Readonly<{
   blurMessages: boolean;
   message: ChatThreadMessage;
   mine: boolean;
+  maxWidth: number;
   nowMs: number;
   onOpenBurn: (messageId: string) => void;
-  onEdit: (message: ChatMessage) => void;
+  onActions: (message: ChatMessage) => void;
   onRetry: (clientMessageId: string) => void;
   fontSize: number;
 }>;
@@ -107,16 +111,18 @@ function MessageBubbleComponent({
   blurMessages,
   message,
   mine,
+  maxWidth,
   nowMs,
   onOpenBurn,
-  onEdit,
+  onActions,
   onRetry,
   fontSize,
 }: MessageBubbleProps) {
+  const textMaxWidth = maxWidth - 26;
   const failed = hasStatus(message) && message.status === 'failed';
   const pending = hasStatus(message) && message.status === 'pending';
   const canPress = failed || message.locked;
-  const canEdit = mine && !failed && !pending && !message.locked && !message.burnAfterReadSeconds && !message.attachments?.length && message.type === 'text' && !!message.content;
+  const canShowActions = mine && !failed && !pending;
   const burnSecondsLeft = message.burnStartedAtMs
     ? Math.max(0, Math.ceil((message.expiresAtMs - nowMs) / 1_000))
     : null;
@@ -138,23 +144,26 @@ function MessageBubbleComponent({
   const bubble = (
     <View className={`mb-2 flex-row ${mine ? 'justify-end' : 'justify-start'}`}>
       <Pressable
-        accessibilityHint={message.locked ? 'Opens this message for five seconds' : canEdit ? 'Long press to edit message' : undefined}
-        accessibilityRole={canPress || canEdit ? 'button' : undefined}
-        className={`max-w-[78%] px-3 py-2 ${mine
-          ? `rounded-[18px] rounded-br border bg-[#E0E0E0] ${failed ? 'border-2 border-g000st-red' : 'border-g000st-silver'
-          }`
-          : 'rounded-[18px] rounded-bl border-2 border-g000st-silver bg-[#A8A8A8]'
+        accessibilityHint={canShowActions ? 'Hold for two seconds to edit or delete message' : message.locked ? 'Opens this message for five seconds' : undefined}
+        accessibilityRole={canPress || canShowActions ? 'button' : undefined}
+        accessibilityActions={canShowActions ? [{ name: 'activate', label: 'Message options' }] : undefined}
+        onAccessibilityAction={canShowActions ? () => onActions(message) : undefined}
+        className={`shrink px-3 py-2 ${mine
+          ? `rounded-[18px] rounded-br bg-[#79201D] ${failed ? 'border-2 border-g000st-red' : ''}`
+          : 'rounded-[18px] rounded-bl bg-[#29292B]'
           } ${pending ? 'opacity-60' : ''}`}
-        disabled={!canPress && !canEdit}
+        style={{ maxWidth }}
+        disabled={!canPress && !canShowActions}
         onPress={handlePress}
-        onLongPress={canEdit ? () => onEdit(message) : undefined}
+        delayLongPress={2000}
+        onLongPress={canShowActions ? () => onActions(message) : undefined}
       >
         {message.locked ? (
-          <Text className="font-black text-white" style={{ fontSize, lineHeight: Math.round(fontSize * 1.4) }}>
+          <Text className="shrink font-black text-white" style={{ fontSize, lineHeight: Math.round(fontSize * 1.4), maxWidth: textMaxWidth }}>
             🔒 Tap to open · burns in 5s
           </Text>
         ) : message.content ? (
-          <BlurredMessageText blurred={blurMessages} content={message.content} mine={mine} fontSize={fontSize} />
+          <BlurredMessageText blurred={blurMessages} content={message.content} fontSize={fontSize} maxWidth={textMaxWidth} />
         ) : null}
         {!message.locked && message.attachments?.length ? (
           <View className={message.content ? 'mt-2 gap-2' : 'gap-2'}>
@@ -164,25 +173,26 @@ function MessageBubbleComponent({
                 conversationId={message.conversationId}
                 key={attachment.id}
                 messageId={message.id}
+                onLongPress={canShowActions ? () => onActions(message) : undefined}
               />
             ))}
           </View>
         ) : null}
         {failed ? (
-          <Text className="mt-1 text-right text-[10px] font-black text-g000st-red">
+          <Text className="mt-1 text-right text-[10px] font-black text-white">
             Not sent · Tap to retry
           </Text>
         ) : (
           <View className="mt-1 flex-row items-center justify-end gap-1">
             {message.burnAfterReadSeconds ? (
-              <Text className={`text-[10px] font-black ${mine ? 'text-g000st-red' : 'text-white'}`}>
+              <Text className="text-[10px] font-black text-white">
                 {burnSecondsLeft === null ? '🔥 Burn 5s' : `🔥 ${burnSecondsLeft}s`}
               </Text>
             ) : null}
-            <Text className={`text-[10px] font-bold ${mine ? 'text-black/40' : 'text-white/75'}`}>
+            <Text className="shrink text-[10px] font-bold text-white/75">
               {pending
                 ? 'Sending…'
-                : `${formatTime(message.createdAtMs)}${message.editedAtMs ? ' · edited' : ''}${deliveryLabel ? ` · ${deliveryLabel}` : ''}${canEdit ? ' · hold to edit' : ''}`}
+                : `${formatTime(message.createdAtMs)}${message.editedAtMs ? ' · edited' : ''}${deliveryLabel ? ` · ${deliveryLabel}` : ''}${canShowActions ? ' · hold for options' : ''}`}
             </Text>
           </View>
         )}
@@ -212,8 +222,8 @@ function ChatThreadComponent({
   messages,
   nowMs,
   onBack,
-  onEditName,
-  onEditMessage,
+  onViewProfile,
+  onMessageActions,
   onCallAudio,
   onCallVideo,
   onToggleFollow,
@@ -240,6 +250,8 @@ function ChatThreadComponent({
   userPublicId,
   attachments,
 }: ChatThreadProps) {
+  const { width: windowWidth } = useWindowDimensions();
+  const bubbleMaxWidth = Math.floor((windowWidth - 24) * 0.78);
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<ChatThreadMessage>>(null);
   const isNearBottomRef = useRef(true);
@@ -254,6 +266,15 @@ function ChatThreadComponent({
   const [fontSize, setFontSize] = useState(14);
   const canSend = !isParticipantDeleted && !peerPreferences?.blocked && !isSending && (draft.trim().length > 0 || attachments.length > 0);
   const { confirm } = useConfirmModal();
+
+  useFocusEffect(
+    useCallback(() => {
+      void ScreenCapture.preventScreenCaptureAsync();
+      return () => {
+        void ScreenCapture.allowScreenCaptureAsync();
+      };
+    }, [])
+  );
 
   const handleToggleBurn = useCallback(async () => {
     const isCurrentlyOn = burnAfterRead;
@@ -345,16 +366,17 @@ function ChatThreadComponent({
             isNew={isNew}
             message={item}
             mine={item.senderPublicId === userPublicId}
+            maxWidth={bubbleMaxWidth}
             nowMs={nowMs}
             onOpenBurn={onOpenBurn}
-            onEdit={onEditMessage}
+            onActions={onMessageActions}
             onRetry={onRetry}
             fontSize={fontSize}
           />
         </View>
       );
     },
-    [blurMessages, firstUnreadMessageId, nowMs, onOpenBurn, onEditMessage, onRetry, userPublicId, fontSize],
+    [blurMessages, bubbleMaxWidth, firstUnreadMessageId, nowMs, onOpenBurn, onMessageActions, onRetry, userPublicId, fontSize],
   );
 
   return (
@@ -377,7 +399,7 @@ function ChatThreadComponent({
           )}
         </View>
 
-        <Pressable className="ml-2 min-w-0 flex-1" onPress={onEditName} accessibilityRole="button" accessibilityLabel="Edit friend's name">
+        <Pressable className="ml-2 min-w-0 flex-1" onPress={onViewProfile} accessibilityRole="button" accessibilityLabel="View participant profile">
           <Text className="text-[11px] font-bold text-black/45">{conversationKind === 'market' ? 'MARKET CHAT' : 'PRIVATE CHAT'}</Text>
           <Text className="font-mono text-[12px] font-black text-g000st-black" numberOfLines={1}>
             {isParticipantDeleted ? 'Deleted account' : participantDisplayName || shortId(participantPublicId)}
@@ -587,7 +609,7 @@ function ChatThreadComponent({
               </View>
             ) : null}
             <Text className="pt-0.5 text-center text-[10px] font-bold leading-3 my-0.5 text-black/40">
-              Kept {conversationKind === 'market' ? '30 days' : '2 hours'}{conversationKind === 'market' ? '' : ` · Burn 5s ${burnAfterRead ? 'ON' : 'OFF'}`} · Screenshots possible
+              messages will be burned in {conversationKind === 'market' ? '30 days' : '2 hours'} automatically... screenshot NOT available
             </Text>
           </View>
         )}

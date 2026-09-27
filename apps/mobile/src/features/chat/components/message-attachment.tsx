@@ -14,6 +14,7 @@ type MessageAttachmentProps = Readonly<{
   attachment: ChatAttachment;
   conversationId: string;
   messageId: string;
+  onLongPress?: () => void;
 }>;
 
 function RemoteVideo({ uri }: Readonly<{ uri: string }>) {
@@ -36,7 +37,7 @@ function formatDuration(value: number): string {
 
 const waveform = [5, 11, 16, 9, 19, 13, 7, 15, 20, 10, 17, 8, 14, 6, 12, 18];
 
-function RemoteAudio({ durationMs, uri }: Readonly<{ durationMs?: number; uri: string }>) {
+function RemoteAudio({ durationMs, onLongPress, uri }: Readonly<{ durationMs?: number; onLongPress?: () => void; uri: string }>) {
   const player = useAudioPlayer(uri, { updateInterval: 100 });
   const status = useAudioPlayerStatus(player);
   const progress = status.duration > 0 ? Math.min(1, status.currentTime / status.duration) : 0;
@@ -52,7 +53,7 @@ function RemoteAudio({ durationMs, uri }: Readonly<{ durationMs?: number; uri: s
   return (
     <View className="w-64 rounded-[18px] bg-black/10 px-3 py-3">
       <View className="flex-row items-center">
-        <Pressable accessibilityLabel={status.playing ? 'Pause voice message' : 'Play voice message'} accessibilityRole="button" className="h-10 w-10 items-center justify-center rounded-full bg-g000st-black" onPress={toggle}>
+        <Pressable accessibilityLabel={status.playing ? 'Pause voice message' : 'Play voice message'} accessibilityRole="button" className="h-10 w-10 items-center justify-center rounded-full bg-g000st-black" delayLongPress={2000} onLongPress={onLongPress} onPress={toggle}>
           <Text className="ml-px text-sm font-black text-white">{status.playing ? 'Ⅱ' : '▶'}</Text>
         </Pressable>
         <View className="ml-3 flex-1">
@@ -73,6 +74,7 @@ function MessageAttachmentComponent({
   attachment,
   conversationId,
   messageId,
+  onLongPress,
 }: MessageAttachmentProps) {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -119,6 +121,8 @@ function MessageAttachmentComponent({
     return (
       <Pressable
         className="w-60 flex-row items-center rounded-[14px] bg-black/10 p-3"
+        delayLongPress={2000}
+        onLongPress={onLongPress}
         onPress={() => void Linking.openURL(downloadUrl)}
       >
         <Text className="mr-3 text-3xl">📄</Text>
@@ -131,12 +135,12 @@ function MessageAttachmentComponent({
   }
 
   if (attachment.kind === 'audio') {
-    return <RemoteAudio durationMs={attachment.durationMs} uri={downloadUrl} />;
+    return <RemoteAudio durationMs={attachment.durationMs} onLongPress={onLongPress} uri={downloadUrl} />;
   }
 
   return (
     <>
-      <Pressable className="h-52 w-64 overflow-hidden rounded-[16px] bg-black" onPress={() => setIsOpen(true)}>
+      <Pressable className="h-52 w-64 overflow-hidden rounded-[16px] bg-black" delayLongPress={2000} onLongPress={onLongPress} onPress={() => setIsOpen(true)}>
         {attachment.kind === 'image' ? (
           <Image className="h-full w-full" contentFit="cover" source={downloadUrl} />
         ) : (

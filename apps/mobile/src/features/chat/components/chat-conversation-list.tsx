@@ -10,6 +10,8 @@ type ChatConversationListProps = Readonly<{
   error: string | null;
   isLoading: boolean;
   onOpen: (conversation: ChatConversationSummary) => void;
+  onDelete: (conversation: ChatConversationSummary) => void;
+  deletingConversationId?: string | null;
   onRefresh: () => void;
   onStart: () => void;
 }>;
@@ -29,6 +31,8 @@ function ChatConversationListComponent({
   error,
   isLoading,
   onOpen,
+  onDelete,
+  deletingConversationId,
   onRefresh,
   onStart,
 }: ChatConversationListProps) {
@@ -77,12 +81,13 @@ function ChatConversationListComponent({
       onRefresh={onRefresh}
       refreshing={false}
       renderItem={({ item }) => (
-        <Pressable
-          accessibilityHint={item.kind === 'market' ? 'Opens this Market conversation' : 'Opens this private conversation'}
-          accessibilityRole="button"
-          className="mb-2 flex-row items-center rounded-[18px] border border-white/60 bg-[#E2E2E2] p-3"
-          onPress={() => onOpen(item)}
-        >
+        <View className="mb-2 flex-row items-center rounded-[18px] border border-white/60 bg-[#E2E2E2]">
+          <Pressable
+            accessibilityHint={item.kind === 'market' ? 'Opens this Market conversation' : 'Opens this private conversation'}
+            accessibilityRole="button"
+            className="min-w-0 flex-1 flex-row items-center p-3"
+            onPress={() => onOpen(item)}
+          >
           <View className="h-11 w-11 items-center justify-center rounded-full bg-g000st-silver">
             <Text className="text-base font-black text-white">g</Text>
           </View>
@@ -111,7 +116,17 @@ function ChatConversationListComponent({
               </View>
             ) : null}
           </View>
-        </Pressable>
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Delete conversation"
+            accessibilityRole="button"
+            className="mr-2 min-h-11 min-w-11 items-center justify-center rounded-full"
+            disabled={deletingConversationId === item.conversationId}
+            onPress={() => onDelete(item)}
+          >
+            <Text className="text-[11px] font-bold text-g000st-red">Delete</Text>
+          </Pressable>
+        </View>
       )}
     />
     </View>

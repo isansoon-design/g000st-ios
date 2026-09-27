@@ -21,10 +21,17 @@ export type EditMessageResult =
   | Readonly<{ status: 'updated'; message: ChatMessage }>
   | Readonly<{ status: 'not_found' | 'forbidden' | 'not_editable' }>;
 
+export type DeleteMessageResult =
+  | Readonly<{ status: 'deleted'; message: ChatMessage }>
+  | Readonly<{ status: 'not_found' }>
+  | Readonly<{ status: 'forbidden' }>;
+
 export interface ChatStore {
   createTextMessage(message: ChatMessage): Promise<CreateTextMessageResult>;
+  hideConversation(conversationId: string, publicId: string, nowMs: number): Promise<void>;
   findMessage(conversationId: string, messageId: string): Promise<ChatMessage | null>;
   editMessage(conversationId: string, messageId: string, senderPublicId: string, content: string, nowMs: number): Promise<EditMessageResult>;
+  deleteMessage(conversationId: string, messageId: string, senderPublicId: string, nowMs: number): Promise<DeleteMessageResult>;
   findConversation(conversationId: string): Promise<ChatConversation | null>;
   findConversationMember(
     publicId: string,

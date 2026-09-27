@@ -89,7 +89,7 @@ class ActiveUsersStore implements AuthStore {
 
 class MemoryChatStore implements ChatStore {
   readonly conversations = new Map<string, ChatConversation>();
-  readonly members = new Map<string, ChatConversationMemberSummary>();
+  readonly members = new Map<string, ChatConversationMemberSummary & { hiddenAtMs?: number }>();
   readonly messages = new Map<string, ChatMessage[]>();
   readonly readBy = new Map<string, number>();
 
@@ -102,7 +102,14 @@ class MemoryChatStore implements ChatStore {
     const participants = [firstPublicId, secondPublicId].sort() as [string, string];
     const id = marketPostId ? `market--${marketPostId}--${participants.join('--')}` : participants.join('--');
     const existing = this.conversations.get(id);
-    if (existing) return existing;
+    if (existing) {
+      const member = this.members.get(`${firstPublicId}:${id}`);
+      if (member) {
+        const { hiddenAtMs: _hiddenAtMs, ...visible } = member;
+        this.members.set(`${firstPublicId}:${id}`, visible);
+      }
+      return existing;
+    }
 
     const conversation = { createdAtMs: nowMs, id, kind: marketPostId ? 'market' as const : 'private' as const, ...(marketPostId ? { marketPostId } : {}), participants, updatedAtMs: nowMs } as const;
     this.conversations.set(id, conversation);
@@ -131,6 +138,23 @@ class MemoryChatStore implements ChatStore {
     return this.members.get(`${publicId}:${conversationId}`) ?? null;
   }
 
+  async hideConversation(conversationId: string, publicId: string, nowMs: number): Promise<void> {
+    const key = `${publicId}:${conversationId}`;
+    const summary = this.members.get(key);
+    if (!summary) throw new Error('Conversation membership disappeared.');
+    this.members.set(key, {
+      ...summary,
+      hiddenAtMs: nowMs,
+      firstUnreadCreatedAtMs: undefined,
+      firstUnreadExpiresAtMs: undefined,
+      firstUnreadMessageId: undefined,
+      lastReadAtMs: summary.lastMessageCreatedAtMs,
+      lastReadMessageId: summary.lastMessageId,
+      lastReadObservedAtMs: nowMs,
+      unreadCount: 0,
+    });
+  }
+
   async findMessage(conversationId: string, messageId: string): Promise<ChatMessage | null> {
     return (this.messages.get(conversationId) ?? []).find((message) => message.id === messageId) ?? null;
   }
@@ -147,13 +171,43 @@ class MemoryChatStore implements ChatStore {
     return { status: 'updated' as const, message: updated };
   }
 
+  async deleteMessage(conversationId: string, messageId: string, senderPublicId: string, nowMs: number) {
+    const messages = this.messages.get(conversationId) ?? [];
+    const message = messages.find((candidate) => candidate.id === messageId);
+    if (!message || message.expiresAtMs <= nowMs) return { status: 'not_found' as const };
+    if (message.senderPublicId !== senderPublicId) return { status: 'forbidden' as const };
+    const remaining = messages.filter((candidate) => candidate.id !== messageId);
+    this.messages.set(conversationId, remaining);
+    const previous = remaining.filter((candidate) => candidate.expiresAtMs > nowMs).at(-1);
+    for (const publicId of this.conversations.get(conversationId)!.participants) {
+      const key = `${publicId}:${conversationId}`;
+      const summary = this.members.get(key)!;
+      const wasUnread = publicId !== senderPublicId && summary.unreadCount > 0 &&
+        (summary.lastReadAtMs === undefined || summary.lastReadMessageId === undefined ||
+          message.createdAtMs > summary.lastReadAtMs ||
+          (message.createdAtMs === summary.lastReadAtMs && message.id > summary.lastReadMessageId));
+      this.members.set(key, {
+        ...summary,
+        ...(wasUnread ? { unreadCount: summary.unreadCount - 1, firstUnreadExpiresAtMs: 0 } : {}),
+        ...(summary.lastMessageId === messageId ? {
+          lastMessageId: previous?.id,
+          lastMessageCreatedAtMs: previous?.createdAtMs,
+          lastMessagePreview: previous ? 'Message' : '',
+          lastMessageSenderId: previous?.senderPublicId,
+          updatedAtMs: previous?.createdAtMs ?? this.conversations.get(conversationId)!.createdAtMs,
+        } : {}),
+      });
+    }
+    return { status: 'deleted' as const, message };
+  }
+
   async listConversations(
     publicId: string,
     limit: number,
     nowMs: number,
   ): Promise<readonly ChatConversationMemberSummary[]> {
     return [...this.members.entries()]
-      .filter(([key]) => key.startsWith(`${publicId}:`))
+      .filter(([key, summary]) => key.startsWith(`${publicId}:`) && summary.hiddenAtMs === undefined)
       .map(([key, summary]) => {
         if (summary.unreadCount === 0) return summary;
 
@@ -245,6 +299,7 @@ class MemoryChatStore implements ChatStore {
     this.members.set(recipientKey, {
       ...recipient,
       ...common,
+      hiddenAtMs: undefined,
       ...(recipient.unreadCount
         ? {}
         : {
@@ -255,7 +310,7 @@ class MemoryChatStore implements ChatStore {
       unreadCount: recipient.unreadCount + 1,
     });
     const senderKey = `${message.senderPublicId}:${message.conversationId}`;
-    this.members.set(senderKey, { ...this.members.get(senderKey)!, ...common });
+    this.members.set(senderKey, { ...this.members.get(senderKey)!, ...common, hiddenAtMs: undefined });
     messages.push(message);
     this.messages.set(message.conversationId, messages);
     return { created: true, message };
@@ -419,6 +474,51 @@ describe('ChatService', () => {
     const conversation = await service.startConversation(USER_A, USER_B);
     const sent = await service.sendTextMessage(USER_A, conversation.id, { content: 'Private', burnAfterRead: true });
     await assert.rejects(() => service.editMessage(USER_A, conversation.id, sent.id, 'Changed'), expectApiError('MESSAGE_NOT_EDITABLE'));
+  });
+
+  it('only lets the sender delete a message and updates the conversation and unread count', async () => {
+    const { service } = createFixture();
+    const conversation = await service.startConversation(USER_A, USER_B);
+    const first = await service.sendTextMessage(USER_A, conversation.id, { content: 'First' });
+    const latest = await service.sendTextMessage(USER_A, conversation.id, { content: 'Latest', burnAfterRead: true });
+    await assert.rejects(() => service.deleteMessage(USER_B, conversation.id, latest.id), expectApiError('MESSAGE_NOT_OWNED'));
+    await assert.rejects(() => service.deleteMessage(USER_C, conversation.id, latest.id), expectApiError('CONVERSATION_NOT_FOUND'));
+    await service.deleteMessage(USER_A, conversation.id, latest.id);
+    assert.deepEqual((await service.listMessages(USER_B, conversation.id, 50)).messages.map((message) => message.id), [first.id]);
+    const summary = (await service.listConversations(USER_B, 10))[0];
+    assert.equal(summary?.lastMessageId, first.id);
+    assert.equal(summary?.unreadCount, 1);
+    await assert.rejects(() => service.deleteMessage(USER_A, conversation.id, latest.id), expectApiError('MESSAGE_NOT_FOUND'));
+    await service.deleteMessage(USER_A, conversation.id, first.id);
+    const empty = (await service.listConversations(USER_B, 10))[0];
+    assert.equal(empty?.lastMessageId, undefined);
+    assert.equal(empty?.unreadCount, 0);
+  });
+
+  it('hides a conversation only for the viewer and restores it on a new message', async () => {
+    const { service, advance } = createFixture();
+    const conversation = await service.startConversation(USER_A, USER_B);
+    await service.sendTextMessage(USER_A, conversation.id, { content: 'Before deletion' });
+    await assert.rejects(
+      () => service.hideConversation(USER_C, conversation.id),
+      expectApiError('CONVERSATION_NOT_FOUND'),
+    );
+
+    await service.hideConversation(USER_B, conversation.id);
+    assert.equal((await service.listConversations(USER_B, 10)).length, 0);
+    assert.equal((await service.listConversations(USER_A, 10)).length, 1);
+    assert.equal((await service.listMessages(USER_B, conversation.id, 10)).messages.length, 1);
+
+    advance(1);
+    await service.sendTextMessage(USER_A, conversation.id, { content: 'After deletion' });
+    const restored = (await service.listConversations(USER_B, 10))[0];
+    assert.equal(restored?.unreadCount, 1);
+    assert.equal(restored?.lastMessagePreview, 'Message');
+
+    await service.hideConversation(USER_B, conversation.id);
+    assert.equal((await service.listConversations(USER_B, 10)).length, 0);
+    await service.startConversation(USER_B, USER_A);
+    assert.equal((await service.listConversations(USER_B, 10)).length, 1);
   });
 
   it('creates one private conversation for the same two users', async () => {

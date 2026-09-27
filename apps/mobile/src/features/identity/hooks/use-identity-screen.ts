@@ -1,6 +1,8 @@
 import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
-import { useCallback, useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
 import Toast from "react-native-toast-message";
 
 import { deleteAccount } from "@/api/auth";
@@ -59,6 +61,10 @@ export function useIdentityScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoChangeInProgress = useRef(false);
+  const photoChangeVersion = useRef(0);
+  const lastProfileRefreshMs = useRef(0);
+  const profileRefreshInFlight = useRef(false);
   const [storedRecoveryId, setStoredRecoveryId] = useState<{ publicId: string; value: string | null } | null>(null);
   const recoveryId = storedRecoveryId && storedRecoveryId.publicId === user?.publicId ? storedRecoveryId.value : null;
 
@@ -83,6 +89,7 @@ export function useIdentityScreen() {
         const loaded = await getSocialProfile(user.publicId);
         if (cancelled) return;
         setProfile(loaded);
+        lastProfileRefreshMs.current = Date.now();
         void savedAccounts.updateProfile(loaded);
         setFields(toFields(loaded));
       } catch (error) {
@@ -104,6 +111,31 @@ export function useIdentityScreen() {
       cancelled = true;
     };
   }, [user?.publicId]);
+
+  const refreshProfilePhoto = useCallback(async () => {
+    if (!accountPublicId || photoChangeInProgress.current || !lastProfileRefreshMs.current || profileRefreshInFlight.current) return;
+    profileRefreshInFlight.current = true;
+    const version = photoChangeVersion.current;
+    try {
+      const loaded = await getSocialProfile(accountPublicId);
+      if (photoChangeInProgress.current || version !== photoChangeVersion.current) return;
+      setProfile(loaded);
+      lastProfileRefreshMs.current = Date.now();
+      void savedAccounts.updateProfile(loaded);
+    } catch {
+      // Keep the current profile visible; the next focus can retry the refresh.
+    } finally {
+      profileRefreshInFlight.current = false;
+    }
+  }, [accountPublicId]);
+
+  useFocusEffect(useCallback(() => {
+    void refreshProfilePhoto();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void refreshProfilePhoto();
+    });
+    return () => subscription.remove();
+  }, [refreshProfilePhoto]));
 
   const setField = useCallback(
     <K extends keyof IdentityProfileFields>(
@@ -136,51 +168,49 @@ export function useIdentityScreen() {
   }, [recoveryId]);
 
   const changePhoto = useCallback(async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Toast.show({
-        text1: "Photo",
-        text2: "Photo library permission is required.",
-        type: "error",
-      });
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.85,
-    });
-    if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
-    // asset.fileSize (from the picker) can differ from the bytes actually on disk once
-    // the OS finishes writing the picked/compressed file, which breaks the presigned PUT's
-    // signature (it requires an exact Content-Length). Read the real size right before upload.
-    const byteSize = new File(asset.uri).size ?? undefined;
-    if (!byteSize || !asset.mimeType || byteSize > 3 * 1024 * 1024) {
-      Toast.show({
-        text1: "Photo",
-        text2: "Photo must be 3 MB or smaller.",
-        type: "error",
-      });
-      return;
-    }
-    setUploadingPhoto(true);
+    if (!accountPublicId || photoChangeInProgress.current) return;
+    photoChangeInProgress.current = true;
     try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Toast.show({ text1: "Photo", text2: "Photo library permission is required.", type: "error" });
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.85,
+      });
+      if (result.canceled || !result.assets[0]) return;
+      photoChangeVersion.current += 1;
+      setUploadingPhoto(true);
+      const asset = result.assets[0];
+      // The picker size may differ from the final file size used by the signed PUT.
+      const byteSize = new File(asset.uri).size ?? undefined;
+      if (!byteSize || !asset.mimeType || byteSize > 3 * 1024 * 1024) {
+        Toast.show({ text1: "Photo", text2: "Photo must be 3 MB or smaller.", type: "error" });
+        return;
+      }
       const media = await uploadAvatarMedia({
         byteSize,
         contentType: asset.mimeType,
         fileName: asset.fileName || "avatar",
         uri: asset.uri,
       });
-      const saved = await updateSocialProfile({ avatarMedia: media });
+      const updated = await updateSocialProfile({ avatarMedia: media });
+      // Use a fresh read so success also confirms the photo survives a new session.
+      const saved = await getSocialProfile(accountPublicId);
+      if (!saved.avatarUrl || saved.updatedAtMs < updated.updatedAtMs) {
+        throw new Error("Could not confirm your profile photo. Please try again.");
+      }
       setProfile(saved);
+      lastProfileRefreshMs.current = Date.now();
       void savedAccounts.updateProfile(saved);
       Toast.show({
         text1: "Photo",
         text2: "Profile photo updated.",
         type: "success",
       });
-    } catch (error: any) {
-      console.log(error);
+    } catch (error) {
       Toast.show({
         text1: "Photo",
         text2:
@@ -191,8 +221,9 @@ export function useIdentityScreen() {
       });
     } finally {
       setUploadingPhoto(false);
+      photoChangeInProgress.current = false;
     }
-  }, []);
+  }, [accountPublicId]);
 
   const save = useCallback(async () => {
     setSaving(true);

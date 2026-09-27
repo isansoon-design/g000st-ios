@@ -58,6 +58,7 @@ import type {
 } from "@/domain/social/types";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useConfirmModal } from "@/providers/confirm-modal-provider";
+import { avatarImageSource } from "@/services/media/avatar-image-source";
 
 type ViewName = "home" | "mine" | "alerts";
 cssInterop(VideoView, { className: "style" });
@@ -719,14 +720,14 @@ function SuggestedPeople({ suggestions, followingId, onFollow }: {
         {suggestions.map((person) => (
           <View key={person.publicId} className="w-44 items-center rounded-xl border border-black/10 bg-[#F6F6F7] p-3">
             <View className="h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#222]">
-              {person.avatarUrl ? <Image source={{ uri: person.avatarUrl }} className="h-12 w-12" /> : <Text className="text-sm font-bold text-white">{person.displayName.slice(0, 1).toUpperCase()}</Text>}
+              {person.avatarUrl ? <Image source={avatarImageSource(person.avatarUrl)} className="h-12 w-12" /> : <Text className="text-sm font-bold text-white">{person.displayName.slice(0, 1).toUpperCase()}</Text>}
             </View>
             <Text numberOfLines={1} className="mt-2 w-full text-center text-sm font-bold">{person.displayName}</Text>
             <Text numberOfLines={2} className="mt-1 h-8 text-center text-[11px] text-black/55">
               {person.reason === 'friends_of_friends' ? 'Followed by people you follow' : 'Discover someone new'}
             </Text>
             <Pressable disabled={followingId !== null} onPress={() => void onFollow(person.publicId)} className="mt-2 w-full rounded-lg bg-[#222] px-3 py-2 disabled:opacity-40">
-              <Text className="text-center text-xs font-bold text-white">{followingId === person.publicId ? 'Following…' : 'Follow'}</Text>
+              <Text className="text-center text-xs font-bold text-white">{followingId === person.publicId ? '✓' : '➕'}</Text>
             </Pressable>
           </View>
         ))}
@@ -765,7 +766,7 @@ function PostCard({
         <View className="h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-black">
           {post.author.avatarUrl ? (
             <Image
-              source={{ uri: post.author.avatarUrl }}
+              source={avatarImageSource(post.author.avatarUrl)}
               contentFit="cover"
               style={{ height: "100%", width: "100%" }}
             />
@@ -872,12 +873,12 @@ function PostCard({
         />
         {post.ownerPublicId && !post.ownedByViewer && (
           <Action
-            label={post.campedByViewer ? "Following" : "+ Follow"}
+            label={post.campedByViewer ? "✓" : "➕"}
             onPress={onCamp}
           />
         )}
 
-        <Action label="Share" onPress={onShare} />
+        <Action label="↗️" onPress={onShare} />
         {post.ownerPublicId && !post.ownedByViewer && (
           <Action label="Chat" onPress={() => onChat(post.ownerPublicId)} />
         )}

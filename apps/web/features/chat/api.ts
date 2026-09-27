@@ -97,6 +97,14 @@ export async function editChatMessage(conversationId: string, messageId: string,
   return response.data.message;
 }
 
+export async function deleteChatMessage(conversationId: string, messageId: string): Promise<void> {
+  await axios.delete(`/chat/v1/conversations/${conversationId}/messages/${messageId}`);
+}
+
+export async function deleteChatConversation(conversationId: string): Promise<void> {
+  await axios.delete(`/chat/v1/conversations/${conversationId}`);
+}
+
 export async function markChatConversationRead(conversationId: string): Promise<void> {
   await axios.post(`/chat/conversations/${conversationId}/read`);
 }
