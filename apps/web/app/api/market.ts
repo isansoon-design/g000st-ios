@@ -12,6 +12,7 @@ export async function listMarketPosts(cursor?: string, ownerId?: string) { const
 export async function createMarketPost(clientPostId: string, fields: MarketPostFields, media?: PendingMarketMedia[]) { const { data } = await axios.post<{ post: MarketPost }>('/market/posts', { clientPostId, ...fields, ...(media?.length ? { media } : {}) }); return data.post; }
 export async function updateMarketPost(postId: string, fields: MarketPostFields) { const { data } = await axios.patch<{ post: MarketPost }>(`/market/posts/${postId}`, fields); return data.post; }
 export async function deleteMarketPost(postId: string) { await axios.delete(`/market/posts/${postId}`); }
+export async function reportMarketPost(postId: string) { await axios.post('/market/reports', { postId, reason: 'other' }); }
 export async function toggleMarketLike(postId: string) { const { data } = await axios.post<{ liked: boolean; likeCount: number }>(`/market/posts/${postId}/like`); return data; }
 export async function listMarketComments(postId: string, cursor?: string) { const { data } = await axios.get<MarketPage<MarketComment>>(`/market/posts/${postId}/comments`, { params: { cursor, limit: 20 } }); return data; }
 export async function createMarketComment(postId: string, content: string) { const { data } = await axios.post<{ comment: MarketComment }>(`/market/posts/${postId}/comments`, { content }); return data.comment; }

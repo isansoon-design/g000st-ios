@@ -56,3 +56,9 @@ export type UpdateMarketPostInput = Readonly<{
   allowCalls?: boolean;
   allowVideoCalls?: boolean;
 }>;
+
+export type CreateMarketReportInput = Readonly<{
+  postId: string;
+  reason: 'spam' | 'harassment' | 'violence' | 'sexual' | 'privacy' | 'other';
+  details?: string;
+}>;

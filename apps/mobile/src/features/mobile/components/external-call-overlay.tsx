@@ -68,7 +68,7 @@ function ExternalCallOverlayComponent({
         {status === 'ended' ? (
           <Pressable
             accessibilityRole="button"
-            className="h-12 items-center justify-center rounded-full border border-white/40 px-8"
+            className="h-12 items-center justify-center rounded-full border border-white/40 dark:border-white/20 px-8"
             onPress={onClose}
           >
             <Text className="font-black text-white">Close</Text>

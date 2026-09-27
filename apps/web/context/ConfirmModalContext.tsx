@@ -64,13 +64,13 @@ export function ConfirmModalProvider({ children }: { children: React.ReactNode }
       {children}
       {isOpen && options && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-sm mx-4 bg-white rounded-lg shadow-lg p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">{options.title}</h2>
-            <p className="text-gray-600">{options.message}</p>
+          <div className="w-full max-w-sm mx-4 bg-white dark:bg-night-surface rounded-lg shadow-lg p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-night-text">{options.title}</h2>
+            <p className="text-gray-600 dark:text-night-muted">{options.message}</p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={handleCancel}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                className="px-4 py-2 text-gray-700 dark:text-night-muted bg-gray-100 dark:bg-night-raised rounded-lg hover:bg-gray-200"
               >
                 {options.cancelLabel || "Cancel"}
               </button>

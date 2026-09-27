@@ -237,16 +237,16 @@ export default function MobilePage() {
   const btnStyle: React.CSSProperties = {
     width: 74, height: 74, borderRadius: "50%",
     border: "1px solid #b0b0b0",
-    background: "linear-gradient(180deg,#f7f7f7,#d4d4d4)",
-    color: "#111", display: "flex", flexDirection: "column" as const,
+    background: "linear-gradient(180deg,var(--tone-bg-f7f7f7),var(--tone-bg-d4d4d4))",
+    color: "var(--app-text)", display: "flex", flexDirection: "column" as const,
     alignItems: "center", justifyContent: "center", padding: 0, cursor: "pointer",
   };
 
   const tabBtnStyle = (active: boolean): React.CSSProperties => ({
     height: 36, padding: "0 16px", borderRadius: 12,
     border: active ? "1.5px solid #9A9A9A" : "1px solid #ccc",
-    background: active ? "linear-gradient(180deg,#B8B8B8,#9A9A9A)" : "#e8e8e8",
-    color: active ? "#fff" : "#333", fontWeight: 800, fontSize: 12, cursor: "pointer",
+    background: active ? "linear-gradient(180deg,var(--tone-bg-b8b8b8),var(--app-control))" : "var(--tone-bg-e8e8e8)",
+    color: active ? "var(--tone-fg-ffffff)" : "var(--tone-fg-333333)", fontWeight: 800, fontSize: 12, cursor: "pointer",
   });
 
   const callStatusLabel: Record<string, string> = {
@@ -257,27 +257,27 @@ export default function MobilePage() {
   };
   function Brand() {
     return (
-      <span className="text-[17px] font-black tracking-tight text-[#111]">
+      <span className="text-[17px] font-black tracking-tight text-[#111] dark:text-night-text">
         g<span className="text-[#C62828]">000</span>st
       </span>
     );
   }
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#D8D8D8", overflow: "hidden", color: "#111", position: "relative" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--app-canvas)", overflow: "hidden", color: "var(--app-text)", position: "relative" }}>
 
       {/* Top bar */}
       <div style={{
         flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "6px 16px",
-        background: "linear-gradient(180deg,#fafafa 0%,#d8d8d8 45%,#b0b0b0 100%)",
+        background: "linear-gradient(180deg,var(--tone-bg-fafafa) 0%,var(--app-canvas) 45%,var(--tone-bg-b0b0b0) 100%)",
         boxShadow: "inset 0 2px 0 rgba(255,255,255,.9),0 4px 12px rgba(0,0,0,.1)",
         borderBottom: "1px solid rgba(0,0,0,.12)",
       }}>
         <div style={{ width: 40 }} /> {/* spacer */}
-        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", color: "#C62828" }}>NO TRACE</div>
+        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", color: "var(--tone-fg-c62828)" }}>NO TRACE</div>
         <button onClick={() => setTab("plans")} style={{
           width: 40, height: 36, borderRadius: 18, border: "1px solid #999",
-          background: "#eee", color: "#111", fontWeight: 900, fontSize: 16, cursor: "pointer",
+          background: "var(--tone-bg-eeeeee)", color: "var(--app-text)", fontWeight: 900, fontSize: 16, cursor: "pointer",
         }}>£</button>
       </div>
 
@@ -291,13 +291,13 @@ export default function MobilePage() {
       {/* KEYPAD TAB */}
       {tab === "keypad" && (
         <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <div style={{ textAlign: "center", fontSize: 30, fontWeight: 800, letterSpacing: "0.04em", color: "#111", minHeight: 44, padding: "10px 16px 4px" }}>
+          <div style={{ textAlign: "center", fontSize: 30, fontWeight: 800, letterSpacing: "0.04em", color: "var(--app-text)", minHeight: 44, padding: "10px 16px 4px" }}>
             {dialDisplay === "g000st" ? <Brand /> : dialDisplay}
           </div>
-          <div style={{ marginTop: 4, textAlign: "center", fontSize: 10, fontWeight: 800, color: "#666", marginBottom: 6 }}>
+          <div style={{ marginTop: 4, textAlign: "center", fontSize: 10, fontWeight: 800, color: "var(--app-muted)", marginBottom: 6 }}>
             PRIVATE NUMBER · NO RECORDING
           </div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#333", textAlign: "center", marginBottom: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--tone-fg-333333)", textAlign: "center", marginBottom: 6 }}>
             {balance ? `${Math.floor(balance.voiceSecondsRemaining / 60)} min · ${balance.smsRemaining} SMS` : "No credit"}
           </div>
 
@@ -311,7 +311,7 @@ export default function MobilePage() {
             ].map(([d, sub]) => (
               <button key={d} onClick={() => digit(d)} style={btnStyle}>
                 <b style={{ fontSize: 30, fontWeight: 500, lineHeight: 1 }}>{d}</b>
-                {sub && <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", color: "#666", textDecoration: "none", marginTop: 2 }}>{sub}</span>}
+                {sub && <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", color: "var(--app-muted)", textDecoration: "none", marginTop: 2 }}>{sub}</span>}
               </button>
             ))}
           </div>
@@ -320,7 +320,7 @@ export default function MobilePage() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 28, margin: "16px 0 8px" }}>
             <button onClick={() => { setTab("sms"); }} style={{
               minWidth: 72, height: 56, borderRadius: 16, border: "2px solid #111",
-              background: "#fff", color: "#111", fontWeight: 900, fontSize: 16, letterSpacing: "0.04em", cursor: "pointer",
+              background: "var(--app-surface)", color: "var(--app-text)", fontWeight: 900, fontSize: 16, letterSpacing: "0.04em", cursor: "pointer",
             }}>SMS</button>
             <button onClick={() => void handleCall()} disabled={externalCall.status !== "idle" && externalCall.status !== "error"} style={{
               width: 70, height: 70, borderRadius: "50%", border: 0, background: "#34C759", cursor: "pointer",
@@ -332,20 +332,20 @@ export default function MobilePage() {
               </svg>
             </button>
             <button onClick={backspace} style={{
-              width: 44, height: 32, border: 0, background: "transparent", color: "#444", fontSize: 22, cursor: "pointer",
+              width: 44, height: 32, border: 0, background: "transparent", color: "var(--tone-fg-444444)", fontSize: 22, cursor: "pointer",
             }}>⌫</button>
           </div>
 
           <div style={{ padding: "0 16px", marginTop: 8, width: "100%", boxSizing: "border-box" as const }}>
             <button style={{
               width: "100%", height: 46, borderRadius: 12, border: "1px solid #555",
-              background: "#e8e8e8", color: "#222", fontWeight: 800, fontSize: 16, cursor: "pointer",
+              background: "var(--tone-bg-e8e8e8)", color: "var(--tone-fg-222222)", fontWeight: 800, fontSize: 16, cursor: "pointer",
             }} onClick={() => toast("Contacts coming soon")}>Contacts</button>
           </div>
           <button onClick={() => setTab("plans")} style={{
             display: "block", width: "calc(100% - 32px)", margin: "4px 16px 16px", height: 46,
-            borderRadius: 14, border: "2px solid #C62828", background: "#fff",
-            color: "#C62828", fontWeight: 900, fontSize: 14, cursor: "pointer",
+            borderRadius: 14, border: "2px solid #C62828", background: "var(--app-surface)",
+            color: "var(--tone-fg-c62828)", fontWeight: 900, fontSize: 14, cursor: "pointer",
           }}>
             Buy number · £5 / £10 / £25
           </button>
@@ -359,14 +359,14 @@ export default function MobilePage() {
             <div style={{ fontWeight: 900, fontSize: 22 }}>SMS</div>
             <button style={{
               height: 36, padding: "0 12px", borderRadius: 12, border: "1px solid #333",
-              background: "#fff", color: "#333", fontWeight: 800, fontSize: 12, cursor: "pointer",
+              background: "var(--app-surface)", color: "var(--tone-fg-333333)", fontWeight: 800, fontSize: 12, cursor: "pointer",
             }} onClick={() => toast("Contacts coming soon")}>Names</button>
           </div>
           <input value={smsTo} onChange={(e) => setSmsTo(e.target.value)}
             placeholder="To: number or name"
             style={{
-              height: 58, borderRadius: 12, border: "1px solid #888", background: "#fff",
-              color: "#111", padding: "0 12px", fontSize: 18, fontWeight: 700, outline: "none",
+              height: 58, borderRadius: 12, border: "1px solid #888", background: "var(--app-surface)",
+              color: "var(--app-text)", padding: "0 12px", fontSize: 18, fontWeight: 700, outline: "none",
               marginBottom: 8, boxSizing: "border-box" as const, width: "100%",
             }} />
           <textarea
@@ -375,29 +375,29 @@ export default function MobilePage() {
             rows={4}
             style={{
               width: "100%", height: 120, minHeight: 120, borderRadius: 12, border: "1px solid #888",
-              background: "#fff", color: "#111", padding: 12, fontSize: 16, lineHeight: 1.35,
+              background: "var(--app-surface)", color: "var(--app-text)", padding: 12, fontSize: 16, lineHeight: 1.35,
               resize: "none" as const, outline: "none", marginBottom: 8, boxSizing: "border-box" as const,
               fontWeight: 600,
             }} />
           <button onClick={handleSendSms} disabled={smsSending} style={{
             width: "100%", height: 52, borderRadius: 16, border: 0,
-            background: "#333", color: "#fff", fontWeight: 900, fontSize: 18, marginBottom: 10,
+            background: "var(--tone-bg-333333)", color: "var(--tone-fg-ffffff)", fontWeight: 900, fontSize: 18, marginBottom: 10,
             cursor: smsSending ? "default" : "pointer", opacity: smsSending ? 0.6 : 1,
           }}>{smsSending ? "Sending…" : "Send"}</button>
           <div style={{
-            flex: 1, minHeight: 80, background: "#ececec", borderRadius: 16, padding: 14,
+            flex: 1, minHeight: 80, background: "var(--tone-bg-ececec)", borderRadius: 16, padding: 14,
             overflow: "auto", fontSize: 14,
           }}>
             {smsHistoryLoading
-              ? <span style={{ color: "#888" }}>Loading…</span>
+              ? <span style={{ color: "var(--tone-fg-888888)" }}>Loading…</span>
               : smsHistoryError
-                ? <span style={{ color: "#9b1c1c" }}>Could not load SMS history. <button onClick={() => void loadSmsHistory()} style={{ border: 0, background: "none", color: "#9b1c1c", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Retry</button></span>
+                ? <span style={{ color: "var(--tone-fg-9b1c1c)" }}>Could not load SMS history. <button onClick={() => void loadSmsHistory()} style={{ border: 0, background: "none", color: "var(--tone-fg-9b1c1c)", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Retry</button></span>
                 : smsHistory.length === 0
-                  ? <span style={{ color: "#888" }}>SMS log will appear here</span>
+                  ? <span style={{ color: "var(--tone-fg-888888)" }}>SMS log will appear here</span>
                   : smsHistory.map((message) => (
                     <div key={message.id} style={{ marginBottom: 6, fontWeight: 600 }}>
                       → {message.toE164}: {message.body}
-                      <span style={{ marginLeft: 6, fontWeight: 700, fontSize: 11, color: message.status === "delivery_failed" || message.status === "sending_failed" ? "#C62828" : "#666" }}>
+                      <span style={{ marginLeft: 6, fontWeight: 700, fontSize: 11, color: message.status === "delivery_failed" || message.status === "sending_failed" ? "var(--tone-fg-c62828)" : "var(--app-muted)" }}>
                         [{message.status}]
                       </span>
                     </div>
@@ -409,38 +409,38 @@ export default function MobilePage() {
 
       {/* PLANS TAB */}
       {tab === "plans" && (
-        <div style={{ flex: 1, overflowY: "auto", padding: "8px 16px 24px", background: "#f3f3f3" }}>
-          <div style={{ textAlign: "center", fontWeight: 800, fontSize: 11, letterSpacing: "0.12em", color: "#C62828", margin: "6px 0 14px" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "8px 16px 24px", background: "var(--tone-bg-f3f3f3)" }}>
+          <div style={{ textAlign: "center", fontWeight: 800, fontSize: 11, letterSpacing: "0.12em", color: "var(--tone-fg-c62828)", margin: "6px 0 14px" }}>
             NO TRACE · PRIVATE · NO RECORDING
           </div>
 
           {skusLoading && (
-            <div style={{ textAlign: "center", color: "#888", padding: "24px 0" }}>Loading…</div>
+            <div style={{ textAlign: "center", color: "var(--tone-fg-888888)", padding: "24px 0" }}>Loading…</div>
           )}
 
           {skusError && (
-            <div style={{ textAlign: "center", color: "#9b1c1c", padding: "12px 0" }}>
+            <div style={{ textAlign: "center", color: "var(--tone-fg-9b1c1c)", padding: "12px 0" }}>
               Could not load bundles.{" "}
-              <button onClick={() => void loadSkus()} style={{ border: 0, background: "none", color: "#9b1c1c", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Retry</button>
+              <button onClick={() => void loadSkus()} style={{ border: 0, background: "none", color: "var(--tone-fg-9b1c1c)", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Retry</button>
             </div>
           )}
 
           {!skusLoading && !skusError && skus.length === 0 && (
-            <div style={{ textAlign: "center", color: "#888", padding: "24px 0" }}>No bundles available right now.</div>
+            <div style={{ textAlign: "center", color: "var(--tone-fg-888888)", padding: "24px 0" }}>No bundles available right now.</div>
           )}
 
           {skus.map((sku) => (
             <button key={sku.id} onClick={() => setSelectedPlan(sku.id)} style={{
               width: "100%", display: "flex", alignItems: "center", gap: 12, textAlign: "left",
-              background: selectedPlan === sku.id ? "#ffe8e8" : "#fff",
+              background: selectedPlan === sku.id ? "var(--tone-bg-ffe8e8)" : "var(--app-surface)",
               border: selectedPlan === sku.id ? "2.5px solid #C62828" : "1.5px solid #e4e4e4",
-              borderRadius: 18, padding: "18px 16px", minHeight: 76, color: "#111",
+              borderRadius: 18, padding: "18px 16px", minHeight: 76, color: "var(--app-text)",
               marginBottom: 12, boxShadow: "0 1px 0 rgba(0,0,0,.04)", cursor: "pointer",
             }}>
-              <div style={{ width: 36, fontSize: 22, color: "#C62828", textAlign: "center" }}>{SKU_ICON[sku.kind] ?? "•"}</div>
+              <div style={{ width: 36, fontSize: 22, color: "var(--tone-fg-c62828)", textAlign: "center" }}>{SKU_ICON[sku.kind] ?? "•"}</div>
               <div style={{ flex: 1 }}>
                 <b style={{ display: "block", fontSize: 16, fontWeight: 800 }}>{sku.label}</b>
-                <span style={{ display: "block", color: "#888", fontSize: 12, marginTop: 2 }}>
+                <span style={{ display: "block", color: "var(--tone-fg-888888)", fontSize: 12, marginTop: 2 }}>
                   {sku.kind === "voice_minutes" ? "Mobile voice" : "UK / EU / USA"}
                 </span>
               </div>
@@ -451,7 +451,7 @@ export default function MobilePage() {
           {selectedPlan && (
             <div style={{
               textAlign: "center", margin: "8px auto 12px", display: "inline-block",
-              background: "#f3c7c7", color: "#9b1c1c", borderRadius: 999,
+              background: "var(--tone-bg-f3c7c7)", color: "var(--tone-fg-9b1c1c)", borderRadius: 999,
               padding: "6px 12px", fontSize: 11, fontWeight: 700, width: "100%"
             }}>
               {skus.find((s) => s.id === selectedPlan)?.label} selected — tap Buy below
@@ -459,7 +459,7 @@ export default function MobilePage() {
           )}
 
           <button onClick={handleBuy} disabled={checkoutStarting || !selectedPlan} style={{
-            height: 56, borderRadius: 28, border: 0, background: "#111", color: "#fff",
+            height: 56, borderRadius: 28, border: 0, background: "var(--tone-bg-111111)", color: "var(--tone-fg-ffffff)",
             width: "78%", maxWidth: 280, margin: "18px auto 12px", display: "flex",
             alignItems: "center", justifyContent: "center",
             fontWeight: 800, fontSize: 18,
@@ -471,14 +471,14 @@ export default function MobilePage() {
 
           {!selectedPlan && !skusLoading && skus.length > 0 && (
             <div style={{
-              textAlign: "center", fontSize: 11, fontWeight: 700, color: "#9b1c1c",
-              background: "#f3c7c7", borderRadius: 999, padding: "6px 12px", margin: "0 auto", display: "inline-block", width: "100%"
+              textAlign: "center", fontSize: 11, fontWeight: 700, color: "var(--tone-fg-9b1c1c)",
+              background: "var(--tone-bg-f3c7c7)", borderRadius: 999, padding: "6px 12px", margin: "0 auto", display: "inline-block", width: "100%"
             }}>
               Choose a bundle then Buy
             </div>
           )}
 
-          <div style={{ textAlign: "center", fontSize: 11, color: "#888", marginTop: 10 }}>
+          <div style={{ textAlign: "center", fontSize: 11, color: "var(--tone-fg-888888)", marginTop: 10 }}>
             Card, Apple Pay, or Google Pay on the next screen
           </div>
         </div>
@@ -489,14 +489,14 @@ export default function MobilePage() {
         <div style={{
           position: "absolute", inset: 0, background: "rgba(17,17,17,0.94)",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          color: "#fff", padding: 24, gap: 16, zIndex: 10,
+          color: "var(--tone-fg-ffffff)", padding: 24, gap: 16, zIndex: 10,
         }}>
           <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.12em", color: "#8FE39A" }}>
             {callStatusLabel[externalCall.status]}
           </div>
           <div style={{ fontSize: 28, fontWeight: 800 }}>{dialDisplay}</div>
           {externalCall.status === "active" && (
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#bbb" }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--tone-fg-bbbbbb)" }}>
               {String(Math.floor(callDurationSec / 60)).padStart(2, "0")}:{String(callDurationSec % 60).padStart(2, "0")}
             </div>
           )}
@@ -504,15 +504,15 @@ export default function MobilePage() {
           {externalCall.status === "ended" ? (
             <button onClick={() => externalCall.reset()} style={{
               marginTop: 12, height: 48, padding: "0 32px", borderRadius: 24, border: "1px solid #666",
-              background: "transparent", color: "#fff", fontWeight: 800, fontSize: 16, cursor: "pointer",
+              background: "transparent", color: "var(--tone-fg-ffffff)", fontWeight: 800, fontSize: 16, cursor: "pointer",
             }}>Close</button>
           ) : (
             <div style={{ display: "flex", gap: 20, marginTop: 12 }}>
               {externalCall.status === "active" && (
                 <button onClick={() => externalCall.toggleMute()} style={{
                   width: 60, height: 60, borderRadius: "50%", border: "1px solid #666",
-                  background: externalCall.isMuted ? "#fff" : "transparent",
-                  color: externalCall.isMuted ? "#111" : "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer",
+                  background: externalCall.isMuted ? "var(--app-surface)" : "transparent",
+                  color: externalCall.isMuted ? "var(--app-text)" : "var(--tone-fg-ffffff)", fontWeight: 800, fontSize: 12, cursor: "pointer",
                 }}>{externalCall.isMuted ? "Unmute" : "Mute"}</button>
               )}
               <button onClick={() => externalCall.hangup()} style={{

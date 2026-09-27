@@ -49,17 +49,17 @@ export function ConfirmModalProvider({ children }: { children: ReactNode }) {
       {children}
       <Modal animationType="fade" transparent visible={isOpen} onRequestClose={handleCancel}>
         <View className="flex-1 items-center justify-center bg-black/50 px-4">
-          <View className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
+          <View className="w-full max-w-sm rounded-lg bg-white dark:bg-night-surface p-6 shadow-lg">
             {options && (
               <>
-                <Text className="mb-4 text-lg font-semibold text-gray-900">{options.title}</Text>
-                <Text className="mb-6 text-gray-600">{options.message}</Text>
+                <Text className="mb-4 text-lg font-semibold text-gray-900 dark:text-night-text">{options.title}</Text>
+                <Text className="mb-6 text-gray-600 dark:text-night-muted">{options.message}</Text>
                 <View className="flex-row justify-end gap-3">
                   <Pressable
                     onPress={handleCancel}
-                    className="rounded-lg bg-gray-100 px-4 py-2"
+                    className="rounded-lg bg-gray-100 dark:bg-night-raised px-4 py-2"
                   >
-                    <Text className="font-medium text-gray-700">{options.cancelLabel || 'Cancel'}</Text>
+                    <Text className="font-medium text-gray-700 dark:text-night-muted">{options.cancelLabel || 'Cancel'}</Text>
                   </Pressable>
                   <Pressable
                     onPress={handleConfirm}

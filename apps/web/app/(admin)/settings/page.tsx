@@ -31,36 +31,36 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50">
+    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-night-canvas">
       <div className="max-w-3xl mx-auto p-6">
         {/* Header */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">Admin Settings</h2>
-          <p className="text-gray-600 mt-2">Manage application configuration</p>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-night-text">Admin Settings</h2>
+          <p className="text-gray-600 dark:text-night-muted mt-2">Manage application configuration</p>
         </div>
 
         {/* Settings Sections */}
         <div className="space-y-6">
           {/* App Configuration */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white dark:bg-night-surface rounded-lg border border-gray-200 dark:border-night-border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-night-text mb-4">
               App Configuration
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-night-muted mb-2">
                   App Name
                 </label>
                 <input
                   type="text"
                   value={settings.appName}
                   onChange={(e) => handleChange("appName", e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-night-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-night-muted mb-2">
                   Brand Color
                 </label>
                 <div className="flex gap-4">
@@ -79,13 +79,13 @@ export default function SettingsPage() {
                       handleChange("customBrandColor", e.target.value)
                     }
                     placeholder="#000000"
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-night-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-night-muted mb-2">
                   Max Upload Size (MB)
                 </label>
                 <input
@@ -94,15 +94,15 @@ export default function SettingsPage() {
                   onChange={(e) =>
                     handleChange("maxUploadSize", parseInt(e.target.value))
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-night-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
           </div>
 
           {/* Features */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white dark:bg-night-surface rounded-lg border border-gray-200 dark:border-night-border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-night-text mb-4">
               Features
             </h3>
             <div className="space-y-4">
@@ -113,7 +113,7 @@ export default function SettingsPage() {
                   onChange={(e) => handleChange("enableChat", e.target.checked)}
                   className="w-4 h-4 rounded"
                 />
-                <span className="text-gray-900">Enable Chat</span>
+                <span className="text-gray-900 dark:text-night-text">Enable Chat</span>
               </label>
 
               <label className="flex items-center gap-3 cursor-pointer">
@@ -125,7 +125,7 @@ export default function SettingsPage() {
                   }
                   className="w-4 h-4 rounded"
                 />
-                <span className="text-gray-900">Enable Social Feed</span>
+                <span className="text-gray-900 dark:text-night-text">Enable Social Feed</span>
               </label>
 
               <label className="flex items-center gap-3 cursor-pointer">
@@ -137,7 +137,7 @@ export default function SettingsPage() {
                   }
                   className="w-4 h-4 rounded"
                 />
-                <span className="text-gray-900">Allow New Registrations</span>
+                <span className="text-gray-900 dark:text-night-text">Allow New Registrations</span>
               </label>
 
               <label className="flex items-center gap-3 cursor-pointer">
@@ -149,19 +149,19 @@ export default function SettingsPage() {
                   }
                   className="w-4 h-4 rounded"
                 />
-                <span className="text-gray-900">Maintenance Mode</span>
+                <span className="text-gray-900 dark:text-night-text">Maintenance Mode</span>
               </label>
             </div>
           </div>
 
           {/* Contact & Links */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white dark:bg-night-surface rounded-lg border border-gray-200 dark:border-night-border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-night-text mb-4">
               Contact & Legal
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-night-muted mb-2">
                   Support Email
                 </label>
                 <input
@@ -170,31 +170,31 @@ export default function SettingsPage() {
                   onChange={(e) =>
                     handleChange("supportEmail", e.target.value)
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-night-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-night-muted mb-2">
                   Privacy Policy URL
                 </label>
                 <input
                   type="url"
                   value={settings.privacyUrl}
                   onChange={(e) => handleChange("privacyUrl", e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-night-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-night-muted mb-2">
                   Terms of Service URL
                 </label>
                 <input
                   type="url"
                   value={settings.termsUrl}
                   onChange={(e) => handleChange("termsUrl", e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-night-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>

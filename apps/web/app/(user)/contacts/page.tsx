@@ -156,24 +156,24 @@ export default function ContactsPage() {
     height: 32,
     padding: "0 12px",
     borderRadius: 10,
-    border: "1px solid #C0C0C0",
-    background: "#fff",
+    border: "1px solid var(--app-border)",
+    background: "var(--app-surface)",
     fontSize: 11,
     fontWeight: 800,
     cursor: "pointer",
   };
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#D8DCE3", overflow: "hidden" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--tone-bg-d8dce3)", overflow: "hidden" }}>
       <div style={{
         flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "10px 14px",
-        background: "linear-gradient(180deg,#fafafa 0%,#d8d8d8 45%,#b0b0b0 100%)",
+        background: "linear-gradient(180deg,var(--tone-bg-fafafa) 0%,var(--app-canvas) 45%,var(--tone-bg-b0b0b0) 100%)",
         boxShadow: "inset 0 2px 0 rgba(255,255,255,.9),0 6px 16px rgba(0,0,0,.12)",
-        borderBottom: "1px solid rgba(0,0,0,.12)",
+        borderBottom: "1px solid var(--app-hairline)",
       }}>
         <span style={{ fontWeight: 900, fontSize: 16 }}>Friends</span>
-        <button style={{ ...btnSmStyle, background: "linear-gradient(180deg,#B8B8B8,#9A9A9A)", color: "#fff", border: "1px solid #9A9A9A" }}
+        <button style={{ ...btnSmStyle, background: "linear-gradient(180deg,var(--tone-bg-b8b8b8),var(--app-control))", color: "var(--tone-fg-ffffff)", border: "1px solid var(--app-control)" }}
           onClick={() => { setAddValue(""); setAddError(null); setIsAddOpen(true); }}>+ Follow</button>
       </div>
 
@@ -183,8 +183,8 @@ export default function ContactsPage() {
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search name or g000st..."
           style={{
-            width: "100%", height: 40, borderRadius: 20, border: "1px solid rgba(0,0,0,.15)",
-            background: "#fff", padding: "0 14px", fontSize: 13, outline: "none",
+            width: "100%", height: 40, borderRadius: 20, border: "1px solid var(--app-faint-border)",
+            background: "var(--app-surface)", padding: "0 14px", fontSize: 13, outline: "none",
           }}
         />
         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
@@ -194,9 +194,9 @@ export default function ContactsPage() {
               onClick={() => { setTab(option); if (option === "online") void load({ silent: true }); }}
               style={{
                 height: 28, padding: "0 12px", borderRadius: 14, fontSize: 11, fontWeight: 800,
-                border: tab === option ? "1px solid #9A9A9A" : "1px solid rgba(0,0,0,.1)",
-                background: tab === option ? "#9A9A9A" : "rgba(255,255,255,.8)",
-                color: tab === option ? "#fff" : "rgba(0,0,0,.6)",
+                border: tab === option ? "1px solid var(--app-control)" : "1px solid var(--app-faint-border)",
+                background: tab === option ? "var(--app-control)" : "var(--app-translucent-surface)",
+                color: tab === option ? "var(--tone-fg-ffffff)" : "var(--app-subtle-text)",
                 cursor: "pointer",
               }}
             >
@@ -208,11 +208,11 @@ export default function ContactsPage() {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "10px 10px 20px" }}>
         {loading ? (
-          <p style={{ textAlign: "center", fontSize: 13, fontWeight: 600, color: "rgba(0,0,0,.45)", marginTop: 40 }}>
+          <p style={{ textAlign: "center", fontSize: 13, fontWeight: 600, color: "var(--app-faint-text)", marginTop: 40 }}>
             Loading…
           </p>
         ) : visibleContacts.length === 0 ? (
-          <p style={{ textAlign: "center", fontSize: 13, fontWeight: 600, color: "rgba(0,0,0,.45)", marginTop: 40 }}>
+          <p style={{ textAlign: "center", fontSize: 13, fontWeight: 600, color: "var(--app-faint-text)", marginTop: 40 }}>
             {tab === "online" ? "No friends online right now." : "No friends yet. Follow someone from Social or Market."}
           </p>
         ) : (
@@ -222,12 +222,12 @@ export default function ContactsPage() {
               onClick={() => void onOpenChat(contact.publicId)}
               style={{
                 display: "flex", alignItems: "center", gap: 12, padding: 12, marginBottom: 8,
-                borderRadius: 16, border: "1px solid rgba(0,0,0,.08)", background: "#fff", cursor: "pointer",
+                borderRadius: 16, border: "1px solid var(--app-faint-border)", background: "var(--app-surface)", cursor: "pointer",
               }}
             >
               <div style={{
                 width: 44, height: 44, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
-                background: "#DDD", display: "flex", alignItems: "center", justifyContent: "center",
+                background: "var(--tone-bg-dddddd)", display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 {contact.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -245,7 +245,7 @@ export default function ContactsPage() {
                     {contact.nickname || contact.displayName || contact.publicId.slice(0, 8)}
                   </span>
                 </div>
-                <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: "rgba(0,0,0,.4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: "var(--app-faint-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {contact.publicId}
                 </div>
               </div>
@@ -267,7 +267,7 @@ export default function ContactsPage() {
               <button
                 aria-label="Unfollow friend"
                 onClick={(event) => { event.stopPropagation(); void onRemove(contact); }}
-                style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "transparent", color: "rgba(0,0,0,.3)", fontSize: 18, fontWeight: 900, cursor: "pointer" }}
+                style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "transparent", color: "var(--app-faint-text)", fontSize: 18, fontWeight: 900, cursor: "pointer" }}
               >
                 ×
               </button>
@@ -276,12 +276,12 @@ export default function ContactsPage() {
         )}
       </div>
 
-      {editingContact ? <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-5"><div className="w-full max-w-[400px] space-y-3 rounded-2xl bg-white p-5"><h2 className="text-lg font-black">Friend's name</h2><input value={nickname} maxLength={80} onChange={(event) => setNickname(event.target.value)} placeholder="Name shown only to you" className="w-full rounded-xl border border-black/15 p-3" /><div className="flex gap-2"><button onClick={() => setEditingContact(null)} className="flex-1 rounded-xl bg-[#ddd] p-3 font-bold">Cancel</button><button onClick={async () => { try { const next = nickname.trim(); await updateContactNickname(editingContact.publicId, next); setContacts((current) => current.map((item) => item.publicId === editingContact.publicId ? { ...item, nickname: next || undefined } : item)); setEditingContact(null); } catch (error) { toast.error(errorMessage(error)); } }} className="flex-1 rounded-xl bg-black p-3 font-bold text-white">Save</button></div></div></div> : null}
+      {editingContact ? <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-5"><div className="w-full max-w-[400px] space-y-3 rounded-2xl bg-white dark:bg-night-surface p-5"><h2 className="text-lg font-black">Friend's name</h2><input value={nickname} maxLength={80} onChange={(event) => setNickname(event.target.value)} placeholder="Name shown only to you" className="w-full rounded-xl border border-black/15 dark:border-night-border p-3" /><div className="flex gap-2"><button onClick={() => setEditingContact(null)} className="flex-1 rounded-xl bg-[#ddd] dark:bg-night-raised p-3 font-bold">Cancel</button><button onClick={async () => { try { const next = nickname.trim(); await updateContactNickname(editingContact.publicId, next); setContacts((current) => current.map((item) => item.publicId === editingContact.publicId ? { ...item, nickname: next || undefined } : item)); setEditingContact(null); } catch (error) { toast.error(errorMessage(error)); } }} className="flex-1 rounded-xl bg-black p-3 font-bold text-white">Save</button></div></div></div> : null}
       {isAddOpen ? (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 }}>
-          <div style={{ width: "100%", maxWidth: 400, borderRadius: 22, border: "1px solid rgba(255,255,255,.7)", background: "#F2F2F2", padding: 20 }}>
+          <div style={{ width: "100%", maxWidth: 400, borderRadius: 22, border: "1px solid rgba(255,255,255,.7)", background: "var(--tone-bg-f2f2f2)", padding: 20 }}>
             <p style={{ textAlign: "center", fontSize: 18, fontWeight: 900 }}>Follow someone</p>
-            <p style={{ textAlign: "center", fontSize: 12, fontWeight: 600, color: "rgba(0,0,0,.5)", margin: "8px 0 16px" }}>
+            <p style={{ textAlign: "center", fontSize: 12, fontWeight: 600, color: "var(--app-faint-text)", margin: "8px 0 16px" }}>
               Paste their Public ID to follow them. They will appear in your Friends list.
             </p>
             <input
@@ -289,26 +289,26 @@ export default function ContactsPage() {
               onChange={(event) => setAddValue(event.target.value)}
               placeholder="Public ID"
               style={{
-                width: "100%", height: 48, borderRadius: 14, border: "2px solid rgba(0,0,0,.1)",
-                background: "#fff", padding: "0 12px", fontFamily: "ui-monospace, Menlo, monospace",
+                width: "100%", height: 48, borderRadius: 14, border: "2px solid var(--app-faint-border)",
+                background: "var(--app-surface)", padding: "0 12px", fontFamily: "ui-monospace, Menlo, monospace",
                 fontSize: 12, fontWeight: 800, outline: "none", boxSizing: "border-box",
               }}
             />
             {addError ? (
-              <p style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "#C62828" }}>{addError}</p>
+              <p style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "var(--tone-fg-c62828)" }}>{addError}</p>
             ) : null}
             <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
               <button
                 disabled={isAdding}
                 onClick={() => setIsAddOpen(false)}
-                style={{ flex: 1, height: 48, borderRadius: 14, border: "2px solid #111", background: "transparent", fontWeight: 900, cursor: "pointer" }}
+                style={{ flex: 1, height: 48, borderRadius: 14, border: "2px solid var(--app-text)", background: "transparent", fontWeight: 900, cursor: "pointer" }}
               >
                 Cancel
               </button>
               <button
                 disabled={isAdding}
                 onClick={() => void submitAdd()}
-                style={{ flex: 1, height: 48, borderRadius: 14, border: "none", background: "#C62828", color: "#fff", fontWeight: 900, cursor: "pointer" }}
+                style={{ flex: 1, height: 48, borderRadius: 14, border: "none", background: "#C62828", color: "var(--tone-fg-ffffff)", fontWeight: 900, cursor: "pointer" }}
               >
                 {isAdding ? "Following…" : "Follow"}
               </button>

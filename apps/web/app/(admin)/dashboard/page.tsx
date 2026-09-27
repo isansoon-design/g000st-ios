@@ -7,25 +7,25 @@ const stats = [
     label: "Total Users",
     value: "1,234",
     icon: Users,
-    color: "bg-blue-100 text-blue-600",
+    color: "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300",
   },
   {
     label: "Active Chats",
     value: "456",
     icon: MessageSquare,
-    color: "bg-green-100 text-green-600",
+    color: "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-300",
   },
   {
     label: "Growth",
     value: "+12%",
     icon: TrendingUp,
-    color: "bg-purple-100 text-purple-600",
+    color: "bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-300",
   },
   {
     label: "System Status",
     value: "Healthy",
     icon: Settings,
-    color: "bg-yellow-100 text-yellow-600",
+    color: "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/40 dark:text-yellow-300",
   },
 ];
 
@@ -34,8 +34,8 @@ export default function DashboardPage() {
     <div className="h-full p-6">
       {/* Header */}
       <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900">Dashboard</h2>
-        <p className="text-gray-600 mt-2">Welcome to the admin panel</p>
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-night-text">Dashboard</h2>
+        <p className="text-gray-600 dark:text-night-muted mt-2">Welcome to the admin panel</p>
       </div>
 
       {/* Stats Grid */}
@@ -45,12 +45,12 @@ export default function DashboardPage() {
           return (
             <div
               key={stat.label}
-              className="bg-white rounded-lg p-6 border border-gray-200"
+              className="bg-white dark:bg-night-surface rounded-lg p-6 border border-gray-200 dark:border-night-border"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm font-medium">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-2">
+                  <p className="text-gray-600 dark:text-night-muted text-sm font-medium">{stat.label}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-night-text mt-2">
                     {stat.value}
                   </p>
                 </div>
@@ -64,15 +64,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Activity Section */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+      <div className="bg-white dark:bg-night-surface rounded-lg border border-gray-200 dark:border-night-border overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-night-border">
           <h3 className="text-lg font-semibold">Recent Activity</h3>
         </div>
         <div className="divide-y">
           {[1, 2, 3].map((i) => (
             <div key={i} className="px-6 py-4">
-              <p className="text-gray-900 font-medium">User activity #{i}</p>
-              <p className="text-gray-600 text-sm">
+              <p className="text-gray-900 dark:text-night-text font-medium">User activity #{i}</p>
+              <p className="text-gray-600 dark:text-night-muted text-sm">
                 Just now
               </p>
             </div>

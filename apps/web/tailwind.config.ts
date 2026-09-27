@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
+  darkMode: 'class',
   content: [
     './app/**/*.{js,ts,jsx,tsx}',
     './components/**/*.{js,ts,jsx,tsx}',
@@ -24,6 +25,19 @@ const config: Config = {
           700: '#6A6A6A',
           800: '#4A4A4A',
           900: '#2A2A2A',
+        },
+        night: {
+          canvas: '#929197',
+          header: '#85848B',
+          surface: '#414046',
+          raised: '#77767C',
+          control: '#5C5B61',
+          text: '#FFFFFF',
+          muted: '#E0DEE2',
+          border: '#66656B',
+          softred: '#482427',
+          incoming: '#C1282D',
+          outgoing: '#111111',
         },
       },
       spacing: {

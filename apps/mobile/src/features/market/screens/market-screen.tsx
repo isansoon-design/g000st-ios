@@ -31,6 +31,7 @@ import {
   deleteMarketPost,
   listMarketComments,
   listMarketPosts,
+  reportMarketPost,
   toggleMarketLike,
   updateMarketPost,
   uploadMarketMedia,
@@ -148,7 +149,7 @@ export function MarketScreen() {
     )
       return Toast.show({
         type: "error",
-        text1: "Market",
+        text1: "Traiding",
         text2: "Choose up to two images or one video, max 5 MB each.",
       });
     setSelectedMedia(result.assets);
@@ -158,7 +159,7 @@ export function MarketScreen() {
     if (!validFields(fields) || posting)
       return Toast.show({
         type: "error",
-        text1: "Market",
+        text1: "Traiding",
         text2: "Add description, price, quantity, and city.",
       });
     setPosting(true);
@@ -208,8 +209,19 @@ export function MarketScreen() {
   }
 
   return (
-    <FeatureScreen title="Market">
-      <View className="flex-1 bg-[#E7E7E9]">
+    <FeatureScreen
+      title={
+        <View className="h-14 flex-row items-center justify-between border-b border-black/10 dark:border-night-border bg-[#D2D2D4] dark:bg-night-header px-4">
+          <Text className="text-lg font-black text-[#1A1A1A] dark:text-night-text">
+            g<Text className="text-[#C62828]">000</Text>
+            st
+            <Text className="text-[#C62828]">T</Text>
+            rading
+          </Text>
+        </View>
+      }
+    >
+      <View className="flex-1 bg-[#E7E7E9] dark:bg-night-canvas">
         {!loading && (
           <FlatList
             data={posts}
@@ -228,20 +240,20 @@ export function MarketScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Create a Market listing"
                 onPress={() => setIsComposerOpen(true)}
-                className="mb-1 flex-row items-center gap-3 rounded-2xl border border-black/10 bg-white p-4 shadow-sm"
+                className="mb-1 flex-row items-center gap-3 rounded-2xl border border-black/10 dark:border-night-border bg-white dark:bg-night-surface p-4 shadow-sm"
               >
                 <View className="h-12 w-12 items-center justify-center rounded-2xl bg-[#C62828]">
                   <Text className="text-2xl font-light text-white">＋</Text>
                 </View>
                 <View className="min-w-0 flex-1">
-                  <Text className="text-[15px] font-black text-[#17191D]">Create a Market post</Text>
-                  <Text className="mt-0.5 text-xs text-black/50">Sell something to the community</Text>
+                  <Text className="text-[15px] font-black text-[#17191D] dark:text-night-text">Create a Market post</Text>
+                  <Text className="mt-0.5 text-xs text-black/50 dark:text-night-muted">Sell something to the community</Text>
                 </View>
                 <Text className="text-xl font-bold text-[#C62828]">›</Text>
               </Pressable>
             }
             ListEmptyComponent={
-              <Text className="py-16 text-center font-bold text-black/40">
+              <Text className="py-16 text-center font-bold text-black/40 dark:text-night-muted">
                 No listings yet.
               </Text>
             }
@@ -292,6 +304,7 @@ export function MarketScreen() {
                     current.filter((post) => post.id !== item.id),
                   );
                 }}
+                onReport={() => reportMarketPost(item.id)}
               />
             )}
           />
@@ -301,7 +314,7 @@ export function MarketScreen() {
             <ActivityIndicator />
           </View>
         )}
-        <View className="h-14 flex-row border-t border-black/15 bg-white">
+        <View className="h-14 flex-row border-t border-black/15 dark:border-night-border bg-white dark:bg-night-surface">
           <ViewButton
             label="Market"
             active={view === "home"}
@@ -327,20 +340,20 @@ export function MarketScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           className="flex-1 justify-end bg-black/50"
         >
-          <View className="max-h-[92%] rounded-t-[28px] bg-[#F7F7F8] pt-5">
+          <View className="max-h-[92%] rounded-t-[28px] bg-[#F7F7F8] dark:bg-night-surface pt-5">
             <View className="flex-row items-center justify-between px-5 pb-4">
               <View>
-                <Text className="text-xl font-black text-[#17191D]">New listing</Text>
-                <Text className="mt-1 text-xs text-black/50">Add the details buyers need</Text>
+                <Text className="text-xl font-black text-[#17191D] dark:text-night-text">New listing</Text>
+                <Text className="mt-1 text-xs text-black/50 dark:text-night-muted">Add the details buyers need</Text>
               </View>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Close new listing"
                 disabled={posting}
                 onPress={() => setIsComposerOpen(false)}
-                className="h-10 w-10 items-center justify-center rounded-full bg-white"
+                className="h-10 w-10 items-center justify-center rounded-full bg-white dark:bg-night-surface"
               >
-                <Text className="text-xl text-[#17191D]">×</Text>
+                <Text className="text-xl text-[#17191D] dark:text-night-text">×</Text>
               </Pressable>
             </View>
             <ScrollView
@@ -360,7 +373,7 @@ export function MarketScreen() {
               />
             </ScrollView>
             <View
-              className="border-t border-black/10 bg-white px-5 pt-3"
+              className="border-t border-black/10 dark:border-night-border bg-white dark:bg-night-surface px-5 pt-3"
               style={{ paddingBottom: Math.max(insets.bottom, 16) }}
             >
               <Pressable
@@ -428,7 +441,7 @@ function MarketComposer({
   return (
     <View className="gap-5">
       <View className="gap-2">
-        <Text className="text-xs font-black uppercase tracking-wider text-black/55">
+        <Text className="text-xs font-black uppercase tracking-wider text-black/55 dark:text-night-muted">
           Description
         </Text>
         <TextInput
@@ -438,13 +451,13 @@ function MarketComposer({
           placeholder="What are you selling? Add condition and key details."
           multiline
           maxLength={4000}
-          className="min-h-28 rounded-2xl border border-black/10 bg-white px-4 py-3 text-base"
+          className="min-h-28 rounded-2xl border border-black/10 dark:border-night-border bg-white dark:bg-night-surface px-4 py-3 text-base"
           textAlignVertical="top"
         />
       </View>
       <View className="flex-row gap-3">
         <View className="min-w-0 flex-1 gap-2">
-          <Text className="text-xs font-black uppercase tracking-wider text-black/55">
+          <Text className="text-xs font-black uppercase tracking-wider text-black/55 dark:text-night-muted">
             Price (£)
           </Text>
           <NumberField
@@ -456,7 +469,7 @@ function MarketComposer({
           />
         </View>
         <View className="min-w-0 flex-1 gap-2">
-          <Text className="text-xs font-black uppercase tracking-wider text-black/55">
+          <Text className="text-xs font-black uppercase tracking-wider text-black/55 dark:text-night-muted">
             Quantity
           </Text>
           <NumberField
@@ -471,7 +484,7 @@ function MarketComposer({
         </View>
       </View>
       <View className="gap-2">
-        <Text className="text-xs font-black uppercase tracking-wider text-black/55">
+        <Text className="text-xs font-black uppercase tracking-wider text-black/55 dark:text-night-muted">
           City
         </Text>
         <TextInput
@@ -480,21 +493,21 @@ function MarketComposer({
           onChangeText={(city) => onChange({ ...fields, city })}
           placeholder="Where is it located?"
           maxLength={100}
-          className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-base"
+          className="rounded-2xl border border-black/10 dark:border-night-border bg-white dark:bg-night-surface px-4 py-3 text-base"
         />
       </View>
-      <View className="gap-3 rounded-2xl bg-white p-4">
-        <Text className="text-xs font-black uppercase tracking-wider text-black/55">
+      <View className="gap-3 rounded-2xl bg-white dark:bg-night-surface p-4">
+        <Text className="text-xs font-black uppercase tracking-wider text-black/55 dark:text-night-muted">
           Contact options
         </Text>
         <MarketCallOptions fields={fields} onChange={onChange} />
       </View>
       <View className="gap-3">
         <View>
-          <Text className="text-xs font-black uppercase tracking-wider text-black/55">
+          <Text className="text-xs font-black uppercase tracking-wider text-black/55 dark:text-night-muted">
             Photos or video
           </Text>
-          <Text className="mt-1 text-xs text-black/45">
+          <Text className="mt-1 text-xs text-black/45 dark:text-night-muted">
             Up to 2 photos or 1 video · 5 MB each
           </Text>
         </View>
@@ -522,9 +535,9 @@ function MarketComposer({
         <Pressable
           accessibilityRole="button"
           onPress={onMedia}
-          className="items-center rounded-2xl border border-dashed border-black/20 bg-white px-4 py-4"
+          className="items-center rounded-2xl border border-dashed border-black/20 dark:border-night-border bg-white dark:bg-night-surface px-4 py-4"
         >
-          <Text className="text-sm font-black text-[#17191D]">
+          <Text className="text-sm font-black text-[#17191D] dark:text-night-text">
             ＋ {media.length
               ? `${media.length} selected · Add or change media`
               : "Add photos or video"}
@@ -545,6 +558,7 @@ function MarketCard({
   onVideoCall,
   onEdit,
   onDelete,
+  onReport,
 }: {
   post: MarketPost;
   onLike: () => Promise<void>;
@@ -555,11 +569,12 @@ function MarketCard({
   onVideoCall: () => Promise<void>;
   onEdit: () => void;
   onDelete: () => Promise<void>;
+  onReport: () => Promise<void>;
 }) {
   const { confirm } = useConfirmModal();
   const router = useRouter();
   return (
-    <View className="overflow-hidden rounded-2xl border-2 border-black bg-white shadow-sm">
+    <View className="overflow-hidden rounded-2xl border-2 border-black dark:border-night-border bg-white dark:bg-night-surface shadow-sm">
       <View className="flex-row items-center gap-3 p-4">
         {/* Start Image */}
         <View className="h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-black">
@@ -577,7 +592,7 @@ function MarketCard({
         {/* Start Username && date  */}
         <Pressable onPress={() => router.push(`/users/${post.ownerPublicId}` as Href)} accessibilityRole="button" className="min-w-0 flex-1">
           <Text className="font-black">{post.author.displayName}</Text>
-          <Text className="text-[10px] text-black/45">
+          <Text className="text-[10px] text-black/45 dark:text-night-muted">
             {new Date(post.createdAtMs).toLocaleString()}
             {post.editedAtMs ? " · edited" : ""}
           </Text>
@@ -590,7 +605,7 @@ function MarketCard({
               accessibilityLabel="Edit listing"
               accessibilityRole="button"
               onPress={onEdit}
-              className="rounded-full border border-black/20 px-3 py-2"
+              className="rounded-full border border-black/20 dark:border-night-border px-3 py-2"
             >
               <Text className="text-xs font-black">Edit</Text>
             </Pressable>
@@ -615,13 +630,37 @@ function MarketCard({
           </View>
         )
           :
-          <View className="flex-row  w-24 -mx-2 ">
+          <View className="flex-row  w-32  ">
             {/* Start Call Actions */}
             {!post.ownedByViewer && post.allowCalls && (
-              <Action minW="min-w-[10px]" label="📞" onPress={onCall} />
+              <Action minW="min-w-[30px]" label="📞" onPress={onCall} />
             )}
             {!post.ownedByViewer && post.allowVideoCalls && (
-              <Action minW="min-w-[10px]" label="🎥" onPress={onVideoCall} />
+              <Action minW="min-w-[30px]" label="🎥" onPress={onVideoCall} />
+            )}
+            {!post.ownedByViewer && (
+              <Pressable
+                accessibilityLabel="Report listing"
+                accessibilityRole="button"
+                className="self-end px-4 py-3"
+                onPress={async () => {
+                  if (await confirm({
+                    title: "Report listing?",
+                    message: "Are you sure you want to report this listing?",
+                    confirmLabel: "Report",
+                    isDangerous: true,
+                  })) {
+                    try {
+                      await onReport();
+                      Toast.show({ type: "success", text1: "Report sent" });
+                    } catch (error) {
+                      showError(error, "Could not report listing.");
+                    }
+                  }
+                }}
+              >
+                <Text className="text-xs font-black">Report</Text>
+              </Pressable>
             )}
           </View>
         }
@@ -655,7 +694,7 @@ function MarketCard({
           />
         ),
       )}
-      <View className="flex-row flex-wrap items-center border-t border-black/10 p-2">
+      <View className="flex-row flex-wrap items-center border-t border-black/10 dark:border-night-border p-2">
         <Action
           label={`♥ ${post.likeCount}`}
           active={post.likedByViewer}
@@ -676,6 +715,7 @@ function MarketCard({
           <Text className="font-black">Chat</Text>
         </Pressable>}
       </View>
+
     </View>
   );
 }
@@ -725,7 +765,7 @@ function CommentsModal({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1 justify-end bg-black/50"
       >
-        <View className="h-[75%] pb-16 rounded-t-[28px] bg-white p-4">
+        <View className="h-[75%] pb-16 rounded-t-[28px] bg-white dark:bg-night-surface p-4">
           <View className="mb-3 flex-row items-center justify-between">
             <Text className="text-lg font-black">Comments</Text>
             <Pressable onPress={onClose}>
@@ -751,7 +791,7 @@ function CommentsModal({
                 }
               }}
               renderItem={({ item }) => (
-                <View className="flex-row gap-2 rounded-xl bg-black/[.04] p-3">
+                <View className="flex-row gap-2 rounded-xl bg-black/[.04] dark:bg-white/10 p-3">
                   <Text className="min-w-0 flex-1">
                     <Text className="font-black">
                       {item.author.displayName}{" "}
@@ -776,19 +816,19 @@ function CommentsModal({
                 </View>
               )}
               ListEmptyComponent={
-                <Text className="py-16 text-center text-black/40">
+                <Text className="py-16 text-center text-black/40 dark:text-night-muted">
                   No comments yet.
                 </Text>
               }
             />
           )}
-          <View className="flex-row gap-2 border-t border-black/10 pt-3  ">
+          <View className="flex-row gap-2 border-t border-black/10 dark:border-night-border pt-3  ">
             <TextInput
               value={value}
               onChangeText={setValue}
               placeholder="Write a comment…"
               maxLength={1000}
-              className="min-w-0 flex-1 rounded-xl border border-black/15 px-3 py-2"
+              className="min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
             />
             <Pressable
               onPress={() => void send()}
@@ -824,13 +864,13 @@ function EditMarketModal({
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 justify-center bg-black/50 p-5">
-        <View className="gap-3 rounded-[24px] bg-white p-5">
+        <View className="gap-3 rounded-[24px] bg-white dark:bg-night-surface p-5">
           <Text className="text-lg font-black">Edit listing</Text>
           <TextInput
             value={fields.content}
             onChangeText={(content) => setFields({ ...fields, content })}
             multiline
-            className="min-h-24 rounded-xl border border-black/15 p-3"
+            className="min-h-24 rounded-xl border border-black/15 dark:border-night-border p-3"
           />
           <View className="flex-row gap-2">
             <NumberField
@@ -855,11 +895,11 @@ function EditMarketModal({
               value={fields.city}
               onChangeText={(city) => setFields({ ...fields, city })}
               placeholder="City"
-              className="min-w-0 flex-1 rounded-xl border border-black/15 px-3"
+              className="min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3"
             />
           </View>
           {post.currency !== "GBP" && (
-            <Text className="text-xs text-black/60">
+            <Text className="text-xs text-black/60 dark:text-night-muted">
               This listing is {post.currency}. Enter a new price to switch to £.
             </Text>
           )}
@@ -867,7 +907,7 @@ function EditMarketModal({
           <View className="flex-row gap-2">
             <Pressable
               onPress={onClose}
-              className="flex-1 rounded-xl bg-[#DDD] p-3"
+              className="flex-1 rounded-xl bg-[#DDD] dark:bg-night-raised p-3"
             >
               <Text className="text-center font-black">Cancel</Text>
             </Pressable>
@@ -940,8 +980,8 @@ function NumberField({
       keyboardType="decimal-pad"
       placeholder={placeholder}
       className={elevated
-        ? "w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-base"
-        : "min-w-0 flex-1 rounded-xl border border-black/15 px-3 py-2"}
+        ? "w-full rounded-2xl border border-black/10 dark:border-night-border bg-white dark:bg-night-surface px-4 py-3 text-base"
+        : "min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 py-2"}
     />
   );
 }
@@ -969,7 +1009,7 @@ function Action({
       className={`${minW ? minW : " min-w-[64px]"} flex-1 items-center rounded-xl py-3`}
     >
       <Text
-        className={`font-black ${active ? "text-[#C62828]" : "text-black/70"}`}
+        className={`font-black ${active ? "text-[#C62828]" : "text-black/70 dark:text-night-muted"}`}
       >
         {label}
       </Text>
@@ -991,7 +1031,7 @@ function ViewButton({
       className={`flex-1 items-center justify-center ${active ? "border-t-2 border-[#C62828]" : ""}`}
     >
       <Text
-        className={`text-xs font-black ${active ? "text-black" : "text-black/45"}`}
+        className={`text-xs font-black ${active ? "text-black dark:text-night-text" : "text-black/45 dark:text-night-muted"}`}
       >
         {label}
       </Text>

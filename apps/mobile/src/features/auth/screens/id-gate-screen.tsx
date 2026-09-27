@@ -48,7 +48,7 @@ function IdGateScreenComponent() {
   }
 
   return (
-    <View className="flex-1 bg-g000st-metal">
+    <View className="flex-1 bg-g000st-metal dark:bg-night-canvas">
       <IdGateForm
         accounts={accounts}
         busyAction={idGate.busyAction}

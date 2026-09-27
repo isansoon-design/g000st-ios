@@ -141,7 +141,7 @@ function CallOverlayComponent({
         <VideoSurface muted stream={state.remoteStream} />
       ) : (
         <div className="relative flex flex-1 items-center justify-center">
-          <div className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-2 border-white/30 bg-white/10 text-4xl shadow-2xl sm:h-40 sm:w-40">
+          <div className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-2 border-white/30 dark:border-white/20 bg-white/10 text-4xl shadow-2xl sm:h-40 sm:w-40">
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img alt={displayName || "Call participant"} className="h-full w-full object-cover" src={avatarUrl} />
@@ -153,7 +153,7 @@ function CallOverlayComponent({
       )}
 
       {state.phase === "in-call" && isVideo && state.isCameraOn && state.localStream ? (
-        <div className="absolute right-4 top-4 h-32 w-24 overflow-hidden rounded-2xl border border-white/30 shadow-xl sm:h-40 sm:w-28">
+        <div className="absolute right-4 top-4 h-32 w-24 overflow-hidden rounded-2xl border border-white/30 dark:border-white/20 shadow-xl sm:h-40 sm:w-28">
           <VideoSurface mirrored muted stream={state.localStream} />
         </div>
       ) : null}
@@ -181,7 +181,7 @@ function CallOverlayComponent({
                 <>
                   <RoundButton
                     accessibilityLabel={state.isMuted ? "Unmute microphone" : "Mute microphone"}
-                    color={state.isMuted ? "#FFFFFF" : "rgba(255,255,255,0.25)"}
+                    color={state.isMuted ? "var(--tone-fg-ffffff)" : "rgba(255,255,255,0.25)"}
                     foreground={state.isMuted ? "#111111" : "#FFFFFF"}
                     label={state.isMuted ? "🔇" : "🎙"}
                     onClick={onToggleMute}
@@ -189,7 +189,7 @@ function CallOverlayComponent({
                   {state.media === "video" ? (
                     <RoundButton
                       accessibilityLabel={state.isCameraOn ? "Turn camera off" : "Turn camera on"}
-                      color={state.isCameraOn ? "rgba(255,255,255,0.25)" : "#FFFFFF"}
+                      color={state.isCameraOn ? "rgba(255,255,255,0.25)" : "var(--tone-fg-ffffff)"}
                       foreground={state.isCameraOn ? "#FFFFFF" : "#111111"}
                       label="📷"
                       onClick={onToggleCamera}

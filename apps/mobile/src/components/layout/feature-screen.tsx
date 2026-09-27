@@ -1,26 +1,35 @@
 import { type PropsWithChildren, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppThemeSwitch } from '@/components/navigation/app-theme-switch';
+import { useAppTheme } from '@/theme/app-theme';
 
 type FeatureScreenProps = PropsWithChildren<
   Readonly<{
     rightAction?: ReactNode;
     title: ReactNode;
+    colors?: Readonly<{ canvas: string; header: string; text: string }>;
+    showThemeSwitch?: boolean;
   }>
 >;
 
-export function FeatureScreen({ children, rightAction, title }: FeatureScreenProps) {
+export function FeatureScreen({ children, rightAction, title, colors, showThemeSwitch = true }: FeatureScreenProps) {
   const insets = useSafeAreaInsets();
+  const theme = useAppTheme();
+  const screenColors = colors ?? theme.colors;
 
   return (
-    <View className="flex-1 bg-[#D8D8D8]" style={{ paddingTop: insets.top }}>
-      <View className="h-14 flex-row items-center justify-between border-b border-black/15 bg-[#D2D2D2] px-3 pt-1">
+    <View className="flex-1" style={{ paddingTop: insets.top, backgroundColor: screenColors.canvas }}>
+      <View className="h-14 flex-row items-center justify-between border-b border-black/15 dark:border-night-border px-3 pt-1" style={{ backgroundColor: screenColors.header }}>
         {typeof title === 'string' ? (
-          <Text className="text-[15px] font-black text-g000st-black">{title}</Text>
+          <Text className="text-[15px] font-black" style={{ color: screenColors.text }}>{title}</Text>
         ) : (
           title
         )}
-        {rightAction}
+        <View className="flex-row items-center gap-1">
+          {showThemeSwitch && <AppThemeSwitch />}
+          {rightAction}
+        </View>
       </View>
       {children}
     </View>

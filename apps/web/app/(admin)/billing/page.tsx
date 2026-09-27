@@ -130,10 +130,10 @@ export default function AdminBillingPage() {
   }, [adjustMinutes, adjustReason, adjustSms, confirm, load, lookedUpPublicId]);
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 overflow-auto">
-      <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-night-canvas overflow-auto">
+      <div className="bg-white dark:bg-night-surface border-b border-gray-200 dark:border-night-border px-6 py-4 sticky top-0 z-10">
         <h2 className="text-lg font-semibold">Billing</h2>
-        <p className="text-sm text-gray-600">Look up a user&apos;s call/SMS credit balance and ledger by Public ID.</p>
+        <p className="text-sm text-gray-600 dark:text-night-muted">Look up a user&apos;s call/SMS credit balance and ledger by Public ID.</p>
       </div>
 
       <div className="p-6 max-w-3xl w-full space-y-6">
@@ -144,7 +144,7 @@ export default function AdminBillingPage() {
             value={publicIdInput}
             onChange={(event) => setPublicIdInput(event.target.value)}
             onKeyDown={(event) => event.key === "Enter" && handleLookup()}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-night-border rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             onClick={handleLookup}
@@ -157,51 +157,51 @@ export default function AdminBillingPage() {
 
         {lookedUpPublicId && balance && (
           <>
-            <div className="bg-white border border-gray-200 rounded-lg p-5">
-              <div className="text-xs text-gray-500 font-mono mb-3">{lookedUpPublicId}</div>
+            <div className="bg-white dark:bg-night-surface border border-gray-200 dark:border-night-border rounded-lg p-5">
+              <div className="text-xs text-gray-500 dark:text-night-muted font-mono mb-3">{lookedUpPublicId}</div>
               <div className="flex gap-8">
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">
+                  <div className="text-2xl font-bold text-gray-900 dark:text-night-text">
                     {formatSeconds(balance.voiceSecondsRemaining)}
                   </div>
-                  <div className="text-xs text-gray-500">Voice remaining</div>
+                  <div className="text-xs text-gray-500 dark:text-night-muted">Voice remaining</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{balance.smsRemaining}</div>
-                  <div className="text-xs text-gray-500">SMS remaining</div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-night-text">{balance.smsRemaining}</div>
+                  <div className="text-xs text-gray-500 dark:text-night-muted">SMS remaining</div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="bg-white dark:bg-night-surface border border-gray-200 dark:border-night-border rounded-lg p-5">
               <h3 className="text-sm font-semibold mb-3">Adjust balance</h3>
               <div className="flex gap-3 flex-wrap">
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Voice minutes (+/-)</label>
+                  <label className="block text-xs text-gray-600 dark:text-night-muted mb-1">Voice minutes (+/-)</label>
                   <input
                     type="number"
                     value={adjustMinutes}
                     onChange={(event) => setAdjustMinutes(event.target.value)}
-                    className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    className="w-32 px-3 py-2 border border-gray-300 dark:border-night-border rounded-lg text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">SMS (+/-)</label>
+                  <label className="block text-xs text-gray-600 dark:text-night-muted mb-1">SMS (+/-)</label>
                   <input
                     type="number"
                     value={adjustSms}
                     onChange={(event) => setAdjustSms(event.target.value)}
-                    className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    className="w-24 px-3 py-2 border border-gray-300 dark:border-night-border rounded-lg text-sm"
                   />
                 </div>
                 <div className="flex-1 min-w-[200px]">
-                  <label className="block text-xs text-gray-600 mb-1">Reason</label>
+                  <label className="block text-xs text-gray-600 dark:text-night-muted mb-1">Reason</label>
                   <input
                     type="text"
                     value={adjustReason}
                     onChange={(event) => setAdjustReason(event.target.value)}
                     placeholder="e.g. goodwill credit, chargeback correction"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-night-border rounded-lg text-sm"
                   />
                 </div>
                 <div className="flex items-end">
@@ -216,14 +216,14 @@ export default function AdminBillingPage() {
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <h3 className="text-sm font-semibold px-5 py-3 border-b border-gray-200">Ledger</h3>
+            <div className="bg-white dark:bg-night-surface border border-gray-200 dark:border-night-border rounded-lg overflow-hidden">
+              <h3 className="text-sm font-semibold px-5 py-3 border-b border-gray-200 dark:border-night-border">Ledger</h3>
               {ledger.length === 0 ? (
-                <div className="px-5 py-8 text-center text-sm text-gray-500">No ledger entries yet.</div>
+                <div className="px-5 py-8 text-center text-sm text-gray-500 dark:text-night-muted">No ledger entries yet.</div>
               ) : (
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-700">
+                    <tr className="border-b border-gray-200 dark:border-night-border bg-gray-50 dark:bg-night-canvas text-left text-xs font-semibold text-gray-700 dark:text-night-muted">
                       <th className="px-5 py-2">Kind</th>
                       <th className="px-5 py-2">Delta</th>
                       <th className="px-5 py-2">Reference</th>
@@ -236,12 +236,12 @@ export default function AdminBillingPage() {
                       <tr key={entry.id} className="text-sm">
                         <td className="px-5 py-2">{entry.kind}</td>
                         <td className="px-5 py-2">{formatLedgerDelta(entry)}</td>
-                        <td className="px-5 py-2 font-mono text-xs text-gray-500">{entry.reference}</td>
-                        <td className="px-5 py-2 text-gray-600">
+                        <td className="px-5 py-2 font-mono text-xs text-gray-500 dark:text-night-muted">{entry.reference}</td>
+                        <td className="px-5 py-2 text-gray-600 dark:text-night-muted">
                           {entry.reason ?? "—"}
                           {entry.actorPublicId ? ` (${entry.actorPublicId.slice(0, 8)}…)` : ""}
                         </td>
-                        <td className="px-5 py-2 text-gray-500">
+                        <td className="px-5 py-2 text-gray-500 dark:text-night-muted">
                           {new Date(entry.createdAtMs).toLocaleString()}
                         </td>
                       </tr>
@@ -250,11 +250,11 @@ export default function AdminBillingPage() {
                 </table>
               )}
               {ledgerCursor && (
-                <div className="px-5 py-3 border-t border-gray-200">
+                <div className="px-5 py-3 border-t border-gray-200 dark:border-night-border">
                   <button
                     onClick={() => void loadMoreLedger()}
                     disabled={ledgerLoadingMore}
-                    className="text-sm text-blue-600 font-medium disabled:opacity-50"
+                    className="text-sm text-blue-600 dark:text-blue-300 font-medium disabled:opacity-50"
                   >
                     {ledgerLoadingMore ? "Loading…" : "Load more"}
                   </button>

@@ -18,6 +18,7 @@ const createBody = z.object({ clientPostId: uuid, ...fields, media: z.array(pend
 const updateBody = z.object({ ...fields, allowCalls: z.boolean().optional(), allowVideoCalls: z.boolean().optional() }).strict();
 const uploadBody = z.object({ byteSize: z.number().int().positive().max(MAX_SOCIAL_MEDIA_BYTES), clientPostId: uuid, contentType: mediaType, fileName: z.string().min(1).max(255) }).strict();
 const commentBody = z.object({ content: z.string().trim().min(1).max(1_000) }).strict();
+const reportBody = z.object({ postId: uuid, reason: z.enum(['spam', 'harassment', 'violence', 'sexual', 'privacy', 'other']), details: z.string().trim().max(1_000).optional() }).strict();
 function bearerToken(request: Request) { const [scheme, token] = (request.header('authorization') ?? '').split(' ', 2); return scheme?.toLowerCase() === 'bearer' ? token ?? '' : ''; }
 function limiter(limit: number) { return rateLimit({ legacyHeaders: false, limit, standardHeaders: 'draft-8', windowMs: 60_000 }); }
 
@@ -34,5 +35,6 @@ export function createMarketRouter(authService: AuthService, service: MarketServ
   router.get('/posts/:postId/comments', asyncRoute(async (request, response) => { const query = cursorQuery.parse(request.query); response.json(await service.listComments(request.authenticatedPublicId, uuid.parse(request.params.postId), query.limit, query.cursor)); }));
   router.post('/posts/:postId/comments', limiter(60), asyncRoute(async (request, response) => { response.status(201).json({ comment: await service.createComment(request.authenticatedPublicId, uuid.parse(request.params.postId), commentBody.parse(request.body).content) }); }));
   router.delete('/posts/:postId/comments/:commentId', limiter(60), asyncRoute(async (request, response) => { await service.deleteComment(request.authenticatedPublicId, uuid.parse(request.params.postId), uuid.parse(request.params.commentId)); response.status(204).send(); }));
+  router.post('/reports', limiter(10), asyncRoute(async (request, response) => { await service.report(request.authenticatedPublicId, reportBody.parse(request.body)); response.status(201).json({ ok: true }); }));
   return router;
 }

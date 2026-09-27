@@ -11,6 +11,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -65,15 +66,20 @@ export default function SocialPage() {
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
   const [suggestions, setSuggestions] = useState<SocialSuggestion[]>([]);
-  const [followingSuggestionId, setFollowingSuggestionId] = useState<string | null>(null);
+  const [followingSuggestionId, setFollowingSuggestionId] = useState<
+    string | null
+  >(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const feedScrollRef = useRef<HTMLElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const myId = sessionStorage.getActingPublicId() ?? undefined;
   const [hydrated, setHydrated] = useState(false);
-  useEffect(() => { setHydrated(true); }, []);
-  const isPage = hydrated && !!myId && myId !== sessionStorage.get()?.user.publicId;
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+  const isPage =
+    hydrated && !!myId && myId !== sessionStorage.get()?.user.publicId;
 
   const load = useCallback(async () => {
     try {
@@ -100,25 +106,38 @@ export default function SocialPage() {
   }, [load]);
 
   const loadSuggestions = useCallback(async () => {
-    if (!myId || view !== 'home') return;
+    if (!myId || view !== "home") return;
     try {
       setSuggestions((await listSocialSuggestions()).items);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not load suggestions.');
+      toast.error(
+        error instanceof Error ? error.message : "Could not load suggestions.",
+      );
     }
   }, [myId, view]);
-  useEffect(() => { void loadSuggestions(); }, [loadSuggestions]);
   useEffect(() => {
-    if (!myId || view !== 'home') return;
+    void loadSuggestions();
+  }, [loadSuggestions]);
+  useEffect(() => {
+    if (!myId || view !== "home") return;
     let timer: ReturnType<typeof setTimeout>;
     const schedule = () => {
-      const nextDayMs = (Math.floor(Date.now() / 86_400_000) + 1) * 86_400_000 + 1_000;
-      timer = setTimeout(() => { void loadSuggestions(); schedule(); }, nextDayMs - Date.now());
+      const nextDayMs =
+        (Math.floor(Date.now() / 86_400_000) + 1) * 86_400_000 + 1_000;
+      timer = setTimeout(() => {
+        void loadSuggestions();
+        schedule();
+      }, nextDayMs - Date.now());
     };
     schedule();
-    const onVisible = () => { if (document.visibilityState === 'visible') void loadSuggestions(); };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', onVisible); };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void loadSuggestions();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [loadSuggestions, myId, view]);
 
   async function followSuggestion(publicId: string) {
@@ -126,11 +145,17 @@ export default function SocialPage() {
     setFollowingSuggestionId(publicId);
     try {
       await followSocialProfile(publicId);
-      setSuggestions((current) => current.filter((person) => person.publicId !== publicId));
+      setSuggestions((current) =>
+        current.filter((person) => person.publicId !== publicId),
+      );
       await loadSuggestions();
-      toast.success('Following');
+      toast.success("Following");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not follow this person.');
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not follow this person.",
+      );
     } finally {
       setFollowingSuggestionId(null);
     }
@@ -187,7 +212,7 @@ export default function SocialPage() {
       const post = await createSocialPost(
         clientPostId,
         draft,
-        isPage ? 'public' : visibility,
+        isPage ? "public" : visibility,
         uploaded,
       );
       setPosts((items) => [post, ...items]);
@@ -220,7 +245,7 @@ export default function SocialPage() {
       const post = await createSocialPost(
         crypto.randomUUID(),
         shareDraft.trim(),
-        isPage ? 'public' : shareVisibility,
+        isPage ? "public" : shareVisibility,
         undefined,
         sharingPost.sharedPostId ?? sharingPost.id,
       );
@@ -238,8 +263,8 @@ export default function SocialPage() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-[#e7e7e9] text-[#171717]">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-black/10 bg-gradient-to-b from-white to-[#c9c9cb] px-4 shadow-sm">
+    <div className="flex h-full flex-col bg-[#e7e7e9] dark:bg-night-canvas text-[#171717] dark:text-night-text">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-black/10 dark:border-night-border bg-gradient-to-b from-white to-[#c9c9cb] dark:from-night-header dark:to-night-control px-4 shadow-sm">
         <h1 className="text-lg font-black">
           g<span className="text-[#c62828]">000</span>
           st
@@ -252,9 +277,9 @@ export default function SocialPage() {
       </header>
       <main ref={feedScrollRef} className="min-h-0 flex-1 overflow-y-auto">
         {view !== "alerts" && (
-          <div className="border-b border-black/10 bg-white/80 p-4">
+          <div className="border-b border-black/10 dark:border-night-border bg-white/80 dark:bg-night-surface p-4">
             <textarea
-              className="min-h-24 w-full resize-none rounded-2xl border border-black/15 bg-white p-3 outline-none"
+              className="min-h-24 w-full resize-none rounded-2xl border border-black/15 dark:border-night-border bg-white dark:bg-night-surface p-3 outline-none"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               placeholder="Share without a name…"
@@ -276,7 +301,7 @@ export default function SocialPage() {
               </div>
             )}
             <div className="mt-2 flex items-center gap-2">
-              <label className="flex items-center gap-2 rounded-xl border border-black/10 px-3 py-2 text-xs font-bold">
+              <label className="flex items-center gap-2 rounded-xl border border-black/10 dark:border-night-border px-3 py-2 text-xs font-bold">
                 📎
                 <input
                   className="hidden"
@@ -316,7 +341,7 @@ export default function SocialPage() {
                     setVisibility(event.target.checked ? "public" : "anonymous")
                   }
                 />{" "}
-                {isPage ? 'Page name is always shown' : 'Show my identity'}
+                {isPage ? "Page name is always shown" : "Show my identity"}
               </label>
               <button
                 disabled={busy || !draft.trim()}
@@ -340,22 +365,61 @@ export default function SocialPage() {
                 }
               />
             )}
-            {view === 'home' && suggestions.length > 0 && (
-              <section aria-label="Suggested people" className="overflow-hidden rounded-2xl border border-black/15 bg-white p-4">
+            {view === "home" && suggestions.length > 0 && (
+              <section
+                aria-label="Suggested people"
+                className="overflow-hidden rounded-2xl border border-black/15 dark:border-night-border bg-white dark:bg-night-surface p-4"
+              >
                 <h2 className="text-sm font-black">People you may know</h2>
-                <p className="mt-1 text-xs text-black/55">Fresh suggestions every day</p>
+                <p className="mt-1 text-xs text-black/55 dark:text-night-muted">
+                  Fresh suggestions every day
+                </p>
                 <div className="mt-3 flex snap-x gap-3 overflow-x-auto pb-2">
                   {suggestions.map((person) => (
-                    <div key={person.publicId} className="flex w-44 shrink-0 snap-start flex-col items-center rounded-xl border border-black/10 bg-[#f6f6f7] p-3 text-center">
-                      <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-full bg-[#222] text-sm font-bold text-white">
-                        {person.avatarUrl ? <img src={person.avatarUrl} alt="" className="h-full w-full object-cover" /> : person.displayName.slice(0, 1).toUpperCase()}
+                    <div
+                      key={person.publicId}
+                      className="flex w-44 shrink-0 snap-start flex-col items-center rounded-xl border border-black/10 dark:border-night-border bg-[#f6f6f7] dark:bg-night-surface p-3 text-center"
+                    >
+                      <Link
+                        href={`/users/${person.publicId}`}
+                        aria-label={`View ${person.displayName}'s profile`}
+                        className="grid h-12 w-12 place-items-center overflow-hidden rounded-full bg-[#222] text-sm font-bold text-white"
+                      >
+                        {person.avatarUrl ? (
+                          <img
+                            src={person.avatarUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          person.displayName.slice(0, 1).toUpperCase()
+                        )}
+                      </Link>
+                      <Link
+                        href={`/users/${person.publicId}`}
+                        className="mt-2 w-full truncate text-sm font-bold hover:underline"
+                        title={person.displayName}
+                      >
+                        {person.displayName}
+                      </Link>
+                      <div className="mt-1 h-8 text-[11px] text-black/55 dark:text-night-muted">
+                        {person.reason === "friends_of_friends"
+                          ? "Followed by people you follow"
+                          : "Discover someone new"}
                       </div>
-                      <div className="mt-2 w-full truncate text-sm font-bold" title={person.displayName}>{person.displayName}</div>
-                      <div className="mt-1 h-8 text-[11px] text-black/55">
-                        {person.reason === 'friends_of_friends' ? 'Followed by people you follow' : 'Discover someone new'}
-                      </div>
-                      <button type="button" disabled={followingSuggestionId !== null} onClick={() => void followSuggestion(person.publicId)} className="mt-2 flex w-full items-center justify-center rounded-lg bg-[#222] px-3 py-2 text-white disabled:opacity-40">
-                        {followingSuggestionId === person.publicId ? <UserCheck size={16} /> : <UserPlus size={16} />}
+                      <button
+                        type="button"
+                        disabled={followingSuggestionId !== null}
+                        onClick={() => void followSuggestion(person.publicId)}
+                        className="mt-2 flex w-full items-center justify-center rounded-lg bg-[#222] px-3 py-2 text-white disabled:opacity-40"
+                      >
+                        {followingSuggestionId === person.publicId ? (
+                          <UserCheck size={16} />
+                        ) : (
+                          <>
+                            <UserPlus size={16} /> Follow
+                          </>
+                        )}
                       </button>
                     </div>
                   ))}
@@ -374,7 +438,7 @@ export default function SocialPage() {
             {posts.map((post) => (
               <article
                 key={post.id}
-                className="overflow-hidden rounded-2xl border-2 border-black bg-white shadow-[5px_6px_0_#111]"
+                className="overflow-hidden rounded-2xl border-2 border-black dark:border-night-border bg-white dark:bg-night-surface shadow-[5px_6px_0_#111]"
               >
                 <div className="flex items-center gap-3 p-4">
                   <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-black text-white">
@@ -390,13 +454,16 @@ export default function SocialPage() {
                   </div>
                   <button
                     className="min-w-0 flex-1 text-left"
-                    onClick={() => { if (post.author.publicId) router.push(`/users/${post.author.publicId}`); }}
+                    onClick={() => {
+                      if (post.author.publicId)
+                        router.push(`/users/${post.author.publicId}`);
+                    }}
                     disabled={!post.author.publicId}
                   >
                     <div className="truncate font-black">
                       {post.author.displayName}
                     </div>
-                    <div className="text-xs text-black/45">
+                    <div className="text-xs text-black/45 dark:text-night-muted">
                       {new Date(post.createdAtMs).toLocaleString()}
                       {post.editedAtMs ? " · edited" : ""}
                     </div>
@@ -406,7 +473,7 @@ export default function SocialPage() {
                       <button
                         aria-label="Edit post"
                         onClick={() => setEditingPost(post)}
-                        className="rounded-full border border-black/20 px-3 py-2 text-xs font-black"
+                        className="rounded-full border border-black/20 dark:border-night-border px-3 py-2 text-xs font-black"
                       >
                         Edit
                       </button>
@@ -414,12 +481,15 @@ export default function SocialPage() {
                         aria-label="Delete post"
                         className="rounded-full border border-[#c62828] px-3 py-2 text-xs font-black text-[#c62828]"
                         onClick={async () => {
-                          if (await confirm({
-                            title: "Delete post?",
-                            message: "Are you sure you want to delete this post?",
-                            confirmLabel: "Delete",
-                            isDangerous: true,
-                          })) {
+                          if (
+                            await confirm({
+                              title: "Delete post?",
+                              message:
+                                "Are you sure you want to delete this post?",
+                              confirmLabel: "Delete",
+                              isDangerous: true,
+                            })
+                          ) {
                             await deleteSocialPost(post.id);
                             setPosts((items) =>
                               items.filter((item) => item.id !== post.id),
@@ -453,7 +523,7 @@ export default function SocialPage() {
                     {post.sharedPost ? (
                       <SharedPostPreview post={post.sharedPost} />
                     ) : (
-                      <div className="rounded-xl border border-black/10 p-4 text-black/50">
+                      <div className="rounded-xl border border-black/10 dark:border-night-border p-4 text-black/50 dark:text-night-muted">
                         Original post unavailable
                       </div>
                     )}
@@ -484,7 +554,7 @@ export default function SocialPage() {
                     )}
                   </div>
                 ) : null}
-                <div className="flex items-center border-t border-black/10 p-2">
+                <div className="flex items-center border-t border-black/10 dark:border-night-border p-2">
                   <button
                     onClick={async () => {
                       const result = await toggleSocialLike(post.id);
@@ -529,13 +599,22 @@ export default function SocialPage() {
                           ),
                         );
                         if (result.camped) {
-                          setSuggestions((current) => current.filter((person) => person.publicId !== post.ownerPublicId));
+                          setSuggestions((current) =>
+                            current.filter(
+                              (person) =>
+                                person.publicId !== post.ownerPublicId,
+                            ),
+                          );
                           void loadSuggestions();
                         }
                       }}
                       className="flex flex-1 items-center justify-center rounded-xl py-3 font-black"
                     >
-                      {post.campedByViewer ? <UserCheck size={18} /> : <UserPlus size={18} />}
+                      {post.campedByViewer ? (
+                        <UserCheck size={18} />
+                      ) : (
+                        <UserPlus size={18} />
+                      )}
                     </button>
                   )}
 
@@ -562,14 +641,14 @@ export default function SocialPage() {
             ))}
             <div ref={loadMoreRef} className="h-1" aria-hidden="true" />
             {loadingMore && (
-              <div className="py-3 text-center text-xs font-bold text-black/45">
+              <div className="py-3 text-center text-xs font-bold text-black/45 dark:text-night-muted">
                 Loading more…
               </div>
             )}
           </div>
         )}
       </main>
-      <nav className="flex h-14 shrink-0 border-t border-black/15 bg-white/90">
+      <nav className="flex h-14 shrink-0 border-t border-black/15 dark:border-night-border bg-white/90 dark:bg-night-surface">
         <ViewButton
           active={view === "home"}
           onClick={() => setView("home")}
@@ -588,7 +667,7 @@ export default function SocialPage() {
       </nav>
       <SocialCommentsModal
         post={commentsPost}
-        visibility={isPage ? 'public' : visibility}
+        visibility={isPage ? "public" : visibility}
         onClose={() => setCommentsPost(undefined)}
         onCountChange={(postId, delta) =>
           setPosts((items) =>
@@ -621,7 +700,7 @@ export default function SocialPage() {
           aria-modal="true"
           aria-label="Share to Social"
         >
-          <div className="w-full max-w-lg space-y-3 rounded-[24px] bg-white p-5">
+          <div className="w-full max-w-lg space-y-3 rounded-[24px] bg-white dark:bg-night-surface p-5">
             <h2 className="text-lg font-black">Share to Social</h2>
             <SharedPostPreview
               compact
@@ -640,7 +719,7 @@ export default function SocialPage() {
               onChange={(event) => setShareDraft(event.target.value)}
               maxLength={4000}
               placeholder="Add a note (optional)"
-              className="min-h-20 w-full rounded-xl border border-black/15 p-3"
+              className="min-h-20 w-full rounded-xl border border-black/15 dark:border-night-border p-3"
             />
             <label className="flex items-center gap-2 text-sm font-bold">
               <input
@@ -653,12 +732,12 @@ export default function SocialPage() {
                   )
                 }
               />
-              {isPage ? 'Page name is always shown' : 'Show my identity'}
+              {isPage ? "Page name is always shown" : "Show my identity"}
             </label>
             <div className="flex gap-2">
               <button
                 onClick={() => setSharingPost(undefined)}
-                className="flex-1 rounded-xl bg-[#ddd] p-3 font-black"
+                className="flex-1 rounded-xl bg-[#ddd] dark:bg-night-raised p-3 font-black"
               >
                 Cancel
               </button>
@@ -685,7 +764,7 @@ function SharedPostPreview({
   compact?: boolean;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-black/15 bg-black/[.03]">
+    <div className="overflow-hidden rounded-xl border border-black/15 dark:border-night-border bg-black/[.03] dark:bg-white/10">
       <div className="p-3">
         <p className="text-xs font-black">{post.author.displayName}</p>
         <p
@@ -719,7 +798,7 @@ function SharedPostPreview({
         </div>
       ) : null}
       {compact && !!post.media?.length && (
-        <p className="px-3 pb-3 text-xs text-black/50">
+        <p className="px-3 pb-3 text-xs text-black/50 dark:text-night-muted">
           {post.media.length} media attachment
           {post.media.length === 1 ? "" : "s"}
         </p>
@@ -762,7 +841,7 @@ function SocialCommentsModal({
       role="dialog"
       aria-modal="true"
     >
-      <div className="flex h-[75dvh] w-full max-w-xl flex-col rounded-t-[28px] bg-white p-4 shadow-2xl sm:rounded-[28px]">
+      <div className="flex h-[75dvh] w-full max-w-xl flex-col rounded-t-[28px] bg-white dark:bg-night-surface p-4 shadow-2xl sm:rounded-[28px]">
         <div className="flex items-center justify-between border-b pb-3">
           <h2 className="text-lg font-black">Comments</h2>
           <button aria-label="Close" onClick={onClose}>
@@ -773,7 +852,7 @@ function SocialCommentsModal({
           {comments.map((item) => (
             <div
               key={item.id}
-              className="flex gap-2 rounded-xl bg-black/[.04] p-3"
+              className="flex gap-2 rounded-xl bg-black/[.04] dark:bg-white/10 p-3"
             >
               <p className="min-w-0 flex-1 text-sm">
                 <b>{item.author.displayName}</b> {item.content}
@@ -795,7 +874,7 @@ function SocialCommentsModal({
             </div>
           ))}
           {!loading && !comments.length && (
-            <div className="py-16 text-center text-black/40">
+            <div className="py-16 text-center text-black/40 dark:text-night-muted">
               No comments yet.
             </div>
           )}
@@ -836,7 +915,7 @@ function SocialCommentsModal({
           <input
             value={value}
             onChange={(event) => setValue(event.target.value)}
-            className="min-w-0 flex-1 rounded-xl border border-black/15 px-3 py-2"
+            className="min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
             placeholder="Write a comment…"
             maxLength={1000}
           />
@@ -867,7 +946,7 @@ function EditSocialPostModal({
   if (!post) return null;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-5">
-      <div className="w-full max-w-lg space-y-3 rounded-[24px] bg-white p-5">
+      <div className="w-full max-w-lg space-y-3 rounded-[24px] bg-white dark:bg-night-surface p-5">
         <div className="flex justify-between">
           <h2 className="text-lg font-black">Edit post</h2>
           <button onClick={onClose}>
@@ -878,7 +957,7 @@ function EditSocialPostModal({
           value={content}
           onChange={(event) => setContent(event.target.value)}
           maxLength={4000}
-          className="min-h-32 w-full rounded-xl border border-black/15 p-3"
+          className="min-h-32 w-full rounded-xl border border-black/15 dark:border-night-border p-3"
         />
         <button
           onClick={() => {
@@ -899,19 +978,34 @@ function Alerts({ alerts }: { alerts: SocialAlert[] }) {
       {alerts.length === 0 ? (
         <Empty text="No alerts yet." />
       ) : (
-        alerts.map((alert) => (
-          <div key={alert.id} className="rounded-2xl bg-white p-4 shadow-sm">
-            <b>{alert.actor.displayName}</b>
-            {alert.kind === "like"
-              ? "liked your post."
-              : alert.kind === "comment"
-                ? "commented on your post."
-                : "started following you."}
-            <div className="mt-1 text-xs text-black/45">
-              {new Date(alert.createdAtMs).toLocaleString()}
+        alerts.map((alert) => {
+          const content = (
+            <>
+              <b>{alert.actor.displayName}</b>{" "}
+              {alert.kind === "like"
+                ? "liked your post."
+                : alert.kind === "comment"
+                  ? "commented on your post."
+                  : "started following you."}
+              <div className="mt-1 text-xs text-black/45 dark:text-night-muted">
+                {new Date(alert.createdAtMs).toLocaleString()}
+              </div>
+            </>
+          );
+          return alert.kind === "camp" && alert.actor.publicId ? (
+            <Link
+              key={alert.id}
+              href={`/users/${alert.actor.publicId}`}
+              className="block rounded-2xl bg-white dark:bg-night-surface p-4 shadow-sm transition hover:bg-[#f7f7f8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#c62828]"
+            >
+              {content}
+            </Link>
+          ) : (
+            <div key={alert.id} className="rounded-2xl bg-white dark:bg-night-surface p-4 shadow-sm">
+              {content}
             </div>
-          </div>
-        ))
+          );
+        })
       )}
     </div>
   );
@@ -932,12 +1026,12 @@ function ProfileEditor({
     return (
       <button
         onClick={() => setEditing(true)}
-        className="w-full rounded-2xl bg-white p-4 text-left shadow-sm"
+        className="w-full rounded-2xl bg-white dark:bg-night-surface p-4 text-left shadow-sm"
       >
         <div className="font-black">
           {profile.displayName || profile.publicId.slice(0, 8)}
         </div>
-        <div className="mt-1 text-xs text-black/45">
+        <div className="mt-1 text-xs text-black/45 dark:text-night-muted">
           {profile.country ||
             profile.hobby ||
             "Click to complete your optional profile"}
@@ -945,36 +1039,36 @@ function ProfileEditor({
       </button>
     );
   return (
-    <div className="space-y-2 rounded-2xl bg-white p-4 shadow-sm">
+    <div className="space-y-2 rounded-2xl bg-white dark:bg-night-surface p-4 shadow-sm">
       <h2 className="font-black">Edit social profile</h2>
       <input
         value={displayName}
         onChange={(event) => setDisplayName(event.target.value)}
         placeholder="Display name"
-        className="w-full rounded-xl border border-black/15 px-3 py-2"
+        className="w-full rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
       />
       <input
         value={country}
         onChange={(event) => setCountry(event.target.value)}
         placeholder="Country"
-        className="w-full rounded-xl border border-black/15 px-3 py-2"
+        className="w-full rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
       />
       <input
         value={hobby}
         onChange={(event) => setHobby(event.target.value)}
         placeholder="Hobby"
-        className="w-full rounded-xl border border-black/15 px-3 py-2"
+        className="w-full rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
       />
       <textarea
         value={bio}
         onChange={(event) => setBio(event.target.value)}
         placeholder="About me"
-        className="min-h-20 w-full rounded-xl border border-black/15 px-3 py-2"
+        className="min-h-20 w-full rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
       />
       <div className="flex gap-2">
         <button
           onClick={() => setEditing(false)}
-          className="flex-1 rounded-xl bg-[#ddd] p-3 font-black"
+          className="flex-1 rounded-xl bg-[#ddd] dark:bg-night-raised p-3 font-black"
         >
           Cancel
         </button>
@@ -997,7 +1091,7 @@ function ProfileEditor({
 }
 function Empty({ text }: { text: string }) {
   return (
-    <div className="py-16 text-center font-bold text-black/45">{text}</div>
+    <div className="py-16 text-center font-bold text-black/45 dark:text-night-muted">{text}</div>
   );
 }
 function ViewButton({
@@ -1012,7 +1106,7 @@ function ViewButton({
   return (
     <button
       onClick={onClick}
-      className={`flex-1 text-xs font-black ${active ? "border-t-2 border-[#c62828] text-black" : "text-black/45"}`}
+      className={`flex-1 text-xs font-black ${active ? "border-t-2 border-[#c62828] text-black dark:text-night-text" : "text-black/45 dark:text-night-muted"}`}
     >
       {label}
     </button>
@@ -1032,9 +1126,9 @@ function MediaPreview({
     setUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
-  if (!url) return <div className="h-20 w-20 shrink-0 rounded-xl bg-black/5" />;
+  if (!url) return <div className="h-20 w-20 shrink-0 rounded-xl bg-black/5 dark:bg-white/10" />;
   return (
-    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-black/10 bg-black/5">
+    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-black/10 dark:border-night-border bg-black/5 dark:bg-white/10">
       {file.type.startsWith("video/") ? (
         <video src={url} className="h-full w-full object-cover" />
       ) : (

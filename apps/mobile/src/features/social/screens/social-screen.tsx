@@ -89,7 +89,9 @@ export function SocialScreen() {
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
   const [suggestions, setSuggestions] = useState<SocialSuggestion[]>([]);
-  const [followingSuggestionId, setFollowingSuggestionId] = useState<string | null>(null);
+  const [followingSuggestionId, setFollowingSuggestionId] = useState<
+    string | null
+  >(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingMoreRef = useRef(false);
@@ -121,11 +123,18 @@ export function SocialScreen() {
     }
   }, [userPublicId, view]);
   const loadSuggestions = useCallback(async () => {
-    if (!userPublicId || view !== 'home') return;
+    if (!userPublicId || view !== "home") return;
     try {
       setSuggestions((await listSocialSuggestions()).items);
     } catch (error) {
-      Toast.show({ type: 'error', text1: 'Suggestions', text2: error instanceof Error ? error.message : 'Could not load suggestions.' });
+      Toast.show({
+        type: "error",
+        text1: "Suggestions",
+        text2:
+          error instanceof Error
+            ? error.message
+            : "Could not load suggestions.",
+      });
     }
   }, [userPublicId, view]);
 
@@ -134,11 +143,20 @@ export function SocialScreen() {
     setFollowingSuggestionId(publicId);
     try {
       await followSocialProfile(publicId);
-      setSuggestions((current) => current.filter((person) => person.publicId !== publicId));
+      setSuggestions((current) =>
+        current.filter((person) => person.publicId !== publicId),
+      );
       await loadSuggestions();
-      Toast.show({ type: 'success', text1: 'Following' });
+      Toast.show({ type: "success", text1: "Following" });
     } catch (error) {
-      Toast.show({ type: 'error', text1: 'Follow', text2: error instanceof Error ? error.message : 'Could not follow this person.' });
+      Toast.show({
+        type: "error",
+        text1: "Follow",
+        text2:
+          error instanceof Error
+            ? error.message
+            : "Could not follow this person.",
+      });
     } finally {
       setFollowingSuggestionId(null);
     }
@@ -149,17 +167,24 @@ export function SocialScreen() {
       void loadSuggestions();
       let timer: ReturnType<typeof setTimeout>;
       const schedule = () => {
-        const nextDayMs = (Math.floor(Date.now() / 86_400_000) + 1) * 86_400_000 + 1_000;
-        timer = setTimeout(() => { void loadSuggestions(); schedule(); }, nextDayMs - Date.now());
+        const nextDayMs =
+          (Math.floor(Date.now() / 86_400_000) + 1) * 86_400_000 + 1_000;
+        timer = setTimeout(() => {
+          void loadSuggestions();
+          schedule();
+        }, nextDayMs - Date.now());
       };
-      if (view === 'home') schedule();
+      if (view === "home") schedule();
       const subscription = AppState.addEventListener("change", (state) => {
         if (state === "active") {
           void load();
           void loadSuggestions();
         }
       });
-      return () => { clearTimeout(timer); subscription.remove(); };
+      return () => {
+        clearTimeout(timer);
+        subscription.remove();
+      };
     }, [load, loadSuggestions, view]),
   );
 
@@ -297,7 +322,7 @@ export function SocialScreen() {
       const post = await createSocialPost(
         clientPostId,
         content,
-        isPage ? 'public' : visibility,
+        isPage ? "public" : visibility,
         media,
       );
       setPosts((items) => [post, ...items]);
@@ -323,7 +348,9 @@ export function SocialScreen() {
       });
     try {
       const conversation = await startChatConversation(publicId);
-      router.navigate(chatConversationHref(conversation.id), { withAnchor: true });
+      router.navigate(chatConversationHref(conversation.id), {
+        withAnchor: true,
+      });
     } catch (error) {
       Toast.show({
         type: "error",
@@ -340,7 +367,7 @@ export function SocialScreen() {
       const post = await createSocialPost(
         randomUUID(),
         shareDraft.trim(),
-        isPage ? 'public' : shareVisibility,
+        isPage ? "public" : shareVisibility,
         undefined,
         sharingPost.sharedPostId ?? sharingPost.id,
       );
@@ -367,8 +394,8 @@ export function SocialScreen() {
         </Pressable>
       }
       title={
-        <View className="h-14 flex-row items-center justify-between border-b border-black/10 bg-[#D2D2D4] px-4">
-          <Text className="text-lg font-black text-[#1A1A1A]">
+        <View className="h-14 flex-row items-center justify-between border-b border-black/10 dark:border-night-border bg-[#D2D2D4] dark:bg-night-header px-4">
+          <Text className="text-lg font-black text-[#1A1A1A] dark:text-night-text">
             g<Text className="text-[#C62828]">000</Text>
             st
             <Text className="text-[#C62828]">S</Text>
@@ -377,16 +404,16 @@ export function SocialScreen() {
         </View>
       }
     >
-      <View className="flex-1 bg-[#E7E7E9]">
+      <View className="flex-1 bg-[#E7E7E9] dark:bg-night-canvas">
         {view !== "alerts" && (
-          <View className="border-b border-black/10 bg-white/80 p-3">
+          <View className="border-b border-black/10 dark:border-night-border bg-white/80 dark:bg-night-surface p-3">
             <TextInput
               multiline
               maxLength={4000}
               value={draft}
               onChangeText={setDraft}
               placeholder="Share without a name…"
-              className="min-h-20 rounded-2xl border border-black/15 bg-white p-3 text-[15px]"
+              className="min-h-20 rounded-2xl border border-black/15 dark:border-night-border bg-white dark:bg-night-surface p-3 text-[15px]"
               textAlignVertical="top"
             />
 
@@ -396,7 +423,7 @@ export function SocialScreen() {
                   <View key={index} className="relative">
                     <Image
                       source={{ uri: media.uri }}
-                      className="h-16 w-16 rounded-lg bg-black/5"
+                      className="h-16 w-16 rounded-lg bg-black/5 dark:bg-white/10"
                       contentFit="cover"
                     />
                     {media.type === "video" && (
@@ -427,7 +454,7 @@ export function SocialScreen() {
             <View className="mt-2 flex-row items-center">
               <Pressable
                 onPress={() => setIsAttachmentMenuOpen(true)}
-                className="mr-2 rounded-xl border border-black/10 px-3 py-3"
+                className="mr-2 rounded-xl border border-black/10 dark:border-night-border px-3 py-3"
               >
                 <Text className="text-xs font-black">
                   {selectedMedia.length
@@ -443,7 +470,7 @@ export function SocialScreen() {
                 }
               />
               <Text className="ml-2 flex-1 text-xs font-bold">
-                {isPage ? 'Page name is always shown' : 'Show identity'}
+                {isPage ? "Page name is always shown" : "Show identity"}
               </Text>
               <Pressable
                 disabled={!draft.trim() || posting}
@@ -468,7 +495,10 @@ export function SocialScreen() {
             refreshControl={
               <RefreshControl
                 refreshing={false}
-                onRefresh={() => { void load(); void loadSuggestions(); }}
+                onRefresh={() => {
+                  void load();
+                  void loadSuggestions();
+                }}
               />
             }
           >
@@ -485,12 +515,19 @@ export function SocialScreen() {
             refreshControl={
               <RefreshControl
                 refreshing={false}
-                onRefresh={() => { void load(); void loadSuggestions(); }}
+                onRefresh={() => {
+                  void load();
+                  void loadSuggestions();
+                }}
               />
             }
             ListHeaderComponent={
-              view === 'home' && suggestions.length > 0 ? (
-                <SuggestedPeople suggestions={suggestions} followingId={followingSuggestionId} onFollow={followSuggestion} />
+              view === "home" && suggestions.length > 0 ? (
+                <SuggestedPeople
+                  suggestions={suggestions}
+                  followingId={followingSuggestionId}
+                  onFollow={followSuggestion}
+                />
               ) : view === "mine" && profile ? (
                 <ProfileEditor
                   profile={profile}
@@ -501,7 +538,7 @@ export function SocialScreen() {
               ) : null
             }
             ListEmptyComponent={
-              <Text className="py-20 text-center font-bold text-black/40">
+              <Text className="py-20 text-center font-bold text-black/40 dark:text-night-muted">
                 No posts yet.
               </Text>
             }
@@ -546,7 +583,11 @@ export function SocialScreen() {
                     ),
                   );
                   if (result.camped) {
-                    setSuggestions((current) => current.filter((person) => person.publicId !== post.ownerPublicId));
+                    setSuggestions((current) =>
+                      current.filter(
+                        (person) => person.publicId !== post.ownerPublicId,
+                      ),
+                    );
                     void loadSuggestions();
                   }
                 }}
@@ -555,7 +596,7 @@ export function SocialScreen() {
             )}
           />
         )}
-        <View className="h-14 flex-row border-t border-black/15 bg-white">
+        <View className="h-14 flex-row border-t border-black/15 dark:border-night-border bg-white dark:bg-night-surface">
           <ViewButton
             label="Home"
             active={view === "home"}
@@ -584,20 +625,20 @@ export function SocialScreen() {
           className="flex-1 items-center justify-end bg-black/45 p-5"
           onPress={() => setIsAttachmentMenuOpen(false)}
         >
-          <View className="mb-10 w-full rounded-[24px] bg-white p-4">
+          <View className="mb-10 w-full rounded-[24px] bg-white dark:bg-night-surface p-4">
             {[
               ["Photo or video library", onPickLibraryAttachment],
               ["Camera", onCaptureAttachment],
             ].map(([label, action], index, arr) => (
               <Pressable
                 key={label as string}
-                className={`py-4 ${index < arr.length - 1 ? "border-b border-black/10" : ""}`}
+                className={`py-4 ${index < arr.length - 1 ? "border-b border-black/10 dark:border-night-border" : ""}`}
                 onPress={() => {
                   setIsAttachmentMenuOpen(false);
                   void (action as () => Promise<void>)();
                 }}
               >
-                <Text className="text-center font-bold text-[#1A1A1A]">
+                <Text className="text-center font-bold text-[#1A1A1A] dark:text-night-text">
                   {label as string}
                 </Text>
               </Pressable>
@@ -615,7 +656,7 @@ export function SocialScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           className="flex-1 justify-end bg-black/50"
         >
-          <View className="gap-3 rounded-t-[28px] bg-white p-5 pb-12">
+          <View className="gap-3 rounded-t-[28px] bg-white dark:bg-night-surface p-5 pb-12">
             <Text className="text-lg font-black">Share to Social</Text>
             {sharingPost && (
               <SharedPostPreview
@@ -637,7 +678,7 @@ export function SocialScreen() {
               placeholder="Add a note (optional)"
               maxLength={4000}
               multiline
-              className="min-h-20 rounded-xl border border-black/15 p-3"
+              className="min-h-20 rounded-xl border border-black/15 dark:border-night-border p-3"
               textAlignVertical="top"
             />
             <View className="flex-row items-center">
@@ -649,13 +690,13 @@ export function SocialScreen() {
                 }
               />
               <Text className="ml-2 flex-1 text-sm font-bold">
-                {isPage ? 'Page name is always shown' : 'Show my identity'}
+                {isPage ? "Page name is always shown" : "Show my identity"}
               </Text>
             </View>
             <View className="flex-row gap-2">
               <Pressable
                 onPress={() => setSharingPost(undefined)}
-                className="flex-1 rounded-xl bg-[#DDD] p-3"
+                className="flex-1 rounded-xl bg-[#DDD] dark:bg-night-raised p-3"
               >
                 <Text className="text-center font-black">Cancel</Text>
               </Pressable>
@@ -675,7 +716,7 @@ export function SocialScreen() {
       {commentsPost && (
         <SocialCommentsModal
           post={commentsPost}
-          visibility={isPage ? 'public' : visibility}
+          visibility={isPage ? "public" : visibility}
           onClose={() => setCommentsPost(undefined)}
           onCountChange={(postId, delta) =>
             setPosts((items) =>
@@ -708,27 +749,73 @@ export function SocialScreen() {
   );
 }
 
-function SuggestedPeople({ suggestions, followingId, onFollow }: {
+function SuggestedPeople({
+  suggestions,
+  followingId,
+  onFollow,
+}: {
   suggestions: SocialSuggestion[];
   followingId: string | null;
   onFollow: (publicId: string) => Promise<void>;
 }) {
+  const router = useRouter();
   return (
-    <View className="rounded-2xl border border-black/15 bg-white py-4">
+    <View className="rounded-2xl border border-black/15 dark:border-night-border bg-white dark:bg-night-surface py-4">
       <Text className="px-4 text-sm font-black">People you may know</Text>
-      <Text className="mt-1 px-4 text-xs text-black/55">Fresh suggestions every day</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3 px-3 pb-2 pt-3">
+      <Text className="mt-1 px-4 text-xs text-black/55 dark:text-night-muted">
+        Fresh suggestions every day
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerClassName="gap-3 px-3 pb-2 pt-3"
+      >
         {suggestions.map((person) => (
-          <View key={person.publicId} className="w-44 items-center rounded-xl border border-black/10 bg-[#F6F6F7] p-3">
-            <View className="h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#222]">
-              {person.avatarUrl ? <Image source={avatarImageSource(person.avatarUrl)} className="h-12 w-12" /> : <Text className="text-sm font-bold text-white">{person.displayName.slice(0, 1).toUpperCase()}</Text>}
-            </View>
-            <Text numberOfLines={1} className="mt-2 w-full text-center text-sm font-bold">{person.displayName}</Text>
-            <Text numberOfLines={2} className="mt-1 h-8 text-center text-[11px] text-black/55">
-              {person.reason === 'friends_of_friends' ? 'Followed by people you follow' : 'Discover someone new'}
+          <View
+            key={person.publicId}
+            className="w-44 items-center rounded-xl border border-black/10 dark:border-night-border bg-[#F6F6F7] dark:bg-night-surface p-3"
+          >
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={`View ${person.displayName}'s profile`}
+              onPress={() => router.push(`/users/${person.publicId}` as Href)}
+              className="w-full items-center"
+            >
+              <View className="h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#222]">
+                {person.avatarUrl ? (
+                  <Image
+                    source={avatarImageSource(person.avatarUrl)}
+                    className="h-12 w-12"
+                  />
+                ) : (
+                  <Text className="text-sm font-bold text-white">
+                    {person.displayName.slice(0, 1).toUpperCase()}
+                  </Text>
+                )}
+              </View>
+              <Text
+                numberOfLines={1}
+                className="mt-2 w-full text-center text-sm font-bold"
+              >
+                {person.displayName}
+              </Text>
+            </Pressable>
+            <Text
+              numberOfLines={2}
+              className="mt-1 h-8 text-center text-[11px] text-black/55 dark:text-night-muted"
+            >
+              {person.reason === "friends_of_friends"
+                ? "Followed by people you follow"
+                : "Discover someone new"}
             </Text>
-            <Pressable disabled={followingId !== null} onPress={() => void onFollow(person.publicId)} className="mt-2 w-full rounded-lg bg-[#222] px-3 py-2 disabled:opacity-40">
-              <Text className="text-center text-xs font-bold text-white">{followingId === person.publicId ? '✓' : '➕'}</Text>
+            <Pressable
+              disabled={followingId !== null}
+              onPress={() => void onFollow(person.publicId)}
+              className="mt-2 w-full rounded-lg bg-[#222] px-3 py-2 disabled:opacity-40"
+            >
+              <Text className="text-center text-xs font-bold text-white">
+                {followingId === person.publicId ? "✓" : "➕ Follow"}
+              </Text>
             </Pressable>
           </View>
         ))}
@@ -762,7 +849,7 @@ function PostCard({
   const router = useRouter();
   const { confirm } = useConfirmModal();
   return (
-    <View className="overflow-hidden rounded-2xl border-2 border-black bg-white shadow-sm">
+    <View className="overflow-hidden rounded-2xl border-2 border-black dark:border-night-border bg-white dark:bg-night-surface shadow-sm">
       <View className="flex-row items-center gap-3 p-4">
         <View className="h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-black">
           {post.author.avatarUrl ? (
@@ -781,11 +868,14 @@ function PostCard({
         </View>
         <Pressable
           className="min-w-0 flex-1"
-          onPress={() => { if (post.author.publicId) router.push(`/users/${post.author.publicId}` as Href); }}
-          accessibilityRole={post.author.publicId ? 'button' : undefined}
+          onPress={() => {
+            if (post.author.publicId)
+              router.push(`/users/${post.author.publicId}` as Href);
+          }}
+          accessibilityRole={post.author.publicId ? "button" : undefined}
         >
           <Text className="font-black">{post.author.displayName}</Text>
-          <Text className="text-[10px] text-black/45">
+          <Text className="text-[10px] text-black/45 dark:text-night-muted">
             {new Date(post.createdAtMs).toLocaleString()}
             {post.editedAtMs ? " · edited" : ""}
           </Text>
@@ -795,7 +885,7 @@ function PostCard({
             <Pressable
               accessibilityLabel="Edit post"
               accessibilityRole="button"
-              className="rounded-full border border-black/20 px-3 py-2"
+              className="rounded-full border border-black/20 dark:border-night-border px-3 py-2"
               onPress={onEdit}
             >
               <Text className="text-xs font-black">Edit</Text>
@@ -805,12 +895,15 @@ function PostCard({
               accessibilityRole="button"
               className="rounded-full border border-[#C62828] px-3 py-2"
               onPress={async () => {
-                if (await confirm({
-                  title: "Delete post?",
-                  message: "Are you sure you want to delete this post?",
-                  confirmLabel: "Delete",
-                  isDangerous: true,
-                })) await onDelete();
+                if (
+                  await confirm({
+                    title: "Delete post?",
+                    message: "Are you sure you want to delete this post?",
+                    confirmLabel: "Delete",
+                    isDangerous: true,
+                  })
+                )
+                  await onDelete();
               }}
             >
               <Text className="text-xs font-black text-[#C62828]">Delete</Text>
@@ -821,12 +914,15 @@ function PostCard({
             accessibilityLabel="Report post"
             accessibilityRole="button"
             onPress={async () => {
-              if (await confirm({
-                title: "Report post?",
-                message: "Are you sure you want to report this post?",
-                confirmLabel: "Report",
-                isDangerous: true,
-              })) await onReport();
+              if (
+                await confirm({
+                  title: "Report post?",
+                  message: "Are you sure you want to report this post?",
+                  confirmLabel: "Report",
+                  isDangerous: true,
+                })
+              )
+                await onReport();
             }}
           >
             <Text className="text-xs font-black">Report</Text>
@@ -841,8 +937,8 @@ function PostCard({
           {post.sharedPost ? (
             <SharedPostPreview sharedPost={post.sharedPost} />
           ) : (
-            <View className="rounded-xl border border-black/10 p-4">
-              <Text className="text-black/50">Original post unavailable</Text>
+            <View className="rounded-xl border border-black/10 dark:border-night-border p-4">
+              <Text className="text-black/50 dark:text-night-muted">Original post unavailable</Text>
             </View>
           )}
         </View>
@@ -862,7 +958,7 @@ function PostCard({
           />
         ),
       )}
-      <View className="flex-row items-center border-t border-black/10 p-2">
+      <View className="flex-row items-center border-t border-black/10 dark:border-night-border p-2">
         <Action
           label={`♥ ${post.likeCount}`}
           active={post.likedByViewer}
@@ -873,10 +969,7 @@ function PostCard({
           onPress={async () => onComments()}
         />
         {post.ownerPublicId && !post.ownedByViewer && (
-          <Action
-            label={post.campedByViewer ? "✓" : "➕"}
-            onPress={onCamp}
-          />
+          <Action label={post.campedByViewer ? "✓" : "➕"} onPress={onCamp} />
         )}
 
         <Action label="↗️" onPress={onShare} />
@@ -896,7 +989,7 @@ function SharedPostPreview({
   compact?: boolean;
 }) {
   return (
-    <View className="overflow-hidden rounded-xl border border-black/15 bg-black/[.03]">
+    <View className="overflow-hidden rounded-xl border border-black/15 dark:border-night-border bg-black/[.03] dark:bg-white/10">
       <View className="p-3">
         <Text className="text-xs font-black">
           {sharedPost.author.displayName}
@@ -925,7 +1018,7 @@ function SharedPostPreview({
           ),
         )}
       {compact && !!sharedPost.media?.length && (
-        <Text className="px-3 pb-3 text-xs text-black/50">
+        <Text className="px-3 pb-3 text-xs text-black/50 dark:text-night-muted">
           {sharedPost.media.length} media attachment
           {sharedPost.media.length === 1 ? "" : "s"}
         </Text>
@@ -973,7 +1066,7 @@ function SocialCommentsModal({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1 justify-end bg-black/50"
       >
-        <View className="h-[75%] rounded-t-[28px] bg-white p-4 pb-16">
+        <View className="h-[75%] rounded-t-[28px] bg-white dark:bg-night-surface p-4 pb-16">
           <View className="mb-3 flex-row justify-between">
             <Text className="text-lg font-black">Comments</Text>
             <Pressable onPress={onClose}>
@@ -985,7 +1078,7 @@ function SocialCommentsModal({
             keyExtractor={(item) => item.id}
             contentContainerClassName="gap-3 py-2"
             renderItem={({ item }) => (
-              <View className="flex-row rounded-xl bg-black/[.04] p-3">
+              <View className="flex-row rounded-xl bg-black/[.04] dark:bg-white/10 p-3">
                 <Text className="min-w-0 flex-1">
                   <Text className="font-black">{item.author.displayName}</Text>
                   {item.content}
@@ -1009,7 +1102,7 @@ function SocialCommentsModal({
             )}
             ListEmptyComponent={
               !loading ? (
-                <Text className="py-16 text-center text-black/40">
+                <Text className="py-16 text-center text-black/40 dark:text-night-muted">
                   {" "}
                   No comments yet.
                 </Text>
@@ -1038,13 +1131,13 @@ function SocialCommentsModal({
               ) : null
             }
           />
-          <View className="flex-row gap-2 border-t border-black/10 pt-3 ">
+          <View className="flex-row gap-2 border-t border-black/10 dark:border-night-border pt-3 ">
             <TextInput
               value={value}
               onChangeText={setValue}
               placeholder="Write a comment…"
               maxLength={1000}
-              className="min-w-0 flex-1 rounded-xl border border-black/15 px-3 py-2"
+              className="min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
             />
             <Pressable
               onPress={async () => {
@@ -1082,20 +1175,20 @@ function EditSocialPostModal({
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 justify-center bg-black/50 p-5">
-        <View className="gap-3 rounded-[24px] bg-white p-5">
+        <View className="gap-3 rounded-[24px] bg-white dark:bg-night-surface p-5">
           <Text className="text-lg font-black">Edit post</Text>
           <TextInput
             value={content}
             onChangeText={setContent}
             multiline
             maxLength={4000}
-            className="min-h-28 rounded-xl border border-black/15 p-3"
+            className="min-h-28 rounded-xl border border-black/15 dark:border-night-border p-3"
             textAlignVertical="top"
           />
           <View className="flex-row gap-2">
             <Pressable
               onPress={onClose}
-              className="flex-1 rounded-xl bg-[#DDD] p-3"
+              className="flex-1 rounded-xl bg-[#DDD] dark:bg-night-raised p-3"
             >
               <Text className="text-center font-black">Cancel</Text>
             </Pressable>
@@ -1142,12 +1235,12 @@ function ProfileEditor({
     return (
       <Pressable
         onPress={() => setEditing(true)}
-        className="rounded-2xl bg-white p-4"
+        className="rounded-2xl bg-white dark:bg-night-surface p-4"
       >
         <Text className="text-base font-black">
           {profile.displayName || profile.publicId.slice(0, 8)}
         </Text>
-        <Text className="mt-1 text-xs text-black/45">
+        <Text className="mt-1 text-xs text-black/45 dark:text-night-muted">
           {profile.country ||
             profile.hobby ||
             "Tap to complete your optional profile"}
@@ -1155,38 +1248,38 @@ function ProfileEditor({
       </Pressable>
     );
   return (
-    <View className="gap-2 rounded-2xl bg-white p-4">
+    <View className="gap-2 rounded-2xl bg-white dark:bg-night-surface p-4">
       <Text className="text-base font-black">Edit social profile</Text>
       <TextInput
         value={displayName}
         onChangeText={setDisplayName}
         placeholder="Display name"
-        className="rounded-xl border border-black/15 px-3 py-2"
+        className="rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
       />
       <TextInput
         value={country}
         onChangeText={setCountry}
         placeholder="Country"
-        className="rounded-xl border border-black/15 px-3 py-2"
+        className="rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
       />
       <TextInput
         value={hobby}
         onChangeText={setHobby}
         placeholder="Hobby"
-        className="rounded-xl border border-black/15 px-3 py-2"
+        className="rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
       />
       <TextInput
         value={bio}
         onChangeText={setBio}
         placeholder="About me"
         multiline
-        className="min-h-20 rounded-xl border border-black/15 px-3 py-2"
+        className="min-h-20 rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
         textAlignVertical="top"
       />
       <View className="flex-row gap-2">
         <Pressable
           onPress={() => setEditing(false)}
-          className="flex-1 rounded-xl bg-[#DDD] p-3"
+          className="flex-1 rounded-xl bg-[#DDD] dark:bg-night-raised p-3"
         >
           <Text className="text-center font-black">Cancel</Text>
         </Pressable>
@@ -1208,16 +1301,25 @@ function ProfileEditor({
   );
 }
 function AlertList({ alerts }: { alerts: SocialAlert[] }) {
+  const router = useRouter();
   if (!alerts.length)
     return (
-      <Text className="py-20 text-center font-bold text-black/40">
+      <Text className="py-20 text-center font-bold text-black/40 dark:text-night-muted">
         No alerts yet.
       </Text>
     );
   return (
     <>
       {alerts.map((item) => (
-        <View key={item.id} className="rounded-2xl bg-white p-4">
+        <Pressable
+          key={item.id}
+          disabled={item.kind !== "camp" || !item.actor.publicId}
+          accessibilityRole={item.kind === "camp" && item.actor.publicId ? "link" : undefined}
+          onPress={() => {
+            if (item.actor.publicId) router.push(`/users/${item.actor.publicId}` as Href);
+          }}
+          className="rounded-2xl bg-white dark:bg-night-surface p-4"
+        >
           <Text>
             <Text className="font-black">{item.actor.displayName} </Text>
             {item.kind === "like"
@@ -1226,10 +1328,10 @@ function AlertList({ alerts }: { alerts: SocialAlert[] }) {
                 ? "commented on your post."
                 : "started following you."}
           </Text>
-          <Text className="mt-1 text-[10px] text-black/40">
+          <Text className="mt-1 text-[10px] text-black/40 dark:text-night-muted">
             {new Date(item.createdAtMs).toLocaleString()}
           </Text>
-        </View>
+        </Pressable>
       ))}
     </>
   );
@@ -1249,7 +1351,7 @@ function Action({
       className="flex-1 items-center rounded-xl py-3"
     >
       <Text
-        className={`font-black ${active ? "text-[#C62828]" : "text-black/70"}`}
+        className={`font-black ${active ? "text-[#C62828]" : "text-black/70 dark:text-night-muted"}`}
       >
         {label}
       </Text>
@@ -1293,7 +1395,7 @@ function ViewButton({
           <View className="mb-1 h-[3px] w-8 rounded-full bg-[#C62828]" />
         )}
         <Text
-          className={`text-xs font-black ${active ? "text-black" : "text-black/40"}`}
+          className={`text-xs font-black ${active ? "text-black dark:text-night-text" : "text-black/40 dark:text-night-muted"}`}
         >
           {label}
         </Text>

@@ -1,6 +1,6 @@
 import type { SocialCursor } from '../social/social-cursor.js';
 import type { SocialMedia } from '../social/social-types.js';
-import type { CreateMarketPostInput, MarketComment, MarketPage, MarketPost, UpdateMarketPostInput } from './market-types.js';
+import type { CreateMarketPostInput, CreateMarketReportInput, MarketComment, MarketPage, MarketPost, UpdateMarketPostInput } from './market-types.js';
 
 export interface MarketStore {
   listPosts(viewerId: string, limit: number, cursor?: SocialCursor, ownerId?: string): Promise<MarketPage<MarketPost>>;
@@ -12,4 +12,5 @@ export interface MarketStore {
   listComments(viewerId: string, postId: string, limit: number, cursor?: SocialCursor): Promise<MarketPage<MarketComment> | null>;
   createComment(viewerId: string, postId: string, content: string, nowMs: number): Promise<MarketComment | null>;
   deleteComment(viewerId: string, postId: string, commentId: string): Promise<boolean>;
+  createReport(reporterId: string, input: CreateMarketReportInput, nowMs: number): Promise<void>;
 }

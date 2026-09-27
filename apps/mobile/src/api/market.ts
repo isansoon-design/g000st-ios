@@ -13,6 +13,7 @@ export async function listMarketPosts(ownerId?: string, cursor?: string) { const
 export async function createMarketPost(clientPostId: string, fields: MarketPostFields, media?: PendingMarketMedia[]) { const response = await axiosInstance.post('/market/posts', { clientPostId, ...fields, ...(media?.length ? { media } : {}) }); return parseApiPayload(marketPostResultSchema, response.data).post; }
 export async function updateMarketPost(postId: string, fields: MarketPostFields) { const response = await axiosInstance.patch(`/market/posts/${postId}`, fields); return parseApiPayload(marketPostResultSchema, response.data).post; }
 export async function deleteMarketPost(postId: string) { await axiosInstance.delete(`/market/posts/${postId}`); }
+export async function reportMarketPost(postId: string) { await axiosInstance.post('/market/reports', { postId, reason: 'other' }); }
 export async function toggleMarketLike(postId: string) { const response = await axiosInstance.post(`/market/posts/${postId}/like`); return parseApiPayload(marketLikeResultSchema, response.data); }
 export async function listMarketComments(postId: string, cursor?: string) { const response = await axiosInstance.get(`/market/posts/${postId}/comments`, { params: { cursor, limit: 20 } }); return parseApiPayload(marketCommentPageSchema, response.data); }
 export async function createMarketComment(postId: string, content: string) { const response = await axiosInstance.post(`/market/posts/${postId}/comments`, { content }); return parseApiPayload(marketCommentResultSchema, response.data).comment; }

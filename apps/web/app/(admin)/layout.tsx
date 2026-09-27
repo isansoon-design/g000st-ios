@@ -3,69 +3,77 @@
 import Link from "next/link";
 import { CreditCard, Users, Settings, LogOut, Menu } from "lucide-react";
 import { useState } from "react";
+import { ThemeToggle } from "@/context/ThemeContext";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-night-canvas">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <header className="bg-white dark:bg-night-surface border-b border-gray-200 dark:border-night-border px-3 sm:px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 hover:bg-gray-100 rounded-lg lg:hidden"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg lg:hidden"
+            aria-label="Toggle admin navigation"
           >
             <Menu className="w-5 h-5" />
           </button>
           <h1 className="text-xl font-bold">
-            <span className="text-gray-900">g</span>
+            <span className="text-gray-900 dark:text-night-text">g</span>
             <span className="text-red-600">000</span>
-            <span className="text-gray-900">st</span>
-            <span className="text-gray-600 ml-2">Admin</span>
+            <span className="text-gray-900 dark:text-night-text">st</span>
+            <span className="text-gray-600 dark:text-night-muted ml-2">Admin</span>
           </h1>
         </div>
-        <button className="p-2 hover:bg-gray-100 rounded-lg">
-          <LogOut className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button className="p-2 hover:bg-gray-100 rounded-lg dark:hover:bg-white/10" aria-label="Log out">
+            <LogOut className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 overflow-hidden">
+        {isSidebarOpen && <button aria-label="Close admin navigation" className="absolute inset-0 z-10 bg-black/40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
         {/* Sidebar */}
         <nav
-          className={`${
-            isSidebarOpen ? "w-64" : "w-0"
-          } bg-white border-r border-gray-200 overflow-hidden transition-all duration-200`}
+          className={`${isSidebarOpen ? "absolute inset-y-0 left-0 z-20 w-64" : "hidden"} lg:relative lg:block lg:w-64 shrink-0 bg-white dark:bg-night-surface border-r border-gray-200 dark:border-night-border overflow-y-auto`}
         >
           <div className="p-6 space-y-4">
             <Link
               href="/dashboard"
-              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
+              onClick={() => setIsSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-night-muted"
             >
               <Settings className="w-5 h-5" />
               <span>Dashboard</span>
             </Link>
             <Link
               href="/users"
-              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
+              onClick={() => setIsSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-night-muted"
             >
               <Users className="w-5 h-5" />
               <span>Users</span>
             </Link>
             <Link
               href="/billing"
-              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
+              onClick={() => setIsSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-night-muted"
             >
               <CreditCard className="w-5 h-5" />
               <span>Billing</span>
             </Link>
             <Link
               href="/settings"
-              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
+              onClick={() => setIsSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-night-muted"
             >
               <Settings className="w-5 h-5" />
               <span>Settings</span>
@@ -74,7 +82,7 @@ export default function AdminLayout({
         </nav>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="min-w-0 flex-1 overflow-auto">{children}</main>
       </div>
     </div>
   );

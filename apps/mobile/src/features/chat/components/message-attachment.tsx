@@ -57,11 +57,11 @@ function RemoteAudio({ durationMs, onLongPress, uri }: Readonly<{ durationMs?: n
           <Text className="ml-px text-sm font-black text-white">{status.playing ? 'Ⅱ' : '▶'}</Text>
         </Pressable>
         <View className="ml-3 flex-1">
-          <View className="h-1.5 overflow-hidden rounded-full bg-white/25">
-            <View className="h-full rounded-full bg-white" style={{ width: `${progress * 100}%` }} />
+          <View className="h-1.5 overflow-hidden rounded-full bg-white/25 dark:bg-night-surface">
+            <View className="h-full rounded-full bg-white dark:bg-night-surface" style={{ width: `${progress * 100}%` }} />
           </View>
           <View className="mt-2 flex-row items-center">
-            {waveform.slice(0, 10).map((height, index) => <View className="mr-0.5 w-0.5 rounded-full bg-white/70" key={index} style={{ height: Math.max(3, height / 2) }} />)}
+            {waveform.slice(0, 10).map((height, index) => <View className="mr-0.5 w-0.5 rounded-full bg-white/70 dark:bg-night-surface" key={index} style={{ height: Math.max(3, height / 2) }} />)}
             <Text className="ml-auto font-mono text-[10px] font-black text-white/90">{formatDuration(durationMs ?? status.duration * 1_000)}</Text>
           </View>
         </View>
@@ -103,7 +103,7 @@ function MessageAttachmentComponent({
 
   if (!downloadUrl && !failed) {
     return (
-      <View className="h-32 w-60 items-center justify-center rounded-[14px] bg-black/10">
+      <View className="h-32 w-60 items-center justify-center rounded-[14px] bg-black/10 dark:bg-white/10">
         <ActivityIndicator color="#9A9A9A" />
       </View>
     );
@@ -111,8 +111,8 @@ function MessageAttachmentComponent({
 
   if (failed || !downloadUrl) {
     return (
-      <View className="w-60 rounded-[14px] bg-black/10 px-3 py-4">
-        <Text className="text-center text-xs font-bold text-g000st-red">Attachment unavailable</Text>
+      <View className="w-60 rounded-[14px] bg-black/10 dark:bg-white/10 px-3 py-4">
+        <Text className="text-center text-xs font-bold text-white">Attachment unavailable</Text>
       </View>
     );
   }
@@ -120,15 +120,15 @@ function MessageAttachmentComponent({
   if (attachment.kind === 'document') {
     return (
       <Pressable
-        className="w-60 flex-row items-center rounded-[14px] bg-black/10 p-3"
+        className="w-60 flex-row items-center rounded-[14px] bg-black/10 dark:bg-white/10 p-3"
         delayLongPress={2000}
         onLongPress={onLongPress}
         onPress={() => void Linking.openURL(downloadUrl)}
       >
         <Text className="mr-3 text-3xl">📄</Text>
         <View className="min-w-0 flex-1">
-          <Text className="font-bold text-g000st-black" numberOfLines={2}>{attachment.fileName}</Text>
-          <Text className="mt-1 text-[10px] font-bold text-black/45">Open document</Text>
+          <Text className="font-bold text-white" numberOfLines={2}>{attachment.fileName}</Text>
+          <Text className="mt-1 text-[10px] font-bold text-white/75">Open document</Text>
         </View>
       </Pressable>
     );

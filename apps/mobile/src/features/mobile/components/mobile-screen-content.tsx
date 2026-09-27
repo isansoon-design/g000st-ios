@@ -87,20 +87,20 @@ function MobileScreenContentComponent({
         <Pressable
           accessibilityLabel="Buy credit"
           accessibilityRole="button"
-          className="h-9 w-9 items-center justify-center rounded-full border border-black/15 bg-white"
+          className="h-9 w-9 items-center justify-center rounded-full border border-black/15 dark:border-night-border bg-white dark:bg-night-surface"
           onPress={onOpenPlans}
         >
-          <Text className="text-base font-black text-g000st-black">£</Text>
+          <Text className="text-base font-black text-g000st-black dark:text-night-text">£</Text>
         </Pressable>
       }
       title="g000st Mobile"
     >
       <View className="flex-1 px-5 py-4">
-        {dialValue ? <Text className="text-center text-[34px] font-black tracking-[2px] text-g000st-black">{dialValue}</Text> : <G000stWordmark className="text-center text-[34px] tracking-[2px]" />}
-        <Text className="mt-1 text-center text-[10px] font-black tracking-[1px] text-black/45">
+        {dialValue ? <Text className="text-center text-[34px] font-black tracking-[2px] text-g000st-black dark:text-night-text">{dialValue}</Text> : <G000stWordmark className="text-center text-[34px] tracking-[2px]" />}
+        <Text className="mt-1 text-center text-[10px] font-black tracking-[1px] text-black/45 dark:text-night-muted">
           PRIVATE NUMBER · NO RECORDING
         </Text>
-        <Text className="mb-3 mt-1 text-center text-xs font-extrabold text-[#333333]">
+        <Text className="mb-3 mt-1 text-center text-xs font-extrabold text-[#333333] dark:text-night-text">
           {balance ? `${Math.floor(balance.voiceSecondsRemaining / 60)} min · ${balance.smsRemaining} SMS` : 'No credit'}
         </Text>
 
@@ -109,11 +109,11 @@ function MobileScreenContentComponent({
             <Pressable
               accessibilityLabel={`Dial ${digit}`}
               accessibilityRole="button"
-              className="h-[62px] w-[82px] items-center justify-center rounded-[20px] border border-black/15 bg-white active:bg-[#EEEEEE]"
+              className="h-[62px] w-[82px] items-center justify-center rounded-[20px] border border-black/15 dark:border-night-border bg-white dark:bg-night-surface active:bg-[#EEEEEE]"
               key={digit}
               onPress={() => onPressDigit(digit)}
             >
-              <Text className="text-[24px] font-black text-g000st-black">{digit}</Text>
+              <Text className="text-[24px] font-black text-g000st-black dark:text-night-text">{digit}</Text>
             </Pressable>
           ))}
         </View>
@@ -134,7 +134,7 @@ function MobileScreenContentComponent({
             className="h-12 flex-1 items-center justify-center rounded-full active:bg-black/5"
             onPress={onOpenSms}
           >
-            <Text className="font-black text-g000st-silver">SMS</Text>
+            <Text className="font-black text-g000st-silver dark:text-night-muted">SMS</Text>
           </Pressable>
           <Pressable
             accessibilityLabel="Call"
@@ -153,11 +153,11 @@ function MobileScreenContentComponent({
             className="h-12 flex-1 items-center justify-center rounded-full active:bg-black/5"
             onPress={onBackspace}
           >
-            <Text className="text-xl font-black text-g000st-black">⌫</Text>
+            <Text className="text-xl font-black text-g000st-black dark:text-night-text">⌫</Text>
           </Pressable>
         </View>
 
-        <Text className="mt-5 text-center text-xs font-semibold text-black/45">
+        <Text className="mt-5 text-center text-xs font-semibold text-black/45 dark:text-night-muted">
           Calls and SMS go through g000st Mobile — no personal number is shared.
         </Text>
       </View>

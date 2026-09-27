@@ -121,7 +121,7 @@ function CallOverlayComponent({
           </View>
 
           {!hasRemoteVideo ? (
-            <View className="h-40 w-40 items-center justify-center overflow-hidden rounded-full border-2 border-white/30 bg-white/10 shadow-2xl">
+            <View className="h-40 w-40 items-center justify-center overflow-hidden rounded-full border-2 border-white/30 dark:border-white/20 bg-white/10 shadow-2xl">
               {avatarUrl ? (
                 <Image contentFit="cover" source={{ uri: avatarUrl }} style={{ height: '100%', width: '100%' }} />
               ) : (

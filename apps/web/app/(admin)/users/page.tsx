@@ -101,23 +101,23 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 overflow-hidden">
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-night-canvas overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0">
+      <div className="bg-white dark:bg-night-surface border-b border-gray-200 dark:border-night-border px-6 py-4 sticky top-0">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Users Management</h2>
-          <span className="text-sm text-gray-600">{users.length} total users</span>
+          <span className="text-sm text-gray-600 dark:text-night-muted">{users.length} total users</span>
         </div>
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400 dark:text-night-muted" />
           <input
             type="text"
             placeholder="Search users by name or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-night-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </div>
@@ -126,8 +126,8 @@ export default function UsersPage() {
       <div className="flex-1 overflow-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 w-12">
+            <tr className="border-b border-gray-200 dark:border-night-border bg-gray-50 dark:bg-night-canvas">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-night-text w-12">
                 <input
                   type="checkbox"
                   onChange={(e) => {
@@ -140,32 +140,32 @@ export default function UsersPage() {
                   className="rounded"
                 />
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-night-text">
                 Name
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-night-text">
                 Email
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-night-text">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-night-text">
                 Joined
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-night-text">
                 Posts
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-night-text">
                 Last Active
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-night-text">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {filteredUsers.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
+              <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-white/10">
                 <td className="px-6 py-3">
                   <input
                     type="checkbox"
@@ -174,10 +174,10 @@ export default function UsersPage() {
                     className="rounded"
                   />
                 </td>
-                <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                <td className="px-6 py-3 text-sm font-medium text-gray-900 dark:text-night-text">
                   {user.name}
                 </td>
-                <td className="px-6 py-3 text-sm text-gray-600">{user.email}</td>
+                <td className="px-6 py-3 text-sm text-gray-600 dark:text-night-muted">{user.email}</td>
                 <td className="px-6 py-3 text-sm">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -189,18 +189,18 @@ export default function UsersPage() {
                     {user.status}
                   </span>
                 </td>
-                <td className="px-6 py-3 text-sm text-gray-600">
+                <td className="px-6 py-3 text-sm text-gray-600 dark:text-night-muted">
                   {user.joinedAt}
                 </td>
-                <td className="px-6 py-3 text-sm text-gray-600">{user.posts}</td>
-                <td className="px-6 py-3 text-sm text-gray-600">
+                <td className="px-6 py-3 text-sm text-gray-600 dark:text-night-muted">{user.posts}</td>
+                <td className="px-6 py-3 text-sm text-gray-600 dark:text-night-muted">
                   {user.lastActive}
                 </td>
                 <td className="px-6 py-3 text-sm">
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleSuspend(user.id)}
-                      className="p-1 hover:bg-gray-100 rounded text-gray-600"
+                      className="p-1 hover:bg-gray-100 rounded text-gray-600 dark:text-night-muted"
                       title={
                         user.status === "active" ? "Suspend" : "Activate"
                       }
@@ -213,7 +213,7 @@ export default function UsersPage() {
                     </button>
                     <button
                       onClick={() => void handleDelete(user.id)}
-                      className="p-1 hover:bg-gray-100 rounded text-red-600"
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded text-red-600"
                       title="Delete"
                     >
                       <Trash2 className="w-5 h-5" />

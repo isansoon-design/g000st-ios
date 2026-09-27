@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { PresenceHeartbeat } from "@/features/presence/presence-heartbeat";
+import { ThemeToggle } from "@/context/ThemeContext";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -18,9 +19,13 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   ];
 
   return (
-    <div className="h-[100dvh] overflow-hidden bg-[#C8CDD5]">
+    <div className="h-[100dvh] overflow-hidden bg-[#C8CDD5] dark:bg-night-canvas">
       <PresenceHeartbeat />
-      <div className="mx-auto flex h-full w-full max-w-5xl flex-col bg-[#D8DCE3] shadow-[0_0_55px_rgba(0,0,0,0.18)]">
+      <div className="mx-auto flex h-full w-full max-w-5xl flex-col bg-[#D8DCE3] dark:bg-night-canvas shadow-[0_0_55px_rgba(0,0,0,0.18)]">
+        <header className="flex h-11 shrink-0 items-center justify-between border-b border-black/10 bg-[#D0D0D0] px-3 dark:border-white/15 dark:bg-night-header">
+          <span className="text-sm font-black text-[#111] dark:text-white">g<span className="text-[#C62828]">000</span>st</span>
+          {pathname !== "/profile" && <ThemeToggle />}
+        </header>
         <main className="relative min-h-0 flex-1 overflow-hidden">
           {children}
         </main>
@@ -29,7 +34,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
         <nav style={{
           flexShrink: 0,
           display: "flex",
-          background: "linear-gradient(180deg,#eee 0%,#c4c4c4 50%,#9a9a9a 100%)",
+          background: "linear-gradient(180deg,var(--tone-bg-eeeeee) 0%,var(--tone-bg-c4c4c4) 50%,var(--app-control) 100%)",
           boxShadow: "inset 0 2px 0 rgba(255,255,255,.55),0 -8px 24px rgba(0,0,0,.12)",
           borderTop: "1px solid rgba(0,0,0,.15)",
           height: 84,
@@ -50,7 +55,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
                   justifyContent: "center",
                   gap: 3,
                   textDecoration: "none",
-                  color: isActive ? "#111" : "#6A6A6A",
+                  color: isActive ? "var(--app-text)" : "var(--tone-fg-6a6a6a)",
                   fontWeight: 900,
                   fontSize: 10,
                   letterSpacing: "0.04em",

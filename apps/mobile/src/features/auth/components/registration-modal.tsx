@@ -41,22 +41,22 @@ function RegistrationModalComponent({
           className="absolute bottom-0 left-0 right-0 top-0 bg-black/60"
           onPress={onCancel}
         />
-        <View className="w-full max-w-[400px] rounded-[22px] border border-white/70 bg-[#F2F2F2] p-5">
+        <View className="w-full max-w-[400px] rounded-[22px] border border-white/70 dark:border-white/20 bg-[#F2F2F2] dark:bg-night-surface p-5">
           <G000stWordmark className="mb-2 text-center text-[24px]" />
 
           {isConfirming ? (
             <>
-              <Text className="text-center text-lg font-black text-g000st-black">
+              <Text className="text-center text-lg font-black text-g000st-black dark:text-night-text">
                 Create a new account
               </Text>
               <View className="flex-row gap-3">
                 <Pressable
                   accessibilityRole="button"
-                  className="h-12 flex-1 items-center justify-center rounded-field border-2 border-g000st-black active:opacity-70 disabled:opacity-60"
+                  className="h-12 flex-1 items-center justify-center rounded-field border-2 border-g000st-black dark:border-night-border active:opacity-70 disabled:opacity-60"
                   disabled={isCreating}
                   onPress={onCancel}
                 >
-                  <Text className="font-black text-g000st-black">Cancel</Text>
+                  <Text className="font-black text-g000st-black dark:text-night-text">Cancel</Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
@@ -75,16 +75,16 @@ function RegistrationModalComponent({
             </>
           ) : (
             <>
-              <Text className="text-center text-lg font-black text-g000st-black">
+              <Text className="text-center text-lg font-black text-g000st-black dark:text-night-text">
                 Your new account ID
               </Text>
-              <Text className="mb-4 mt-2 text-center text-xs font-semibold leading-[18px] text-g000st-muted">
+              <Text className="mb-4 mt-2 text-center text-xs font-semibold leading-[18px] text-g000st-muted dark:text-night-muted">
                 Copy this ID now and keep it private. You will use it to log in.
               </Text>
-              <View className="h-[50px] flex-row overflow-hidden rounded-field border-2 border-g000st-red bg-white">
+              <View className="h-[50px] flex-row overflow-hidden rounded-field border-2 border-g000st-red bg-white dark:bg-night-surface">
                 <TextInput
                   accessibilityLabel="New account ID"
-                  className="min-w-0 flex-1 bg-white px-3 font-mono text-xs font-black text-g000st-red"
+                  className="min-w-0 flex-1 bg-white dark:bg-night-surface px-3 font-mono text-xs font-black text-g000st-red"
                   editable={false}
                   value={createdRecoveryId ?? ''}
                 />

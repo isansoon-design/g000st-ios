@@ -5,6 +5,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'rea
 import { cssInterop } from 'nativewind';
 
 import type { SelectedChatAttachment } from '@/features/chat/hooks/use-chat-attachments';
+import { useAppTheme } from '@/theme/app-theme';
 
 cssInterop(Image, { className: 'style' });
 cssInterop(VideoView, { className: 'style' });
@@ -94,6 +95,7 @@ function AttachmentPreviewModalComponent({
   onRemove,
   onSend,
 }: AttachmentPreviewModalProps) {
+  const { colors, isDark } = useAppTheme();
   const [activeUri, setActiveUri] = useState<string | null>(null);
   const active = useMemo(
     () => attachments.find((item) => item.localUri === activeUri) ?? attachments[0],
@@ -103,17 +105,17 @@ function AttachmentPreviewModalComponent({
   return (
     <Modal animationType="slide" onRequestClose={onCancel} transparent visible={attachments.length > 0}>
       <View className="flex-1 justify-end bg-black/70">
-        <View className="max-h-[92%] mb-10 rounded-t-[30px] bg-[#EFEFEF] px-4 pb-5 pt-3">
+        <View className="max-h-[92%] mb-10 rounded-t-[30px] px-4 pb-5 pt-3" style={{ backgroundColor: isDark ? colors.toolbar : '#EFEFEF' }}>
           <View className="mb-3 flex-row items-center justify-between">
             <Pressable className="h-10 justify-center px-2" disabled={isSending} onPress={onCancel}>
               <Text className="font-bold text-g000st-red">Cancel</Text>
             </Pressable>
             <View className="items-center">
-              <Text className="font-black text-g000st-black">Preview</Text>
-              <Text className="text-[10px] font-bold text-black/45">{attachments.length}/3 selected</Text>
+              <Text className="font-black" style={{ color: colors.text }}>Preview</Text>
+              <Text className="text-[10px] font-bold" style={{ color: colors.muted }}>{attachments.length}/3 selected</Text>
             </View>
             <Pressable
-              className="h-10 min-w-16 items-center justify-center rounded-full bg-g000st-silver px-4 disabled:opacity-50"
+              className="h-10 min-w-16 items-center justify-center rounded-full bg-g000st-silver dark:bg-night-control px-4 disabled:opacity-50"
               disabled={isSending}
               onPress={onSend}
             >

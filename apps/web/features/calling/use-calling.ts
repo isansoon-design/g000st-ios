@@ -2,14 +2,14 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-import { callManager, type CallUiState } from "@/features/calling/call-manager";
+import { callManager, IDLE_STATE, type CallUiState } from "@/features/calling/call-manager";
 import type { CallMedia } from "@/features/calling/types";
 
 export function useCalling() {
   const state: CallUiState = useSyncExternalStore(
     (listener) => callManager.subscribe(listener),
     () => callManager.getSnapshot(),
-    () => ({ phase: "idle" }) as CallUiState,
+    () => IDLE_STATE,
   );
 
   const callUser = useCallback((peerPublicId: string, media: CallMedia) => callManager.callUser(peerPublicId, media), []);

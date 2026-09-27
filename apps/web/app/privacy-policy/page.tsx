@@ -8,21 +8,21 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto bg-white p-8 md:p-12 shadow-sm rounded-lg border border-gray-100">
+    <div className="min-h-screen bg-gray-50 dark:bg-night-canvas text-gray-900 dark:text-night-text py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto bg-white dark:bg-night-surface p-8 md:p-12 shadow-sm rounded-lg border border-gray-100 dark:border-night-border">
         <div className="mb-8">
-          <Link href="/" className="text-blue-600 hover:underline text-sm flex items-center gap-1">
+          <Link href="/" className="text-blue-600 dark:text-blue-300 hover:underline text-sm flex items-center gap-1">
             &larr; Back to Home
           </Link>
         </div>
         
         <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>
         
-        <div className="prose prose-blue max-w-none text-gray-700 space-y-6">
-          <p className="text-sm text-gray-500">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+        <div className="prose prose-blue max-w-none text-gray-700 dark:text-night-muted space-y-6">
+          <p className="text-sm text-gray-500 dark:text-night-muted">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
           
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">1. Introduction</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-night-text mb-3">1. Introduction</h2>
             <p>
               Welcome to <strong>g000st</strong>. We respect your privacy and are committed to protecting your personal data. 
               This privacy policy will inform you as to how we look after your personal data when you visit our application and 
@@ -31,7 +31,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">2. Information We Collect</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-night-text mb-3">2. Information We Collect</h2>
             <p>
               We may collect, use, store and transfer different kinds of personal data about you which we have grouped together as follows:
             </p>
@@ -44,7 +44,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">3. How We Use Your Information</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-night-text mb-3">3. How We Use Your Information</h2>
             <p>We will only use your personal data when the law allows us to. Most commonly, we will use your personal data in the following circumstances:</p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li>Where we need to perform the contract we are about to enter into or have entered into with you.</li>
@@ -54,30 +54,30 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">4. Data Security</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-night-text mb-3">4. Data Security</h2>
             <p>
               We have put in place appropriate security measures to prevent your personal data from being accidentally lost, used, or accessed in an unauthorized way, altered, or disclosed. In addition, we limit access to your personal data to those employees, agents, contractors, and other third parties who have a business need to know.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">5. Data Retention</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-night-text mb-3">5. Data Retention</h2>
             <p>
               We will only retain your personal data for as long as necessary to fulfil the purposes we collected it for, including for the purposes of satisfying any legal, accounting, or reporting requirements.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">6. Your Legal Rights</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-night-text mb-3">6. Your Legal Rights</h2>
             <p>
               Under certain circumstances, you have rights under data protection laws in relation to your personal data, including the right to request access, correction, erasure, restriction, transfer, to object to processing, to portability of data, and (where the lawful ground of processing is consent) to withdraw consent.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Contact Us</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-night-text mb-3">7. Contact Us</h2>
             <p>
-              If you have any questions about this privacy policy or our privacy practices, please contact us at: <a href="mailto:Bakrisabagh@hotmail.com" className="text-blue-600 hover:underline">Bakrisabagh@hotmail.com</a>
+              If you have any questions about this privacy policy or our privacy practices, please contact us at: <a href="mailto:Bakrisabagh@hotmail.com" className="text-blue-600 dark:text-blue-300 hover:underline">Bakrisabagh@hotmail.com</a>
             </p>
           </section>
         </div>

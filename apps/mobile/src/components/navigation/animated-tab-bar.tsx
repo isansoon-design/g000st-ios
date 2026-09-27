@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { TabIcon, type TabIconName } from '@/components/navigation/tab-icon';
+import { useAppTheme } from '@/theme/app-theme';
 
 const ACTIVE_COLOR = '#9A9A9A';
 const INACTIVE_COLOR = 'rgba(0,0,0,0.45)';
@@ -21,12 +22,14 @@ function AnimatedTab({
   icon,
   onPress,
   onLongPress,
+  textColor,
 }: {
   focused: boolean;
   label: string;
   icon: React.ReactNode;
   onPress: () => void;
   onLongPress: () => void;
+  textColor: string;
 }) {
   const scale = useSharedValue(focused ? 1.08 : 1);
   const translateY = useSharedValue(focused ? -2 : 0);
@@ -49,8 +52,8 @@ function AnimatedTab({
     >
       <Animated.View style={[styles.tabInner, animatedStyle]}>
         {icon}
-        <Text numberOfLines={1} style={styles.label}>
-          {label === 'MOBILE' ? <><Text style={{ color: '#1A1A1A' }}>g</Text><Text style={{ color: '#C62828' }}>000</Text><Text style={{ color: '#1A1A1A' }}>st</Text></> : label}
+        <Text numberOfLines={1} style={[styles.label, { color: textColor }]}>
+          {label === 'MOBILE' ? <><Text style={{ color: textColor }}>g</Text><Text style={{ color: '#C62828' }}>000</Text><Text style={{ color: textColor }}>st</Text></> : label}
         </Text>
       </Animated.View>
     </Pressable>
@@ -64,6 +67,7 @@ export default function AnimatedTabBar({
   navigation,
   insets,
 }: BottomTabBarProps) {
+  const { colors, isDark } = useAppTheme();
   const [barWidth, setBarWidth] = useState(Dimensions.get('window').width);
   const indicatorX = useSharedValue(0);
   const indicatorOpacity = useSharedValue(0);
@@ -93,11 +97,11 @@ export default function AnimatedTabBar({
 
   return (
     <View
-      style={[styles.container, { paddingBottom: insets.bottom }]}
+      style={[styles.container, { paddingBottom: insets.bottom, backgroundColor: isDark ? colors.tabBar : '#FFFFFF', borderTopColor: isDark ? colors.border : '#BBBBBB' }]}
       onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
     >
       {/* Animated indicator at the top of the tab bar */}
-      <Animated.View style={[styles.indicator, indicatorStyle]} />
+      <Animated.View style={[styles.indicator, indicatorStyle, { backgroundColor: isDark ? '#C1282D' : ACTIVE_COLOR }]} />
 
       <View style={styles.row}>
         {state.routes.map((route: any, index: any) => {
@@ -130,9 +134,10 @@ export default function AnimatedTabBar({
               label={label}
               onPress={onPress}
               onLongPress={onLongPress}
+              textColor={isDark ? (focused ? '#FFFFFF' : colors.tabInactive) : ACTIVE_COLOR}
               icon={
                 <TabIcon
-                  color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
+                  color={isDark ? (focused ? '#FFFFFF' : colors.tabInactive) : (focused ? ACTIVE_COLOR : INACTIVE_COLOR)}
                   name={route.name as TabIconName}
                 />
               }

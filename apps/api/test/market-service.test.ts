@@ -36,6 +36,7 @@ function fakeStore(overrides: Partial<MarketStore> = {}): MarketStore {
     listComments: async () => ({ items: [] }),
     createComment: async () => null,
     deleteComment: async () => true,
+    createReport: async () => {},
     ...overrides,
   };
 }
@@ -66,6 +67,32 @@ describe('MarketService', () => {
       service.createComment('buyer', basePost.id, 'Is this available?'),
       (error: unknown) => error instanceof Error && 'code' in error && error.code === 'MARKET_POST_NOT_FOUND',
     );
+  });
+
+  it('records a report for an existing listing with the reporter and timestamp', async () => {
+    let recorded: { reporterId: string; postId: string; reason: string; nowMs: number } | undefined;
+    const service = new MarketService(fakeStore({
+      createReport: async (reporterId, input, nowMs) => {
+        recorded = { reporterId, postId: input.postId, reason: input.reason, nowMs };
+      },
+    }), () => 500);
+
+    await service.report('buyer', { postId: basePost.id, reason: 'other' });
+    assert.deepEqual(recorded, { reporterId: 'buyer', postId: basePost.id, reason: 'other', nowMs: 500 });
+  });
+
+  it('does not record a report when the listing does not exist', async () => {
+    let writes = 0;
+    const service = new MarketService(fakeStore({
+      findPost: async () => null,
+      createReport: async () => { writes += 1; },
+    }));
+
+    await assert.rejects(
+      service.report('buyer', { postId: basePost.id, reason: 'other' }),
+      (error: unknown) => error instanceof Error && 'code' in error && error.code === 'MARKET_POST_NOT_FOUND',
+    );
+    assert.equal(writes, 0);
   });
 
   it('rejects prohibited content before writing a new or edited listing', async () => {

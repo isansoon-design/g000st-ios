@@ -33,7 +33,7 @@ type ActiveCall = {
   remoteStream?: MediaStream;
 };
 
-const IDLE_STATE: CallUiState = { phase: "idle" };
+export const IDLE_STATE: CallUiState = { phase: "idle" };
 
 function randomCallId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto

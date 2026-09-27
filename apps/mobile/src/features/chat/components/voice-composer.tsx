@@ -9,6 +9,7 @@ import {
 } from 'expo-audio';
 import { File } from 'expo-file-system';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { useAppTheme } from '@/theme/app-theme';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
 const MAX_DURATION_MS = 5 * 60 * 1_000;
@@ -39,14 +40,14 @@ function VoicePreview({ durationMs, uri }: Readonly<{ durationMs: number; uri: s
   };
 
   return (
-    <View className="min-h-11 flex-1 flex-row items-center rounded-[22px] border border-black/15 bg-white px-2">
+    <View className="min-h-11 flex-1 flex-row items-center rounded-[22px] border border-black/15 dark:border-night-border bg-white dark:bg-night-surface px-2">
       <Pressable accessibilityLabel={status.playing ? 'Pause recording preview' : 'Play recording preview'} accessibilityRole="button" className="h-8 w-8 items-center justify-center rounded-full bg-g000st-black" onPress={toggle}>
         <Text className="ml-px text-xs font-black text-white">{status.playing ? 'Ⅱ' : '▶'}</Text>
       </Pressable>
-      <View className="mx-2 h-1.5 flex-1 overflow-hidden rounded-full bg-black/10">
+      <View className="mx-2 h-1.5 flex-1 overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
         <View className="h-full rounded-full bg-g000st-red" style={{ width: `${progress * 100}%` }} />
       </View>
-      <Text className="font-mono text-[11px] font-black text-black/45">{formatDuration(durationMs)}</Text>
+      <Text className="font-mono text-[11px] font-black text-black/45 dark:text-night-muted">{formatDuration(durationMs)}</Text>
     </View>
   );
 }
@@ -72,6 +73,7 @@ function VoiceComposerComponent({
   onSend,
   onSendText,
 }: VoiceComposerProps) {
+  const { colors, isDark } = useAppTheme();
   const recorder = useAudioRecorder(voiceRecordingOptions);
   const recorderState = useAudioRecorderState(recorder, 100);
   const limitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -188,14 +190,14 @@ function VoiceComposerComponent({
   if (recorderState.isRecording) {
     return (
       <>
-        <View className="min-h-11 flex-1 flex-row items-center rounded-[22px] border border-g000st-red/25 bg-white px-3">
+        <View className="min-h-11 flex-1 flex-row items-center rounded-[22px] border border-g000st-red/25 px-3" style={{ backgroundColor: colors.input }}>
           <View className="h-2.5 w-2.5 rounded-full bg-g000st-red" />
           <Text className="ml-2 font-mono text-sm font-black text-g000st-red">{formatDuration(recorderState.durationMillis)}</Text>
           <View className="mx-2 flex-1 flex-row items-center justify-center gap-0.5">
             {waveform.slice(0, 11).map((height, index) => <View className="w-1 rounded-full bg-g000st-red/55" key={index} style={{ height }} />)}
           </View>
           <Pressable accessibilityLabel="Cancel recording" accessibilityRole="button" className="h-8 w-8 items-center justify-center rounded-full" onPress={() => void cancelRecording()}>
-            <Text className="text-lg font-black text-black/45">×</Text>
+            <Text className="text-lg font-black text-black/45 dark:text-night-muted">×</Text>
           </Pressable>
         </View>
         <Pressable accessibilityLabel="Send voice message" accessibilityRole="button" className="h-[42px] w-[42px] items-center justify-center rounded-full bg-g000st-black" disabled={isSending} onPress={() => void sendImmediately()}>
@@ -221,10 +223,11 @@ function VoiceComposerComponent({
 
   return (
     <>
-      <View className="min-h-11 flex-1 justify-center rounded-[22px] border border-black/15 bg-white px-1.5">
+      <View className="min-h-11 flex-1 justify-center rounded-[22px] border border-black/15 dark:border-night-border px-1.5" style={{ backgroundColor: colors.input }}>
         <TextInput
           accessibilityLabel="Message"
-          className="max-h-28 min-h-11 w-full px-2.5 pb-1.5 pt-2.5 text-[15px] text-g000st-black"
+          className="max-h-28 min-h-11 w-full px-2.5 pb-1.5 pt-2.5 text-[15px]"
+          style={{ color: colors.inputText }}
           editable={!isSending}
           maxLength={4_000}
           multiline
@@ -235,7 +238,7 @@ function VoiceComposerComponent({
         />
       </View>
       {draft.trim() || hasAttachments ? (
-        <Pressable accessibilityLabel="Send" accessibilityRole="button" accessibilityState={{ disabled: !canSendText }} className={`h-[42px] w-[42px] items-center justify-center rounded-full bg-g000st-silver ${canSendText ? '' : 'opacity-50'}`} disabled={!canSendText} onPress={onSendText}>
+        <Pressable accessibilityLabel="Send" accessibilityRole="button" accessibilityState={{ disabled: !canSendText }} className={`h-[42px] w-[42px] items-center justify-center rounded-full ${canSendText ? '' : 'opacity-50'}`} style={{ backgroundColor: isDark ? '#5C5B61' : '#9A9A9A' }} disabled={!canSendText} onPress={onSendText}>
           <Text className="text-base font-black text-white">➤</Text>
         </Pressable>
       ) : (

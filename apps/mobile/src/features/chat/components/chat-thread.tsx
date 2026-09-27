@@ -27,6 +27,8 @@ import { BurnFlameBorder } from '@/features/chat/components/burn-flame-border';
 import { MessageAttachment } from '@/features/chat/components/message-attachment';
 import { VoiceComposer } from '@/features/chat/components/voice-composer';
 import type { OutboxMessage } from '@/features/chat/hooks/use-private-chat';
+import { AppThemeSwitch } from '@/components/navigation/app-theme-switch';
+import { useAppTheme } from '@/theme/app-theme';
 
 type ChatThreadMessage = ChatMessage | OutboxMessage;
 
@@ -105,6 +107,9 @@ type MessageBubbleProps = Readonly<{
   onActions: (message: ChatMessage) => void;
   onRetry: (clientMessageId: string) => void;
   fontSize: number;
+  isDark: boolean;
+  incomingColor: string;
+  outgoingColor: string;
 }>;
 
 function MessageBubbleComponent({
@@ -118,6 +123,9 @@ function MessageBubbleComponent({
   onActions,
   onRetry,
   fontSize,
+  isDark,
+  incomingColor,
+  outgoingColor,
 }: MessageBubbleProps) {
   const [bubbleSize, setBubbleSize] = useState<{ width: number; height: number } | null>(null);
   const textMaxWidth = maxWidth - 26;
@@ -151,11 +159,8 @@ function MessageBubbleComponent({
         accessibilityRole={canPress || canShowActions ? 'button' : undefined}
         accessibilityActions={canShowActions ? [{ name: 'activate', label: 'Message options' }] : undefined}
         onAccessibilityAction={canShowActions ? () => onActions(message) : undefined}
-        className={`shrink px-3 py-2 ${mine
-          ? `rounded-[18px] ${hasBurnEffect ? '' : 'rounded-br'} bg-[#79201D] ${failed ? 'border-2 border-g000st-red' : ''}`
-          : `rounded-[18px] ${hasBurnEffect ? '' : 'rounded-bl'} bg-[#29292B]`
-          } ${pending ? 'opacity-60' : ''}`}
-        style={{ maxWidth }}
+        className={`shrink rounded-[18px] px-3 py-2 ${mine && !hasBurnEffect ? 'rounded-br' : ''} ${!mine && !hasBurnEffect ? 'rounded-bl' : ''} ${pending ? 'opacity-60' : ''}`}
+        style={{ maxWidth, backgroundColor: mine ? outgoingColor : incomingColor, borderColor: isDark || failed ? '#C1282D' : 'transparent', borderWidth: isDark || failed ? 2 : 0 }}
         onLayout={hasBurnEffect ? (event) => {
           const { width, height } = event.nativeEvent.layout;
           setBubbleSize((current) => current?.width === width && current.height === height ? current : { width, height });
@@ -261,6 +266,7 @@ function ChatThreadComponent({
   attachments,
 }: ChatThreadProps) {
   const { width: windowWidth } = useWindowDimensions();
+  const { colors, isDark } = useAppTheme();
   const bubbleMaxWidth = Math.floor((windowWidth - 24) * 0.78);
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<ChatThreadMessage>>(null);
@@ -382,26 +388,29 @@ function ChatThreadComponent({
             onActions={onMessageActions}
             onRetry={onRetry}
             fontSize={fontSize}
+            isDark={isDark}
+            incomingColor={colors.incoming}
+            outgoingColor={colors.outgoing}
           />
         </View>
       );
     },
-    [blurMessages, bubbleMaxWidth, firstUnreadMessageId, nowMs, onOpenBurn, onMessageActions, onRetry, userPublicId, fontSize],
+    [blurMessages, bubbleMaxWidth, firstUnreadMessageId, nowMs, onOpenBurn, onMessageActions, onRetry, userPublicId, fontSize, isDark, colors.incoming, colors.outgoing],
   );
 
   return (
-    <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: '#D0D0D0' }}>
+    <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: colors.header }}>
       {/* Header */}
-      <View className="h-14 flex-row items-center border-b border-black/10 bg-[#D0D0D0] px-2">
+      <View className="min-h-14 flex-row items-center border-b border-black/10 dark:border-night-border px-2" style={{ backgroundColor: colors.header }}>
         <Pressable
           accessibilityLabel="Back to conversations"
           accessibilityRole="button"
           className="h-10 w-10 items-center justify-center rounded-full"
           onPress={onBack}
         >
-          <Text className="text-2xl font-black text-g000st-black">‹</Text>
+          <Text className="text-2xl font-black" style={{ color: colors.text }}>‹</Text>
         </Pressable>
-        <View className="ml-1 h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#DDD]">
+        <View className="ml-1 h-8 w-8 items-center justify-center overflow-hidden rounded-full" style={{ backgroundColor: colors.card }}>
           {!isParticipantDeleted && participantAvatarUrl ? (
             <Image contentFit="cover" source={{ uri: participantAvatarUrl }} style={{ height: '100%', width: '100%' }} />
           ) : (
@@ -410,38 +419,56 @@ function ChatThreadComponent({
         </View>
 
         <Pressable className="ml-2 min-w-0 flex-1" onPress={onViewProfile} accessibilityRole="button" accessibilityLabel="View participant profile">
-          {/* <Text className="text-[11px] font-bold text-black/45">{conversationKind === 'market' ? 'MARKET CHAT' : 'PRIVATE CHAT'}</Text> */}
-          <Text className="text-[11px] font-bold text-black/45">{conversationKind === 'market' ? 'MARKET CHAT' : ''}</Text>
-          <Text className="font-mono text-[12px] font-black text-g000st-black" numberOfLines={1}>
+          {/* <Text className="text-[11px] font-bold text-black/45 dark:text-night-muted">{conversationKind === 'market' ? 'MARKET CHAT' : 'PRIVATE CHAT'}</Text> */}
+          <Text className="text-[11px] font-bold" style={{ color: colors.muted }}>{conversationKind === 'market' ? 'MARKET CHAT' : ''}</Text>
+          <Text className="font-mono text-[12px] font-black" style={{ color: colors.text }} numberOfLines={1}>
             {isParticipantDeleted ? 'Deleted account' : participantDisplayName || shortId(participantPublicId)}
           </Text>
         </Pressable>
-        {/* Start Increase & Decrease Font Size & Blur */}
+        {/* Call and conversation controls stay on the first row. */}
+        {/* Start Call Buttons */}
+        {isParticipantDeleted ? null : (
+          <View className="flex-row items-center gap-1">
+            <Pressable accessibilityLabel="Call" accessibilityRole="button" className="h-9 w-9 items-center justify-center rounded-full" disabled={peerPreferences?.blocked} onPress={onCallAudio}>
+              <Text className="text-lg">📞</Text>
+            </Pressable>
+            <Pressable accessibilityLabel="Video call" accessibilityRole="button" className="h-9 w-9 items-center justify-center rounded-full" disabled={peerPreferences?.blocked} onPress={onCallVideo}>
+              <Text className="text-lg">🎥</Text>
+            </Pressable>
+          </View>
+        )}
+        {!isParticipantDeleted && (
+          <Pressable accessibilityLabel="Conversation options" accessibilityRole="button" className="h-9 w-8 items-center justify-center rounded-full" onPress={() => setPeerMenuPublicId(participantPublicId)}>
+            <Text className="text-2xl font-black" style={{ color: colors.text }}>⋮</Text>
+          </Pressable>
+        )}
+      </View>
+      <View className="min-h-11 flex-row items-center justify-between border-b border-black/10 dark:border-night-border px-3" style={{ backgroundColor: colors.toolbar }}>
         <View className=" flex-row items-center gap-1">
           {/* Start Increase & Decrease Font Size */}
-          <View className="flex-row items-center gap-2 rounded-md border border-black/10 bg-white/50 px-1">
+          <View className="flex-row items-center gap-2 rounded-md border border-black/10 dark:border-night-border px-1" style={{ backgroundColor: isDark ? '#66656B' : '#FFFFFF80' }}>
             <Pressable
               accessibilityLabel="Decrease font size"
               accessibilityRole="button"
-              className="h-7 w-7 items-center justify-center rounded-sm bg-white"
+              className="h-7 w-7 items-center justify-center rounded-sm bg-white dark:bg-night-surface"
               onPress={() => setFontSize((s) => Math.max(10, s - 2))}
             >
-              <Text className="text-lg font-black leading-5 text-black">-</Text>
+              <Text className="text-lg font-black leading-5 text-black dark:text-night-text">-</Text>
             </Pressable>
             <Pressable
               accessibilityLabel="Increase font size"
               accessibilityRole="button"
-              className="h-7 w-7 items-center justify-center rounded-sm bg-white"
+              className="h-7 w-7 items-center justify-center rounded-sm bg-white dark:bg-night-surface"
               onPress={() => setFontSize((s) => Math.min(32, s + 2))}
             >
-              <Text className="text-lg font-black leading-5 text-black">+</Text>
+              <Text className="text-lg font-black leading-5 text-black dark:text-night-text">+</Text>
             </Pressable>
           </View>
           {/* End Increase & Decrease Font Size */}
 
           {/* Start Blur */}
           <View className="flex-row items-center">
-            <Text className="text-[9px] font-black text-black/45">BLUR</Text>
+            <Text className="text-[9px] font-black" style={{ color: colors.muted }}>BLUR</Text>
             <Switch
               accessibilityLabel={`Message blur ${blurMessages ? 'on' : 'off'}`}
               onValueChange={onToggleMessageBlur}
@@ -455,62 +482,34 @@ function ChatThreadComponent({
         </View>
         {/* End Increase & Decrease Font Size & Blur */}
 
-        {/* Start Call Buttons */}
-        {isParticipantDeleted ? null : (
-          <View className="flex-row items-center gap-1">
-            <Pressable
-              accessibilityLabel="Call"
-              accessibilityRole="button"
-              className="h-9 w-9 items-center justify-center rounded-full active:bg-black/5"
-              disabled={peerPreferences?.blocked}
-              onPress={onCallAudio}
-            >
-              <Text className="text-lg">📞</Text>
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Video call"
-              accessibilityRole="button"
-              className="h-9 w-9 items-center justify-center rounded-full active:bg-black/5"
-              disabled={peerPreferences?.blocked}
-              onPress={onCallVideo}
-            >
-              <Text className="text-lg">🎥</Text>
-            </Pressable>
-          </View>
-        )}
-        {/* End Call Buttons */}
-        {!isParticipantDeleted && (
-          <Pressable accessibilityLabel="Conversation options" accessibilityRole="button" className="h-9 w-8 items-center justify-center rounded-full" onPress={() => setPeerMenuPublicId(participantPublicId)}>
-            <Text className="text-2xl font-black text-g000st-black">⋮</Text>
-          </Pressable>
-        )}
+        <AppThemeSwitch />
       </View>
 
       <KeyboardAvoidingView automaticOffset behavior="padding" style={{ flex: 1 }}>
         {/* Messages area */}
         {isLoading ? (
-          <View className="flex-1 items-center justify-center bg-[#D8D8D8]">
+          <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.canvas }}>
             <ActivityIndicator color="#9A9A9A" />
           </View>
         ) : error ? (
-          <View className="flex-1 items-center justify-center bg-[#D8D8D8] px-7">
+          <View className="flex-1 items-center justify-center px-7" style={{ backgroundColor: colors.canvas }}>
             <Text className="text-center text-sm font-bold text-g000st-red">{error}</Text>
             <Pressable
               accessibilityRole="button"
-              className="mt-4 h-11 rounded-full bg-white px-5"
+              className="mt-4 h-11 rounded-full bg-white dark:bg-night-surface px-5"
               onPress={onRefresh}
             >
-              <Text className="pt-3 font-black text-g000st-black">Try again</Text>
+              <Text className="pt-3 font-black text-g000st-black dark:text-night-text">Try again</Text>
             </Pressable>
           </View>
         ) : (
           <View style={{ flex: 1 }}>
             <FlatList
               ref={listRef}
-              style={{ flex: 1, backgroundColor: '#D8D8D8' }}
+              style={{ flex: 1, backgroundColor: colors.canvas }}
               contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end', padding: 12 }}
               data={messages}
-              extraData={`${blurMessages}-${fontSize}-${nowMs}`}
+              extraData={`${blurMessages}-${fontSize}-${nowMs}-${isDark}`}
               keyExtractor={(item) => item.id}
               keyboardDismissMode="interactive"
               keyboardShouldPersistTaps="handled"
@@ -526,14 +525,15 @@ function ChatThreadComponent({
                 hasOlderMessages || isLoadingOlderMessages ? (
                   <Pressable
                     accessibilityRole="button"
-                    className="mb-3 h-9 items-center justify-center rounded-full bg-white/60"
+                    className="mb-3 h-9 items-center justify-center rounded-full"
+                    style={{ backgroundColor: colors.card }}
                     disabled={isLoadingOlderMessages}
                     onPress={onLoadOlder}
                   >
                     {isLoadingOlderMessages ? (
                       <ActivityIndicator color="#9A9A9A" size="small" />
                     ) : (
-                      <Text className="text-[11px] font-black text-black/50">
+                      <Text className="text-[11px] font-black" style={{ color: colors.text }}>
                         Load earlier messages
                       </Text>
                     )}
@@ -542,7 +542,7 @@ function ChatThreadComponent({
               }
               ListEmptyComponent={
                 <View className="flex-1 items-center justify-center px-7 py-12">
-                  <Text className="text-center text-[13px] font-semibold leading-5 text-black/45">
+                  <Text className="text-center text-[13px] font-semibold leading-5" style={{ color: colors.muted }}>
                     {conversationKind === 'market' ? 'This Market conversation is empty. Send the first message.' : 'This private conversation is empty. Send the first message.'}
                   </Text>
                 </View>
@@ -553,10 +553,11 @@ function ChatThreadComponent({
               <Pressable
                 accessibilityLabel="Scroll to latest message"
                 accessibilityRole="button"
-                className="absolute bottom-3 right-3 h-10 w-10 items-center justify-center rounded-full border border-black/15 bg-white shadow"
+                className="absolute bottom-3 right-3 h-10 w-10 items-center justify-center rounded-full border border-black/15 dark:border-night-border shadow"
+                style={{ backgroundColor: colors.card }}
                 onPress={scrollToBottom}
               >
-                <Text className="text-lg font-black text-g000st-black">↓</Text>
+                <Text className="text-lg font-black" style={{ color: colors.text }}>↓</Text>
               </Pressable>
             ) : null}
           </View>
@@ -564,13 +565,13 @@ function ChatThreadComponent({
 
         {/* Input bar */}
         {isParticipantDeleted || peerPreferences?.blocked ? (
-          <View className="border-t border-black/10 bg-[#D0D0D0] px-4 py-3">
-            <Text className="text-center text-xs font-bold text-black/50">
+          <View className="border-t border-black/10 dark:border-night-border px-4 py-3" style={{ backgroundColor: colors.toolbar }}>
+            <Text className="text-center text-xs font-bold" style={{ color: colors.muted }}>
               {isParticipantDeleted ? 'This account was deleted. You can read retained messages, but cannot send new ones.' : 'You blocked this account. Unblock it to send messages or call.'}
             </Text>
           </View>
         ) : (
-          <View className="border-t border-black/10 bg-[#D0D0D0] px-[10px] pb-1 pt-1.5">
+          <View className="border-t border-black/10 dark:border-night-border px-[10px] pb-1 pt-1.5" style={{ backgroundColor: colors.toolbar }}>
             <View className="flex-row items-end gap-2">
               <View className="items-center">
                 <Pressable
@@ -579,7 +580,7 @@ function ChatThreadComponent({
                   className="h-8 w-10 items-center justify-center rounded-full"
                   onPress={() => setIsAttachmentMenuOpen(true)}
                 >
-                  <Text className="text-[28px] font-bold text-g000st-silver">+</Text>
+                  <Text className="text-[28px] font-bold text-g000st-silver dark:text-night-muted">+</Text>
                 </Pressable>
                 {conversationKind !== 'market' && <Pressable
                   accessibilityLabel={`Burn after read ${burnAfterRead ? 'on' : 'off'}`}
@@ -613,13 +614,13 @@ function ChatThreadComponent({
             {attachments.length ? (
               <View className="mt-1 flex-row flex-wrap gap-1">
                 {attachments.map((attachment) => (
-                  <Pressable key={attachment.fileName} className="rounded-full bg-white px-2 py-1" onPress={() => onRemoveAttachment(attachment.fileName)}>
-                    <Text className="text-[10px] font-bold text-g000st-black">{attachment.fileName} ×</Text>
+                  <Pressable key={attachment.fileName} className="rounded-full bg-white dark:bg-night-surface px-2 py-1" onPress={() => onRemoveAttachment(attachment.fileName)}>
+                    <Text className="text-[10px] font-bold text-g000st-black dark:text-night-text">{attachment.fileName} ×</Text>
                   </Pressable>
                 ))}
               </View>
             ) : null}
-            <Text className="pt-0.5 text-center text-[10px] font-bold leading-3 my-0.5 text-black/40">
+            <Text className="pt-0.5 text-center text-[10px] font-bold leading-3 my-0.5" style={{ color: colors.muted }}>
               messages will be burned in {conversationKind === 'market' ? '30 days' : '2 hours'} automatically... screenshot NOT available
             </Text>
           </View>
@@ -627,14 +628,14 @@ function ChatThreadComponent({
       </KeyboardAvoidingView>
       <Modal animationType="fade" transparent visible={isAttachmentMenuOpen} onRequestClose={() => setIsAttachmentMenuOpen(false)}>
         <Pressable className="flex-1 items-center justify-end bg-black/45 p-5" onPress={() => setIsAttachmentMenuOpen(false)}>
-          <View className="w-full rounded-[24px] bg-white p-4 mb-10">
+          <View className="w-full rounded-[24px] p-4 mb-10" style={{ backgroundColor: isDark ? colors.toolbar : '#FFFFFF' }}>
             {[
               ['Photo or video library', onPickLibraryAttachment],
               ['Camera', onCaptureAttachment],
               ['PDF or Word file', onPickDocumentAttachment],
             ].map(([label, action]) => (
-              <Pressable key={label as string} className="border-b border-black/10 py-4" onPress={() => { setIsAttachmentMenuOpen(false); void (action as () => Promise<void>)(); }}>
-                <Text className="text-center font-bold text-g000st-black">{label as string}</Text>
+              <Pressable key={label as string} className="border-b border-black/10 dark:border-night-border py-4" onPress={() => { setIsAttachmentMenuOpen(false); void (action as () => Promise<void>)(); }}>
+                <Text className="text-center font-bold" style={{ color: colors.text }}>{label as string}</Text>
               </Pressable>
             ))}
           </View>
@@ -642,15 +643,15 @@ function ChatThreadComponent({
       </Modal>
       <Modal animationType="fade" transparent visible={isPeerMenuOpen} onRequestClose={() => setPeerMenuPublicId(null)}>
         <Pressable className="flex-1 items-center justify-end bg-black/45 p-5" onPress={() => setPeerMenuPublicId(null)}>
-          <View className="mb-10 w-full rounded-[24px] bg-white p-4">
+          <View className="mb-10 w-full rounded-[24px] p-4" style={{ backgroundColor: isDark ? colors.toolbar : '#FFFFFF' }}>
             {([
               [followingPeer ? 'Unfollow' : 'Follow', onToggleFollow, followingPeer !== null],
               [peerPreferences?.blocked ? 'Unblock' : 'Block', () => onUpdatePeerPreferences({ blocked: !peerPreferences?.blocked }), !!peerPreferences],
               [peerPreferences?.allowAudioCalls === false ? 'Allow voice calls' : 'Block voice calls', () => onUpdatePeerPreferences({ allowAudioCalls: !peerPreferences?.allowAudioCalls }), !!peerPreferences],
               [peerPreferences?.allowVideoCalls === false ? 'Allow video calls' : 'Block video calls', () => onUpdatePeerPreferences({ allowVideoCalls: !peerPreferences?.allowVideoCalls }), !!peerPreferences],
             ] as const).map(([label, action, enabled]) => (
-              <Pressable key={label} className="border-b border-black/10 py-4 disabled:opacity-40" disabled={!enabled || isPeerMenuBusy} onPress={() => { setIsPeerMenuBusy(true); void action().finally(() => { setIsPeerMenuBusy(false); setPeerMenuPublicId(null); }); }}>
-                <Text className="text-center font-bold text-g000st-black">{label}</Text>
+              <Pressable key={label} className="border-b border-black/10 dark:border-night-border py-4 disabled:opacity-40" disabled={!enabled || isPeerMenuBusy} onPress={() => { setIsPeerMenuBusy(true); void action().finally(() => { setIsPeerMenuBusy(false); setPeerMenuPublicId(null); }); }}>
+                <Text className="text-center font-bold" style={{ color: colors.text }}>{label}</Text>
               </Pressable>
             ))}
           </View>

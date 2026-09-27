@@ -5,7 +5,7 @@ import { validateSocialMediaBatch } from '../social/social-policy.js';
 import type { SocialMediaView } from '../social/social-types.js';
 import type { MarketStore } from './market-store.js';
 import { assertMarketContentAllowed } from './market-content-policy.js';
-import type { CreateMarketPostInput, MarketPost, UpdateMarketPostInput } from './market-types.js';
+import type { CreateMarketPostInput, CreateMarketReportInput, MarketPost, UpdateMarketPostInput } from './market-types.js';
 
 export class MarketService {
   constructor(private readonly store: MarketStore, private readonly now: () => number = Date.now, private readonly mediaService?: MediaService) {}
@@ -55,6 +55,10 @@ export class MarketService {
   }
   async deleteComment(viewerId: string, postId: string, commentId: string) {
     if (!(await this.store.deleteComment(viewerId, postId, commentId))) throw new ApiError(404, 'MARKET_COMMENT_NOT_FOUND', 'Market comment not found.');
+  }
+  async report(viewerId: string, input: CreateMarketReportInput) {
+    if (!(await this.store.findPost(viewerId, input.postId))) throw new ApiError(404, 'MARKET_POST_NOT_FOUND', 'Market post not found.');
+    await this.store.createReport(viewerId, input, this.now());
   }
   createUpload(publicId: string, input: Readonly<{ byteSize: number; clientPostId: string; contentType: string; fileName: string }>) {
     return this.requireMedia().createSocialUpload({ ...input, publicId });

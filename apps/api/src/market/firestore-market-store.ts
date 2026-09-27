@@ -7,7 +7,7 @@ import { encodeSocialCursor, type SocialCursor } from '../social/social-cursor.j
 import { publicDisplayName } from '../social/social-identity.js';
 import type { SocialAuthor, SocialMedia } from '../social/social-types.js';
 import type { MarketStore } from './market-store.js';
-import type { CreateMarketPostInput, MarketComment, MarketPage, MarketPost, UpdateMarketPostInput } from './market-types.js';
+import type { CreateMarketPostInput, CreateMarketReportInput, MarketComment, MarketPage, MarketPost, UpdateMarketPostInput } from './market-types.js';
 
 type StoredPost = Readonly<Omit<MarketPost, 'id' | 'author' | 'likedByViewer' | 'campedByViewer' | 'ownedByViewer'> & { ownerPublicId: string }>;
 type StoredComment = Readonly<{ ownerPublicId: string; content: string; createdAtMs: number }>;
@@ -46,6 +46,10 @@ export class FirestoreMarketStore implements MarketStore {
   async findPost(viewerId: string, postId: string) {
     const snapshot = await this.posts().doc(postId).get();
     return snapshot.exists ? this.toPost(viewerId, snapshot.id, snapshot.data() as StoredPost) : null;
+  }
+
+  async createReport(reporterId: string, input: CreateMarketReportInput, nowMs: number): Promise<void> {
+    await this.collection('market_reports').doc(randomUUID()).create({ ...input, reporterPublicId: reporterId, status: 'open', createdAtMs: nowMs });
   }
 
   async createPost(ownerId: string, id: string, input: Omit<CreateMarketPostInput, 'media'> & { media?: readonly SocialMedia[] }, nowMs: number) {
