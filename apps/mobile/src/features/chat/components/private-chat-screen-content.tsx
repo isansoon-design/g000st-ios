@@ -316,10 +316,9 @@ function PrivateChatScreenContentComponent({
           </Pressable>
         </View>
       }
-
       title={
-        <View className="h-14 flex-row items-center justify-between border-b border-black/10 dark:border-night-border bg-[#D2D2D4] dark:bg-night-header px-4">
-          <Text className="text-lg font-black text-[#1A1A1A] dark:text-night-text">
+        <View className="h-14 flex-row items-center justify-between border-b border-black/10 dark:border-night-border   px-4">
+          <Text className="text-lg font-black text-[#1A1A1A] dark:text-night-muted">
             g<Text className="text-[#C62828]">000</Text>
             st
             <Text className="text-[#C62828]">C</Text>

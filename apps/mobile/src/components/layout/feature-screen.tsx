@@ -1,8 +1,8 @@
+import { AppThemeSwitch } from '@/components/navigation/app-theme-switch';
+import { useAppTheme } from '@/theme/app-theme';
 import { type PropsWithChildren, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppThemeSwitch } from '@/components/navigation/app-theme-switch';
-import { useAppTheme } from '@/theme/app-theme';
 
 type FeatureScreenProps = PropsWithChildren<
   Readonly<{

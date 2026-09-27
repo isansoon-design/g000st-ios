@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/brand/icon-1024.png",
     "scheme": "g000st",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "runtimeVersion": {
       "policy": "fingerprint"
     },

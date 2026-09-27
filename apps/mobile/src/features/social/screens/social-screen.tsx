@@ -394,7 +394,7 @@ export function SocialScreen() {
         </Pressable>
       }
       title={
-        <View className="h-14 flex-row items-center justify-between border-b border-black/10 dark:border-night-border bg-[#D2D2D4] dark:bg-night-header px-4">
+        <View className="h-14 flex-row items-center justify-between border-b border-black/10 dark:border-night-border px-4">
           <Text className="text-lg font-black text-[#1A1A1A] dark:text-night-text">
             g<Text className="text-[#C62828]">000</Text>
             st
@@ -413,7 +413,7 @@ export function SocialScreen() {
               value={draft}
               onChangeText={setDraft}
               placeholder="Share without a name…"
-              className="min-h-20 rounded-2xl border border-black/15 dark:border-night-border bg-white dark:bg-night-surface p-3 text-[15px]"
+              className="min-h-20 rounded-2xl border border-black/15 dark:border-night-border bg-white dark:bg-night-surface p-3 text-[15px] text-g000st-black dark:text-night-text"
               textAlignVertical="top"
             />
 
@@ -456,7 +456,7 @@ export function SocialScreen() {
                 onPress={() => setIsAttachmentMenuOpen(true)}
                 className="mr-2 rounded-xl border border-black/10 dark:border-night-border px-3 py-3"
               >
-                <Text className="text-xs font-black">
+                <Text className="text-xs font-black text-black dark:text-night-text">
                   {selectedMedia.length
                     ? `✓ ${selectedMedia.length}`
                     : "📎 Media"}
@@ -464,12 +464,14 @@ export function SocialScreen() {
               </Pressable>
               <Switch
                 disabled={isPage}
+                thumbColor="#000000"
+                trackColor={{ false: "#9A9A9A", true: "#C62828" }}
                 value={isPage || visibility === "public"}
                 onValueChange={(value) =>
                   setVisibility(value ? "public" : "anonymous")
                 }
               />
-              <Text className="ml-2 flex-1 text-xs font-bold">
+              <Text className="ml-2 text-black dark:text-night-text flex-1 text-xs font-bold">
                 {isPage ? "Page name is always shown" : "Show identity"}
               </Text>
               <Pressable
@@ -657,7 +659,7 @@ export function SocialScreen() {
           className="flex-1 justify-end bg-black/50"
         >
           <View className="gap-3 rounded-t-[28px] bg-white dark:bg-night-surface p-5 pb-12">
-            <Text className="text-lg font-black">Share to Social</Text>
+            <Text className="text-lg font-black text-g000st-black dark:text-night-text">Share to Social</Text>
             {sharingPost && (
               <SharedPostPreview
                 compact
@@ -678,7 +680,7 @@ export function SocialScreen() {
               placeholder="Add a note (optional)"
               maxLength={4000}
               multiline
-              className="min-h-20 rounded-xl border border-black/15 dark:border-night-border p-3"
+              className="min-h-20 rounded-xl border border-black/15 dark:border-night-border p-3 text-g000st-black dark:text-night-text"
               textAlignVertical="top"
             />
             <View className="flex-row items-center">
@@ -689,7 +691,7 @@ export function SocialScreen() {
                   setShareVisibility(value ? "public" : "anonymous")
                 }
               />
-              <Text className="ml-2 flex-1 text-sm font-bold">
+              <Text className="ml-2 flex-1 text-sm font-bold text-g000st-black dark:text-night-text">
                 {isPage ? "Page name is always shown" : "Show my identity"}
               </Text>
             </View>
@@ -698,7 +700,7 @@ export function SocialScreen() {
                 onPress={() => setSharingPost(undefined)}
                 className="flex-1 rounded-xl bg-[#DDD] dark:bg-night-raised p-3"
               >
-                <Text className="text-center font-black">Cancel</Text>
+                <Text className="text-center font-black text-g000st-black dark:text-night-text">Cancel</Text>
               </Pressable>
               <Pressable
                 disabled={sharing}
@@ -761,7 +763,7 @@ function SuggestedPeople({
   const router = useRouter();
   return (
     <View className="rounded-2xl border border-black/15 dark:border-night-border bg-white dark:bg-night-surface py-4">
-      <Text className="px-4 text-sm font-black">People you may know</Text>
+      <Text className="px-4 text-sm font-black text-g000st-black dark:text-night-text">People you may know</Text>
       <Text className="mt-1 px-4 text-xs text-black/55 dark:text-night-muted">
         Fresh suggestions every day
       </Text>
@@ -874,7 +876,7 @@ function PostCard({
           }}
           accessibilityRole={post.author.publicId ? "button" : undefined}
         >
-          <Text className="font-black">{post.author.displayName}</Text>
+          <Text className="text-black dark:text-night-text">{post.author.displayName}</Text>
           <Text className="text-[10px] text-black/45 dark:text-night-muted">
             {new Date(post.createdAtMs).toLocaleString()}
             {post.editedAtMs ? " · edited" : ""}
@@ -885,10 +887,10 @@ function PostCard({
             <Pressable
               accessibilityLabel="Edit post"
               accessibilityRole="button"
-              className="rounded-full border border-black/20 dark:border-night-border px-3 py-2"
+              className="rounded-full border border-black/20 text-black dark:text-night-text dark:border-night-border px-3 py-2"
               onPress={onEdit}
             >
-              <Text className="text-xs font-black">Edit</Text>
+              <Text className="text-xs font-black text-g000st-black dark:text-night-text">Edit</Text>
             </Pressable>
             <Pressable
               accessibilityLabel="Delete post"
@@ -925,12 +927,12 @@ function PostCard({
                 await onReport();
             }}
           >
-            <Text className="text-xs font-black">Report</Text>
+            <Text className="text-xs font-black text-g000st-black dark:text-night-text">Report</Text>
           </Pressable>
         )}
       </View>
       {!!post.content && (
-        <Text className="px-4 pb-3 text-[15px] leading-6">{post.content}</Text>
+        <Text className="px-4 pb-3 text-[15px] text-black dark:text-night-text leading-6">{post.content}</Text>
       )}
       {post.sharedPostId && (
         <View className="mx-4 mb-4">
@@ -991,12 +993,12 @@ function SharedPostPreview({
   return (
     <View className="overflow-hidden rounded-xl border border-black/15 dark:border-night-border bg-black/[.03] dark:bg-white/10">
       <View className="p-3">
-        <Text className="text-xs font-black">
+        <Text className="text-xs font-black text-g000st-black dark:text-night-text">
           {sharedPost.author.displayName}
         </Text>
         <Text
           numberOfLines={compact ? 3 : undefined}
-          className="mt-1 text-sm leading-5"
+          className="mt-1 text-sm leading-5 text-g000st-black dark:text-night-text"
         >
           {sharedPost.content}
         </Text>
@@ -1068,9 +1070,9 @@ function SocialCommentsModal({
       >
         <View className="h-[75%] rounded-t-[28px] bg-white dark:bg-night-surface p-4 pb-16">
           <View className="mb-3 flex-row justify-between">
-            <Text className="text-lg font-black">Comments</Text>
+            <Text className="text-lg font-black text-g000st-black dark:text-night-text">Comments</Text>
             <Pressable onPress={onClose}>
-              <Text className="text-2xl">×</Text>
+              <Text className="text-2xl text-g000st-black dark:text-night-text">×</Text>
             </Pressable>
           </View>
           <FlatList
@@ -1079,7 +1081,7 @@ function SocialCommentsModal({
             contentContainerClassName="gap-3 py-2"
             renderItem={({ item }) => (
               <View className="flex-row rounded-xl bg-black/[.04] dark:bg-white/10 p-3">
-                <Text className="min-w-0 flex-1">
+                <Text className="min-w-0 flex-1 text-g000st-black dark:text-night-text">
                   <Text className="font-black">{item.author.displayName}</Text>
                   {item.content}
                 </Text>
@@ -1124,7 +1126,7 @@ function SocialCommentsModal({
                   }}
                   className="p-3"
                 >
-                  <Text className="text-center font-black">
+                  <Text className="text-center font-black text-g000st-black dark:text-night-text">
                     {loading ? "Loading…" : "Load more"}
                   </Text>
                 </Pressable>
@@ -1137,7 +1139,7 @@ function SocialCommentsModal({
               onChangeText={setValue}
               placeholder="Write a comment…"
               maxLength={1000}
-              className="min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
+              className="min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 py-2 text-g000st-black dark:text-night-text"
             />
             <Pressable
               onPress={async () => {
@@ -1176,13 +1178,13 @@ function EditSocialPostModal({
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 justify-center bg-black/50 p-5">
         <View className="gap-3 rounded-[24px] bg-white dark:bg-night-surface p-5">
-          <Text className="text-lg font-black">Edit post</Text>
+          <Text className="text-lg font-black text-g000st-black dark:text-night-text">Edit post</Text>
           <TextInput
             value={content}
             onChangeText={setContent}
             multiline
             maxLength={4000}
-            className="min-h-28 rounded-xl border border-black/15 dark:border-night-border p-3"
+            className="min-h-28 rounded-xl border border-black/15 dark:border-night-border p-3 text-g000st-black dark:text-night-text"
             textAlignVertical="top"
           />
           <View className="flex-row gap-2">
@@ -1190,7 +1192,7 @@ function EditSocialPostModal({
               onPress={onClose}
               className="flex-1 rounded-xl bg-[#DDD] dark:bg-night-raised p-3"
             >
-              <Text className="text-center font-black">Cancel</Text>
+              <Text className="text-center font-black text-g000st-black dark:text-night-text">Cancel</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -1237,7 +1239,7 @@ function ProfileEditor({
         onPress={() => setEditing(true)}
         className="rounded-2xl bg-white dark:bg-night-surface p-4"
       >
-        <Text className="text-base font-black">
+        <Text className="text-base font-black text-g000st-black dark:text-night-text">
           {profile.displayName || profile.publicId.slice(0, 8)}
         </Text>
         <Text className="mt-1 text-xs text-black/45 dark:text-night-muted">
@@ -1249,31 +1251,31 @@ function ProfileEditor({
     );
   return (
     <View className="gap-2 rounded-2xl bg-white dark:bg-night-surface p-4">
-      <Text className="text-base font-black">Edit social profile</Text>
+      <Text className="text-base font-black text-g000st-black dark:text-night-text">Edit social profile</Text>
       <TextInput
         value={displayName}
         onChangeText={setDisplayName}
         placeholder="Display name"
-        className="rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
+        className="rounded-xl border border-black/15 dark:border-night-border px-3 py-2 text-g000st-black dark:text-night-text"
       />
       <TextInput
         value={country}
         onChangeText={setCountry}
         placeholder="Country"
-        className="rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
+        className="rounded-xl border border-black/15 dark:border-night-border px-3 py-2 text-g000st-black dark:text-night-text"
       />
       <TextInput
         value={hobby}
         onChangeText={setHobby}
         placeholder="Hobby"
-        className="rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
+        className="rounded-xl border border-black/15 dark:border-night-border px-3 py-2 text-g000st-black dark:text-night-text"
       />
       <TextInput
         value={bio}
         onChangeText={setBio}
         placeholder="About me"
         multiline
-        className="min-h-20 rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
+        className="min-h-20 rounded-xl border border-black/15 dark:border-night-border px-3 py-2 text-g000st-black dark:text-night-text"
         textAlignVertical="top"
       />
       <View className="flex-row gap-2">
@@ -1281,7 +1283,7 @@ function ProfileEditor({
           onPress={() => setEditing(false)}
           className="flex-1 rounded-xl bg-[#DDD] dark:bg-night-raised p-3"
         >
-          <Text className="text-center font-black">Cancel</Text>
+          <Text className="text-center font-black text-g000st-black dark:text-night-text">Cancel</Text>
         </Pressable>
         <Pressable
           onPress={() =>
@@ -1320,7 +1322,7 @@ function AlertList({ alerts }: { alerts: SocialAlert[] }) {
           }}
           className="rounded-2xl bg-white dark:bg-night-surface p-4"
         >
-          <Text>
+          <Text className="text-g000st-black dark:text-night-text">
             <Text className="font-black">{item.actor.displayName} </Text>
             {item.kind === "like"
               ? "liked your post."

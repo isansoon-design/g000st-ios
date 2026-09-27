@@ -98,7 +98,20 @@ function IdentityScreenContentComponent({
   const { isDark } = useAppTheme();
   if (loading) {
     return (
-      <FeatureScreen title="ID & Profile" showThemeSwitch={false}>
+      <FeatureScreen
+        title={
+          <View className="h-14 flex-row items-center justify-between border-b border-black/10 dark:border-night-border  px-4">
+            <Text className="text-lg font-black text-[#1A1A1A] dark:text-night-text">
+              g<Text className="text-[#C62828]">000</Text>
+              st
+              <Text className="text-[#C62828]">P</Text>
+              rofile
+
+            </Text>
+
+          </View>
+        }
+      >
         <View className="px-4 pt-4"><AppearanceCard /></View>
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color="#C62828" />
@@ -110,7 +123,7 @@ function IdentityScreenContentComponent({
   return (
     <FeatureScreen
       title={
-        <View className="h-14 flex-row items-center justify-between border-b border-black/10 dark:border-night-border bg-[#D2D2D4] dark:bg-night-header px-4">
+        <View className="h-14 flex-row items-center justify-between border-b border-black/10 dark:border-night-border  px-4">
           <Text className="text-lg font-black text-[#1A1A1A] dark:text-night-text">
             g<Text className="text-[#C62828]">000</Text>
             st

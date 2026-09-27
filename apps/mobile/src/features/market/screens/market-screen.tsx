@@ -211,7 +211,7 @@ export function MarketScreen() {
   return (
     <FeatureScreen
       title={
-        <View className="h-14 flex-row items-center justify-between border-b border-black/10 dark:border-night-border bg-[#D2D2D4] dark:bg-night-header px-4">
+        <View className="h-14 flex-row items-center justify-between border-b border-black/10 dark:border-night-border  px-4">
           <Text className="text-lg font-black text-[#1A1A1A] dark:text-night-text">
             g<Text className="text-[#C62828]">000</Text>
             st
@@ -451,7 +451,7 @@ function MarketComposer({
           placeholder="What are you selling? Add condition and key details."
           multiline
           maxLength={4000}
-          className="min-h-28 rounded-2xl border border-black/10 dark:border-night-border bg-white dark:bg-night-surface px-4 py-3 text-base"
+          className="min-h-28 rounded-2xl border border-black/10 dark:border-night-border bg-white dark:bg-night-surface px-4 py-3 text-base text-g000st-black dark:text-night-text"
           textAlignVertical="top"
         />
       </View>
@@ -493,7 +493,7 @@ function MarketComposer({
           onChangeText={(city) => onChange({ ...fields, city })}
           placeholder="Where is it located?"
           maxLength={100}
-          className="rounded-2xl border border-black/10 dark:border-night-border bg-white dark:bg-night-surface px-4 py-3 text-base"
+          className="rounded-2xl border border-black/10 dark:border-night-border bg-white dark:bg-night-surface px-4 py-3 text-base text-g000st-black dark:text-night-text"
         />
       </View>
       <View className="gap-3 rounded-2xl bg-white dark:bg-night-surface p-4">
@@ -591,7 +591,7 @@ function MarketCard({
         {/* End Image */}
         {/* Start Username && date  */}
         <Pressable onPress={() => router.push(`/users/${post.ownerPublicId}` as Href)} accessibilityRole="button" className="min-w-0 flex-1">
-          <Text className="font-black">{post.author.displayName}</Text>
+          <Text className="font-black text-g000st-black dark:text-night-text">{post.author.displayName}</Text>
           <Text className="text-[10px] text-black/45 dark:text-night-muted">
             {new Date(post.createdAtMs).toLocaleString()}
             {post.editedAtMs ? " · edited" : ""}
@@ -607,7 +607,7 @@ function MarketCard({
               onPress={onEdit}
               className="rounded-full border border-black/20 dark:border-night-border px-3 py-2"
             >
-              <Text className="text-xs font-black">Edit</Text>
+              <Text className="text-xs font-black text-g000st-black dark:text-night-text">Edit</Text>
             </Pressable>
             <Pressable
               accessibilityLabel="Delete listing"
@@ -659,7 +659,7 @@ function MarketCard({
                   }
                 }}
               >
-                <Text className="text-xs font-black">Report</Text>
+                <Text className="text-xs font-black text-g000st-black dark:text-night-text">Report</Text>
               </Pressable>
             )}
           </View>
@@ -667,7 +667,7 @@ function MarketCard({
         {/* End Call Actions */}
 
       </View>
-      <Text className="px-4 pb-3 text-[15px] leading-6">{post.content}</Text>
+      <Text className="px-4 pb-3 text-[15px] leading-6 text-g000st-black dark:text-night-text">{post.content}</Text>
       <View className="mx-4 mb-3 flex-row flex-wrap gap-2">
         <Badge
           text={
@@ -712,7 +712,7 @@ function MarketCard({
           onPress={() => void onChat()}
           className="mx-1 px-5 py-3"
         >
-          <Text className="font-black">Chat</Text>
+          <Text className="font-black text-g000st-black dark:text-night-text">Chat</Text>
         </Pressable>}
       </View>
 
@@ -767,9 +767,9 @@ function CommentsModal({
       >
         <View className="h-[75%] pb-16 rounded-t-[28px] bg-white dark:bg-night-surface p-4">
           <View className="mb-3 flex-row items-center justify-between">
-            <Text className="text-lg font-black">Comments</Text>
+            <Text className="text-lg font-black text-g000st-black dark:text-night-text">Comments</Text>
             <Pressable onPress={onClose}>
-              <Text className="text-2xl">×</Text>
+              <Text className="text-2xl text-g000st-black dark:text-night-text">×</Text>
             </Pressable>
           </View>
           {loading ? (
@@ -792,7 +792,7 @@ function CommentsModal({
               }}
               renderItem={({ item }) => (
                 <View className="flex-row gap-2 rounded-xl bg-black/[.04] dark:bg-white/10 p-3">
-                  <Text className="min-w-0 flex-1">
+                  <Text className="min-w-0 flex-1 text-g000st-black dark:text-night-text">
                     <Text className="font-black">
                       {item.author.displayName}{" "}
                     </Text>
@@ -828,7 +828,7 @@ function CommentsModal({
               onChangeText={setValue}
               placeholder="Write a comment…"
               maxLength={1000}
-              className="min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
+              className="min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 py-2 text-g000st-black dark:text-night-text"
             />
             <Pressable
               onPress={() => void send()}
@@ -865,12 +865,12 @@ function EditMarketModal({
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 justify-center bg-black/50 p-5">
         <View className="gap-3 rounded-[24px] bg-white dark:bg-night-surface p-5">
-          <Text className="text-lg font-black">Edit listing</Text>
+          <Text className="text-lg font-black text-g000st-black dark:text-night-text">Edit listing</Text>
           <TextInput
             value={fields.content}
             onChangeText={(content) => setFields({ ...fields, content })}
             multiline
-            className="min-h-24 rounded-xl border border-black/15 dark:border-night-border p-3"
+            className="min-h-24 rounded-xl border border-black/15 dark:border-night-border p-3 text-g000st-black dark:text-night-text"
           />
           <View className="flex-row gap-2">
             <NumberField
@@ -895,7 +895,7 @@ function EditMarketModal({
               value={fields.city}
               onChangeText={(city) => setFields({ ...fields, city })}
               placeholder="City"
-              className="min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3"
+              className="min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 text-g000st-black dark:text-night-text"
             />
           </View>
           {post.currency !== "GBP" && (
@@ -909,7 +909,7 @@ function EditMarketModal({
               onPress={onClose}
               className="flex-1 rounded-xl bg-[#DDD] dark:bg-night-raised p-3"
             >
-              <Text className="text-center font-black">Cancel</Text>
+              <Text className="text-center font-black text-g000st-black dark:text-night-text">Cancel</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -935,7 +935,7 @@ function MarketCallOptions({
   return (
     <View className="gap-1">
       <View className="flex-row items-center justify-between">
-        <Text>Allow voice calls</Text>
+        <Text className="text-g000st-black dark:text-night-text">Allow voice calls</Text>
         <Switch
           accessibilityLabel="Allow voice calls"
           thumbColor="#000000"
@@ -945,7 +945,7 @@ function MarketCallOptions({
         />
       </View>
       <View className="flex-row items-center justify-between">
-        <Text>Allow video calls</Text>
+        <Text className="text-g000st-black dark:text-night-text">Allow video calls</Text>
         <Switch
           accessibilityLabel="Allow video calls"
           thumbColor="#000000"
@@ -980,8 +980,8 @@ function NumberField({
       keyboardType="decimal-pad"
       placeholder={placeholder}
       className={elevated
-        ? "w-full rounded-2xl border border-black/10 dark:border-night-border bg-white dark:bg-night-surface px-4 py-3 text-base"
-        : "min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 py-2"}
+        ? "w-full rounded-2xl border border-black/10 dark:border-night-border bg-white dark:bg-night-surface px-4 py-3 text-base text-g000st-black dark:text-night-text"
+        : "min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 py-2 text-g000st-black dark:text-night-text"}
     />
   );
 }
