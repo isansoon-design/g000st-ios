@@ -71,6 +71,11 @@ export class FirestoreAuthStore implements AuthStore {
     return page.data()?.status === 'active' && typeof page.data()?.ownerPublicId === 'string' ? page.data()!.ownerPublicId as string : null;
   }
 
+  async getPageDisplayName(pagePublicId: string): Promise<string> {
+    const profile = await this.collection('social_profiles').doc(pagePublicId).get();
+    return String(profile.data()?.displayName ?? '');
+  }
+
   async createAccount(reservation: AccountReservation): Promise<ReserveAccountResult> {
     const userRef = this.collection('users').doc(reservation.publicId);
     const recoveryRef = this.collection('recovery_credentials').doc(

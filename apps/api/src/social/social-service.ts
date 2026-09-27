@@ -115,8 +115,10 @@ export class SocialService {
   }
 
   async createPost(ownerId: string, input: CreateSocialPostInput, clientPostId: string) {
-    if (input.visibility !== 'public' && await this.authStore.getPageOwner?.(ownerId)) {
-      throw new ApiError(400, 'PAGE_NAME_REQUIRED', 'Page posts must show the page name.');
+    if (await this.authStore.getPageOwner?.(ownerId)) {
+      if (input.visibility !== 'public' || !(await this.store.getProfile(ownerId, ownerId))?.displayName?.trim()) {
+        throw new ApiError(400, 'PAGE_NAME_REQUIRED', 'Name your page before posting. Page posts must show its name.');
+      }
     }
     const { media: pendingMedia, ...postInput } = input;
     if (!input.content.trim() && !input.sharedPostId) throw new ApiError(400, 'INVALID_POST', 'A post must contain text or share another post.');
@@ -168,8 +170,10 @@ export class SocialService {
   }
 
   async createComment(viewerId: string, postId: string, input: CreateSocialCommentInput) {
-    if (input.visibility !== 'public' && await this.authStore.getPageOwner?.(viewerId)) {
-      throw new ApiError(400, 'PAGE_NAME_REQUIRED', 'Page comments must show the page name.');
+    if (await this.authStore.getPageOwner?.(viewerId)) {
+      if (input.visibility !== 'public' || !(await this.store.getProfile(viewerId, viewerId))?.displayName?.trim()) {
+        throw new ApiError(400, 'PAGE_NAME_REQUIRED', 'Name your page before commenting. Page comments must show its name.');
+      }
     }
     const comment = await this.store.createComment(viewerId, postId, { ...input, content: input.content.trim() }, this.now());
     if (!comment) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found.');
@@ -204,9 +208,10 @@ export class SocialService {
 
   async getProfile(viewerId: string, publicId: string) {
     if (!(await this.authStore.isUserActive(publicId))) throw new ApiError(404, 'USER_NOT_FOUND', 'User not found.');
-    const stored = await this.store.getProfile(viewerId, publicId);
+    const [stored, isPage] = await Promise.all([this.store.getProfile(viewerId, publicId), this.authStore.getPageOwner?.(publicId).then((owner) => !!owner) ?? Promise.resolve(false)]);
     const profile = {
       publicId,
+      isPage,
       ...stored,
       showDisplayName: stored?.showDisplayName === true,
       updatedAtMs: stored?.updatedAtMs ?? 0,
@@ -223,8 +228,12 @@ export class SocialService {
   }
 
   async updateProfile(publicId: string, input: UpdateSocialProfileInput) {
-    if (await this.authStore.getPageOwner?.(publicId) && (input.showDisplayName === false || input.displayName?.trim() === '')) {
+    const isPage = !!(await this.authStore.getPageOwner?.(publicId));
+    if (isPage && (input.showDisplayName === false || input.displayName?.trim() === '')) {
       throw new ApiError(400, 'PAGE_NAME_REQUIRED', 'A page must show its name.');
+    }
+    if (!isPage && (input.whatsappNumber !== undefined || input.contactEmail !== undefined || input.facebookUrl !== undefined || input.instagramUrl !== undefined || input.tiktokUrl !== undefined || input.linkedinUrl !== undefined)) {
+      throw new ApiError(400, 'PAGE_CONTACTS_ONLY', 'These contact fields belong to pages.');
     }
     const { avatarMedia, coverMedia, ...fields } = input;
     let avatarObjectKey: string | undefined;
@@ -253,7 +262,7 @@ export class SocialService {
     if (coverObjectKey && current?.coverObjectKey && current.coverObjectKey !== coverObjectKey) {
       await this.requireMedia().deleteProfileImage(current.coverObjectKey).catch(() => undefined);
     }
-    return this.withProfileAvatar({ ...profile, showDisplayName: profile.showDisplayName === true });
+    return this.withProfileAvatar({ ...profile, isPage, showDisplayName: profile.showDisplayName === true });
   }
 
   createAvatarUpload(publicId: string, input: Readonly<{ byteSize: number; contentType: string; fileName: string }>) {

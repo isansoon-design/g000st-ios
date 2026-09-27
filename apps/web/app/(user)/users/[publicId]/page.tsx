@@ -119,7 +119,7 @@ export default function PublicUserPage() {
         <section className="profile-reveal relative mx-3 -mt-12 rounded-[28px] border border-white/80 dark:border-white/20 bg-white/95 dark:bg-night-surface px-5 pb-6 pt-16 shadow-[0_18px_60px_rgba(24,30,44,.13)] backdrop-blur sm:mx-5 sm:px-7">
           <div className="absolute -top-12 left-6 grid h-24 w-24 place-items-center overflow-hidden rounded-[28px] border-4 border-white bg-[#dfe2e9] dark:bg-night-raised text-4xl shadow-lg sm:left-8">{profile.avatarUrl ? <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" /> : "👻"}</div>
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0"><span className="mb-1 inline-flex items-center gap-1 rounded-full bg-[#c62828]/10 dark:bg-night-softred px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#a21e1e] dark:text-red-200"><Sparkles size={12} /> G000ST PROFILE</span><h1 className="break-words text-2xl font-black sm:text-3xl">{profile.displayName || `User ${publicId.slice(0, 8)}`}</h1></div>
+            <div className="min-w-0"><span className="mb-1 inline-flex items-center gap-1 rounded-full bg-[#c62828]/10 dark:bg-night-softred px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#a21e1e] dark:text-red-200"><Sparkles size={12} /> {profile.isPage ? 'BEACON PAGE' : 'G000ST PROFILE'}</span><h1 className="break-words text-2xl font-black sm:text-3xl">{profile.displayName || (profile.isPage ? 'Untitled beacon' : `User ${publicId.slice(0, 8)}`)}</h1></div>
             {own && <Link href="/profile" className="rounded-full border border-black/15 dark:border-night-border px-4 py-2 text-xs font-black transition hover:bg-black hover:text-white">Edit profile</Link>}
           </div>
           <button onClick={async () => { try { await navigator.clipboard.writeText(publicId); toast.success("Public ID copied."); } catch { toast.error("Could not copy ID."); } }} className="mt-3 flex max-w-full items-center gap-2 rounded-xl bg-[#f0f1f4] dark:bg-night-surface px-3 py-2 text-left font-mono text-xs transition hover:bg-[#e2e5eb]" title="Copy public ID"><span className="truncate">{publicId}</span><Copy size={14} className="shrink-0" /></button>
@@ -132,6 +132,16 @@ export default function PublicUserPage() {
             <button onClick={() => void openChat()} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#c62828] px-6 py-3 text-sm font-black text-white shadow-lg shadow-red-900/15 transition hover:-translate-y-0.5 hover:bg-[#ae2020]"><MessageCircle size={18} /> Message</button>
             <button onClick={() => void callUser(publicId, "audio")} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#17191d] px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"><Phone size={18} /> Voice</button>
             <button onClick={() => void callUser(publicId, "video")} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#17191d] px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"><Video size={18} /> Video</button>
+          </div>}
+          {profile.isPage && (profile.whatsappNumber || profile.contactEmail || profile.facebookUrl || profile.instagramUrl || profile.tiktokUrl || profile.linkedinUrl) && <div className="mt-5 border-t border-black/10 pt-4 dark:border-night-border">
+            {profile.whatsappNumber && <a href={`https://wa.me/${profile.whatsappNumber.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="mb-3 flex items-center justify-between rounded-2xl bg-[#d8f8e6] px-5 py-3 text-[#126c3d] transition hover:bg-[#bdf0d1] dark:bg-[#173d2b] dark:text-[#8de5b3]"><span><span className="block text-sm font-black">✆ Chat on WhatsApp</span><span className="block text-[11px] font-semibold opacity-70">Open a direct conversation</span></span><span className="text-xl font-black">↗</span></a>}
+            <div className="flex flex-wrap gap-2">{([
+              ['Email', profile.contactEmail ? `mailto:${profile.contactEmail}` : undefined],
+              ['Facebook', profile.facebookUrl],
+              ['Instagram', profile.instagramUrl],
+              ['TikTok', profile.tiktokUrl],
+              ['LinkedIn', profile.linkedinUrl],
+            ] as const).filter((item) => !!item[1]).map(([label, url]) => <a key={label} href={url} target="_blank" rel="noopener noreferrer" className="rounded-full border border-black/10 bg-[#f0f1f4] px-4 py-2 text-xs font-black transition hover:bg-[#e0e7ef] dark:border-night-border dark:bg-night-raised">{label} ↗</a>)}</div>
           </div>}
         </section>
 

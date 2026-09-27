@@ -34,7 +34,7 @@ export async function listBeaconPages(): Promise<BeaconPage[]> {
   return parseApiPayload(z.object({ pages: z.array(pageSchema) }), response.data).pages;
 }
 
-export async function createBeaconPage(displayName: string, bio: string): Promise<BeaconPage> {
-  const response = await axiosInstance.post('/auth/pages', { displayName, bio });
+export async function createBeaconPage(): Promise<BeaconPage> {
+  const response = await axiosInstance.post('/auth/pages', {});
   return parseApiPayload(z.object({ page: pageSchema }), response.data).page;
 }

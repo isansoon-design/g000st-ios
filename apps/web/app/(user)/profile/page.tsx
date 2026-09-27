@@ -25,9 +25,15 @@ type ProfileFields = {
   sex: "male" | "female" | "";
   hobby: string;
   bio: string;
+  whatsappNumber: string;
+  contactEmail: string;
+  facebookUrl: string;
+  instagramUrl: string;
+  tiktokUrl: string;
+  linkedinUrl: string;
 };
 
-const EMPTY_FIELDS: ProfileFields = { age: "", bio: "", country: "", displayName: "", hobby: "", sex: "", showDisplayName: false };
+const EMPTY_FIELDS: ProfileFields = { age: "", bio: "", country: "", displayName: "", hobby: "", sex: "", showDisplayName: false, whatsappNumber: "", contactEmail: "", facebookUrl: "", instagramUrl: "", tiktokUrl: "", linkedinUrl: "" };
 
 function toFields(profile: SocialProfile | null): ProfileFields {
   if (!profile) return EMPTY_FIELDS;
@@ -38,6 +44,12 @@ function toFields(profile: SocialProfile | null): ProfileFields {
     displayName: profile.displayName ?? "",
     showDisplayName: profile.showDisplayName ?? false,
     hobby: profile.hobby ?? "",
+    whatsappNumber: profile.whatsappNumber ?? "",
+    contactEmail: profile.contactEmail ?? "",
+    facebookUrl: profile.facebookUrl ?? "",
+    instagramUrl: profile.instagramUrl ?? "",
+    tiktokUrl: profile.tiktokUrl ?? "",
+    linkedinUrl: profile.linkedinUrl ?? "",
     sex: profile.sex ?? "",
   };
 }
@@ -157,7 +169,6 @@ export default function ProfilePage() {
   const saveProfile = async () => {
     setSaving(true);
     try {
-      if (isPage && !fields.displayName.trim()) throw new Error('A page must have a name.');
       const age = fields.age.trim() ? Number(fields.age.trim()) : undefined;
       const saved = await updateSocialProfile({
         ...(!isPage && age ? { age } : {}),
@@ -165,6 +176,7 @@ export default function ProfilePage() {
         ...(!isPage && fields.country.trim() ? { country: fields.country.trim() } : {}),
         displayName: fields.displayName.trim() || undefined,
         showDisplayName: isPage ? true : fields.showDisplayName,
+        ...(isPage ? { whatsappNumber: fields.whatsappNumber, contactEmail: fields.contactEmail, facebookUrl: fields.facebookUrl, instagramUrl: fields.instagramUrl, tiktokUrl: fields.tiktokUrl, linkedinUrl: fields.linkedinUrl } : {}),
         ...(!isPage && fields.hobby.trim() ? { hobby: fields.hobby.trim() } : {}),
         ...(!isPage && fields.sex ? { sex: fields.sex } : {}),
       });
@@ -262,11 +274,11 @@ export default function ProfilePage() {
             <div className="py-20 text-sm font-bold text-black/40 dark:text-night-muted">Loading…</div>
           ) : (
             <>
-              {isPage && <p className="mb-3 text-center text-xs font-bold text-black/55 dark:text-night-muted">You are interacting as this page. Its owner is not shown publicly.</p>}
+              {isPage && <div className="mb-4 w-full"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#c62828]">BEACON STUDIO</p><h1 className="mt-1 text-2xl font-black">Design your page</h1><p className="mt-1 text-xs text-black/55 dark:text-night-muted">Choose a cover and photo, then add your page details. Your account stays private.</p></div>}
               <button
                 data-admin-part="mypage.cover"
                 aria-label={profile?.coverUrl ? "Change cover photo" : "Add cover photo"}
-                className="relative mb-4 h-44 w-full overflow-hidden rounded-[22px] bg-[#171d29] text-left transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C62828] disabled:opacity-60"
+                className={`relative w-full overflow-hidden bg-[#171d29] text-left transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C62828] disabled:opacity-60 ${isPage ? 'h-56 rounded-t-[22px]' : 'mb-4 h-44 rounded-[22px]'}`}
                 disabled={uploadingCover || uploadingPhoto}
                 onClick={() => coverInputRef.current?.click()}
                 title="Choose an image up to 3 MB for your public profile banner"
@@ -283,10 +295,10 @@ export default function ProfilePage() {
                 )}
                 <span className="absolute inset-0 bg-black/35" />
                 <span className="relative flex h-full flex-col justify-between p-4">
-                  <span className="self-start rounded-full border border-white/35 dark:border-white/20 bg-black/30 px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white">Profile cover</span>
+                  <span className="self-start rounded-full border border-white/35 dark:border-white/20 bg-black/30 px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white">{isPage ? 'BEACON COVER' : 'Profile cover'}</span>
                   <span className="flex items-end justify-between gap-3">
                     <span className="min-w-0 flex-1">
-                      <span className="block text-lg font-black text-white">{profile?.coverUrl ? "Your cover photo" : "Make your profile yours"}</span>
+                      <span className="block text-lg font-black text-white">{profile?.coverUrl ? "Your cover photo" : isPage ? 'Your story starts here' : "Make your profile yours"}</span>
                       <span className="mt-1 block text-[11px] font-semibold text-white/80">Wide images look best · up to 3 MB</span>
                     </span>
                     <span className="flex min-h-10 min-w-24 items-center justify-center rounded-full bg-white dark:bg-night-surface px-3 py-2 text-[11px] font-black text-[#17191d] dark:text-night-text">
@@ -302,7 +314,7 @@ export default function ProfilePage() {
                 aria-label="Change profile photo"
                 disabled={uploadingPhoto || uploadingCover}
                 onClick={() => photoInputRef.current?.click()}
-                className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#C8C8C8] dark:bg-night-raised shadow-md transition hover:opacity-80 disabled:opacity-60"
+                className={`flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[#C8C8C8] dark:bg-night-raised shadow-md transition hover:opacity-80 disabled:opacity-60 ${isPage ? '-mt-10 ml-5 self-start' : ''}`}
               >
                 {uploadingPhoto ? (
                   <span className="text-xs font-bold text-black/40 dark:text-night-muted">…</span>
@@ -314,7 +326,7 @@ export default function ProfilePage() {
                 )}
               </button>
               <input ref={photoInputRef} type="file" accept="image/*" className="hidden" disabled={uploadingPhoto || uploadingCover} onChange={onPhotoChange} />
-              <button disabled={uploadingPhoto || uploadingCover} onClick={() => photoInputRef.current?.click()} className="mb-4 mt-2 text-xs font-black text-[#C62828] disabled:opacity-60">
+              <button disabled={uploadingPhoto || uploadingCover} onClick={() => photoInputRef.current?.click()} className={`mb-4 mt-2 text-xs font-black text-[#C62828] disabled:opacity-60 ${isPage ? 'ml-5 self-start' : ''}`}>
                 {profile?.avatarUrl ? "Change photo" : "Add photo"}
               </button>
               <Link href={`/users/${publicId}`} className="mb-4 rounded-full bg-[#17191d] px-5 py-2.5 text-xs font-black text-white transition hover:bg-[#c62828]">View public profile</Link>
@@ -326,7 +338,7 @@ export default function ProfilePage() {
                     className="h-12 min-w-0 flex-1 rounded-[12px] border border-black/10 dark:border-night-border bg-white dark:bg-night-surface px-3 text-[15px] font-black text-[#111] dark:text-night-text outline-none placeholder:text-black/35 focus:border-[#9A9A9A]"
                     maxLength={60}
                     onChange={(event) => setField("displayName", event.target.value)}
-                    placeholder="Add your name"
+                    placeholder={isPage ? 'Page name' : 'Add your name'}
                     value={fields.displayName}
                   />
                   <div data-admin-part="mypage.showname" className="flex shrink-0 flex-col items-center">
@@ -351,7 +363,7 @@ export default function ProfilePage() {
 
               {/* Public ID */}
               <div data-admin-part="mypage.id" className={`mb-3 w-full ${cardClass}`}>
-                <div className={labelClass}>Your Public ID</div>
+                <div className={labelClass}>{isPage ? 'Page Public ID' : 'Your Public ID'}</div>
                 <div className="mb-3 break-all font-mono text-[13px] font-black leading-[19px] text-[#C62828]">
                   {publicId}
                 </div>
@@ -430,13 +442,29 @@ export default function ProfilePage() {
                 </p>}
               </div>
 
+              {isPage && <div className="mb-3 w-full rounded-[22px] border border-white/70 bg-white p-5 dark:border-white/20 dark:bg-night-header">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#c62828]">CONTACT & SOCIAL</p>
+                <h2 className="mb-4 mt-1 text-lg font-black">Help people find you</h2>
+                <label className="mb-1 block text-xs font-black text-[#127446]">✆ WhatsApp</label>
+                <input aria-label="WhatsApp number" className={`mb-2 ${fieldClass}`} inputMode="tel" onChange={(event) => setField('whatsappNumber', event.target.value)} placeholder="+963... or 00963..." value={fields.whatsappNumber} />
+                <p className="mb-4 text-[11px] text-black/45 dark:text-night-muted">Include your country code. Visitors will open a direct chat.</p>
+                {([
+                  ['contactEmail', 'Email', 'name@example.com'],
+                  ['facebookUrl', 'Facebook', 'https://www.facebook.com/yourpage'],
+                  ['instagramUrl', 'Instagram', 'https://www.instagram.com/yourpage'],
+                  ['tiktokUrl', 'TikTok', 'https://www.tiktok.com/@yourpage'],
+                  ['linkedinUrl', 'LinkedIn', 'https://www.linkedin.com/company/yourpage'],
+                ] as const).map(([key, label, placeholder]) => <label className="mb-3 block" key={key}><span className="mb-1 block text-xs font-black">{label}</span><input className={fieldClass} maxLength={key === 'contactEmail' ? 254 : 300} onChange={(event) => setField(key, event.target.value)} placeholder={placeholder} type={key === 'contactEmail' ? 'email' : 'url'} value={fields[key]} /></label>)}
+                <p className="text-[11px] text-black/45 dark:text-night-muted">Paste a full HTTPS link for each social profile.</p>
+              </div>}
+
               {/* Save */}
               <button
                 disabled={saving}
                 onClick={() => void saveProfile()}
                 className="mb-3 h-12 w-full rounded-[14px] bg-[#C62828] text-sm font-black text-white shadow-md transition hover:opacity-90 disabled:opacity-60"
               >
-                {saving ? "Saving…" : "Save profile"}
+                {saving ? "Saving…" : isPage ? 'Save page' : "Save profile"}
               </button>
 
               {/* Recovery ID */}

@@ -147,13 +147,13 @@ export class AuthService {
     return { publicId: actAsPublicId, role: 'user' };
   }
 
-  async createPage(accessToken: string, displayName: string, bio: string) {
+  async createPage(accessToken: string) {
     const user = await this.getUser(accessToken);
     if (!this.store.createPage) throw new ApiError(503, 'PAGES_UNAVAILABLE', 'Pages are unavailable.');
     for (let attempt = 0; attempt < GENERATED_ID_ATTEMPTS; attempt += 1) {
       const publicId = generateG000stId();
-      if (await this.store.createPage(user.publicId, publicId, displayName, bio, this.now()) === 'created') {
-        return { publicId, displayName, bio };
+      if (await this.store.createPage(user.publicId, publicId, '', '', this.now()) === 'created') {
+        return { publicId, displayName: '', bio: '' };
       }
     }
     throw new ApiError(503, 'IDENTITY_GENERATION_FAILED', 'Could not create a page. Try again.');
@@ -166,6 +166,12 @@ export class AuthService {
 
   async isPage(publicId: string): Promise<boolean> {
     return (await this.store.getPageOwner?.(publicId)) != null;
+  }
+
+  async assertPageCanPublish(publicId: string): Promise<void> {
+    if (await this.isPage(publicId) && !(await this.store.getPageDisplayName?.(publicId))?.trim()) {
+      throw new ApiError(400, 'PAGE_NAME_REQUIRED', 'Name your page before posting.');
+    }
   }
 
   async deleteAccount(accessToken: string): Promise<void> {

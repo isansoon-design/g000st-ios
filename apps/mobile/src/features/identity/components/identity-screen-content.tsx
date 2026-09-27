@@ -143,12 +143,12 @@ function IdentityScreenContentComponent({
       >
         {/* <AppearanceCard /> */}
         <BeaconSwitcher />
-        {isPage && <Text className="mb-3 text-center text-xs font-bold text-black/55 dark:text-night-muted">You are interacting as this page. Its owner is not shown publicly.</Text>}
+        {isPage && <View className="mb-3 w-full"><Text className="text-[10px] font-black uppercase tracking-[2px] text-g000st-red">BEACON STUDIO</Text><Text className="mt-1 text-xl font-black text-[#17191d] dark:text-night-text">Design your page</Text><Text className="mt-1 text-xs text-black/55 dark:text-night-muted">Tap the cover or photo to choose an image. Your account stays private.</Text></View>}
         <Pressable
           accessibilityHint="Choose an image up to 3 MB for your public profile banner"
           accessibilityLabel={coverUrl ? 'Change cover photo' : 'Add cover photo'}
           accessibilityRole="button"
-          className="mb-4 h-44 w-full overflow-hidden rounded-[22px] bg-[#171d29] active:opacity-85 disabled:opacity-60"
+          className={`w-full overflow-hidden bg-[#171d29] active:opacity-85 disabled:opacity-60 ${isPage ? 'h-52 rounded-t-[22px]' : 'mb-4 h-44 rounded-[22px]'}`}
           disabled={uploadingCover || uploadingPhoto}
           onPress={onChangeCover}
         >
@@ -162,10 +162,10 @@ function IdentityScreenContentComponent({
           )}
           <View className="absolute inset-0 bg-black/35" />
           <View className="flex-1 justify-between p-4">
-            <Text className="self-start rounded-full border border-white/35 dark:border-white/20 bg-black/30 px-3 py-1 text-[10px] font-black uppercase tracking-[1px] text-white">Profile cover</Text>
+            <Text className="self-start rounded-full border border-white/35 dark:border-white/20 bg-black/30 px-3 py-1 text-[10px] font-black uppercase tracking-[1px] text-white">{isPage ? 'BEACON COVER' : 'Profile cover'}</Text>
             <View className="flex-row items-end justify-between gap-3">
               <View className="min-w-0 flex-1">
-                <Text className="text-lg font-black text-white">{coverUrl ? 'Your cover photo' : 'Make your profile yours'}</Text>
+                <Text className="text-lg font-black text-white">{coverUrl ? 'Your cover photo' : isPage ? 'Your story starts here' : 'Make your profile yours'}</Text>
                 <Text className="mt-1 text-[11px] font-semibold text-white/80">Wide images look best · up to 3 MB</Text>
               </View>
               <View className="min-h-10 min-w-24 items-center justify-center rounded-full bg-white dark:bg-night-surface px-3 py-2">
@@ -178,7 +178,7 @@ function IdentityScreenContentComponent({
         <Pressable
           accessibilityLabel="Change profile photo"
           accessibilityRole="button"
-          className="h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#C8C8C8] dark:bg-night-raised active:opacity-80"
+          className={`h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[#C8C8C8] dark:bg-night-raised active:opacity-80 ${isPage ? '-mt-10 self-start ml-5' : ''}`}
           disabled={uploadingPhoto || uploadingCover}
           onPress={onChangePhoto}
         >
@@ -190,7 +190,7 @@ function IdentityScreenContentComponent({
             <Text className="text-3xl">◎</Text>
           )}
         </Pressable>
-        <Pressable accessibilityRole="button" className="mt-2 mb-4" disabled={uploadingPhoto || uploadingCover} onPress={onChangePhoto}>
+        <Pressable accessibilityRole="button" className={`mt-2 mb-4 ${isPage ? 'self-start ml-5' : ''}`} disabled={uploadingPhoto || uploadingCover} onPress={onChangePhoto}>
           <Text className="text-xs font-black text-g000st-red">
             {uploadingPhoto ? 'Uploading photo…' : avatarUrl ? 'Change photo' : 'Add photo'}
           </Text>
@@ -204,7 +204,7 @@ function IdentityScreenContentComponent({
               className="h-12 min-w-0 flex-1 rounded-field border border-black/10 dark:border-night-border bg-white dark:bg-night-surface px-3 text-[15px] font-black text-g000st-black dark:text-night-text"
               maxLength={60}
               onChangeText={(value) => onSetField('displayName', value)}
-              placeholder="Add your name"
+              placeholder={isPage ? 'Page name' : 'Add your name'}
               placeholderTextColor={isDark ? '#C4C3C6' : 'rgba(0,0,0,0.35)'}
               value={fields.displayName}
             />
@@ -228,7 +228,7 @@ function IdentityScreenContentComponent({
 
         {/* Public ID */}
         <View className={`mb-3 w-full ${CARD}`}>
-          <Text className={LABEL}>Your Public ID</Text>
+          <Text className={LABEL}>{isPage ? 'Page Public ID' : 'Your Public ID'}</Text>
           <Text selectable className="mb-3 font-mono text-[13px] font-black leading-[19px] text-g000st-red">
             {publicId}
           </Text>
@@ -243,6 +243,22 @@ function IdentityScreenContentComponent({
             Safe to share. People use it to find and message you.
           </Text>
         </View>
+
+        {isPage && <View className="mb-3 w-full rounded-[22px] border border-white/70 bg-white p-4 dark:border-white/20 dark:bg-night-header">
+          <Text className="text-[10px] font-black uppercase tracking-[2px] text-g000st-red">CONTACT & SOCIAL</Text>
+          <Text className="mt-1 mb-4 text-lg font-black text-[#17191d] dark:text-night-text">Help people find you</Text>
+          <Text className="mb-1 text-xs font-black text-[#127446] dark:text-[#56d69a]">✆ WhatsApp</Text>
+          <TextInput accessibilityLabel="WhatsApp number" className={`mb-2 ${FIELD_INPUT}`} keyboardType="phone-pad" onChangeText={(value) => onSetField('whatsappNumber', value)} placeholder="+963... or 00963..." value={fields.whatsappNumber} />
+          <Text className="mb-4 text-[11px] text-black/45 dark:text-night-muted">Include your country code. Visitors will open a direct chat.</Text>
+          {([
+            ['contactEmail', 'Email', 'name@example.com'],
+            ['facebookUrl', 'Facebook', 'https://www.facebook.com/yourpage'],
+            ['instagramUrl', 'Instagram', 'https://www.instagram.com/yourpage'],
+            ['tiktokUrl', 'TikTok', 'https://www.tiktok.com/@yourpage'],
+            ['linkedinUrl', 'LinkedIn', 'https://www.linkedin.com/company/yourpage'],
+          ] as const).map(([key, label, placeholder]) => <View className="mb-3" key={key}><Text className="mb-1 text-xs font-black text-[#17191d] dark:text-night-text">{label}</Text><TextInput accessibilityLabel={label} autoCapitalize="none" className={FIELD_INPUT} keyboardType={key === 'contactEmail' ? 'email-address' : 'url'} onChangeText={(value) => onSetField(key, value)} placeholder={placeholder} value={fields[key]} /></View>)}
+          <Text className="text-[11px] text-black/45 dark:text-night-muted">Paste a full HTTPS link for each social profile.</Text>
+        </View>}
 
 
 
@@ -318,7 +334,7 @@ function IdentityScreenContentComponent({
           disabled={saving}
           onPress={onSave}
         >
-          {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text className="text-sm font-black text-white">Save profile</Text>}
+          {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text className="text-sm font-black text-white">{isPage ? 'Save page' : 'Save profile'}</Text>}
         </Pressable>
 
         {/* Recovery ID */}

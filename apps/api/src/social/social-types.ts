@@ -22,10 +22,16 @@ export type SocialProfile = Readonly<{
   sex?: 'male' | 'female';
   hobby?: string;
   bio?: string;
+  whatsappNumber?: string;
+  contactEmail?: string;
+  facebookUrl?: string;
+  instagramUrl?: string;
+  tiktokUrl?: string;
+  linkedinUrl?: string;
   updatedAtMs: number;
 }>;
 
-export type SocialProfileView = Omit<SocialProfile, 'avatarObjectKey' | 'coverObjectKey'> & Readonly<{ avatarUrl?: string; coverUrl?: string }>;
+export type SocialProfileView = Omit<SocialProfile, 'avatarObjectKey' | 'coverObjectKey'> & Readonly<{ avatarUrl?: string; coverUrl?: string; isPage: boolean }>;
 
 export type SocialSuggestion = Readonly<{
   publicId: string;
@@ -126,6 +132,12 @@ export type UpdateSocialProfileInput = Readonly<{
   sex?: 'male' | 'female';
   hobby?: string;
   bio?: string;
+  whatsappNumber?: string;
+  contactEmail?: string;
+  facebookUrl?: string;
+  instagramUrl?: string;
+  tiktokUrl?: string;
+  linkedinUrl?: string;
 }>;
 
 export type CreateSocialReportInput = Readonly<{

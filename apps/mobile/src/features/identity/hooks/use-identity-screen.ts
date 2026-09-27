@@ -27,6 +27,12 @@ export type IdentityProfileFields = Readonly<{
   sex: "male" | "female" | "";
   hobby: string;
   bio: string;
+  whatsappNumber: string;
+  contactEmail: string;
+  facebookUrl: string;
+  instagramUrl: string;
+  tiktokUrl: string;
+  linkedinUrl: string;
 }>;
 
 const EMPTY_FIELDS: IdentityProfileFields = {
@@ -36,6 +42,12 @@ const EMPTY_FIELDS: IdentityProfileFields = {
   displayName: "",
   showDisplayName: false,
   hobby: "",
+  whatsappNumber: "",
+  contactEmail: "",
+  facebookUrl: "",
+  instagramUrl: "",
+  tiktokUrl: "",
+  linkedinUrl: "",
   sex: "",
 };
 
@@ -48,6 +60,12 @@ function toFields(profile: SocialProfile | null): IdentityProfileFields {
     displayName: profile.displayName ?? "",
     showDisplayName: profile.showDisplayName,
     hobby: profile.hobby ?? "",
+    whatsappNumber: profile.whatsappNumber ?? "",
+    contactEmail: profile.contactEmail ?? "",
+    facebookUrl: profile.facebookUrl ?? "",
+    instagramUrl: profile.instagramUrl ?? "",
+    tiktokUrl: profile.tiktokUrl ?? "",
+    linkedinUrl: profile.linkedinUrl ?? "",
     sex: profile.sex ?? "",
   };
 }
@@ -280,7 +298,6 @@ export function useIdentityScreen() {
   const save = useCallback(async () => {
     setSaving(true);
     try {
-      if (isPage && !fields.displayName.trim()) throw new Error('A page must have a name.');
       const age = fields.age.trim() ? Number(fields.age.trim()) : undefined;
       const saved = await updateSocialProfile({
         ...(!isPage && age ? { age } : {}),
@@ -288,6 +305,7 @@ export function useIdentityScreen() {
         ...(!isPage && fields.country.trim() ? { country: fields.country.trim() } : {}),
         displayName: fields.displayName.trim() || undefined,
         showDisplayName: isPage ? true : fields.showDisplayName,
+        ...(isPage ? { whatsappNumber: fields.whatsappNumber, contactEmail: fields.contactEmail, facebookUrl: fields.facebookUrl, instagramUrl: fields.instagramUrl, tiktokUrl: fields.tiktokUrl, linkedinUrl: fields.linkedinUrl } : {}),
         ...(!isPage && fields.hobby.trim() ? { hobby: fields.hobby.trim() } : {}),
         ...(!isPage && fields.sex ? { sex: fields.sex } : {}),
       });

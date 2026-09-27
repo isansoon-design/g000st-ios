@@ -6,6 +6,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
   ScrollView,
   Text,
@@ -269,10 +270,10 @@ export default function UserProfileScreen() {
                   )}
                 </View>
                 <Text className="self-start rounded-full bg-[#c62828]/10 dark:bg-night-softred px-3 py-1 text-[10px] font-black tracking-widest text-[#a21e1e] dark:text-red-200">
-                  ✦ G000ST PROFILE
+                  {profile.isPage ? '✦ BEACON PAGE' : '✦ G000ST PROFILE'}
                 </Text>
                 <Text className="mt-2 text-2xl font-black text-[#17191d] dark:text-night-text">
-                  {profile.displayName || `User ${publicId?.slice(0, 8)}`}
+                  {profile.displayName || (profile.isPage ? 'Untitled beacon' : `User ${publicId?.slice(0, 8)}`)}
                 </Text>
                 <Pressable
                   onPress={() => {
@@ -322,6 +323,18 @@ export default function UserProfileScreen() {
                     </View>
                   </View>
                 )}
+                {profile.isPage && (profile.whatsappNumber || profile.contactEmail || profile.facebookUrl || profile.instagramUrl || profile.tiktokUrl || profile.linkedinUrl) && <View className="mt-5 border-t border-black/10 pt-4 dark:border-night-border">
+                  {profile.whatsappNumber && <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`https://wa.me/${profile.whatsappNumber!.replace(/\D/g, '')}`)} className="mb-3 flex-row items-center justify-between rounded-2xl bg-[#d8f8e6] px-4 py-3 dark:bg-[#173d2b]"><View><Text className="text-sm font-black text-[#126c3d] dark:text-[#8de5b3]">✆  Chat on WhatsApp</Text><Text className="mt-0.5 text-[11px] text-[#126c3d]/70 dark:text-[#8de5b3]">Open a direct conversation</Text></View><Text className="text-xl font-black text-[#126c3d] dark:text-[#8de5b3]">↗</Text></Pressable>}
+                  <View className="flex-row flex-wrap gap-2">
+                    {([
+                      ['Email', profile.contactEmail ? `mailto:${profile.contactEmail}` : undefined],
+                      ['Facebook', profile.facebookUrl],
+                      ['Instagram', profile.instagramUrl],
+                      ['TikTok', profile.tiktokUrl],
+                      ['LinkedIn', profile.linkedinUrl],
+                    ] as const).filter((item) => !!item[1]).map(([label, url]) => <Pressable key={label} accessibilityRole="link" onPress={() => { if (url) void Linking.openURL(url); }} className="rounded-full border border-black/10 bg-[#f0f1f4] px-4 py-2 dark:border-night-border dark:bg-night-raised"><Text className="text-xs font-black text-[#17191d] dark:text-night-text">{label} ↗</Text></Pressable>)}
+                  </View>
+                </View>}
               </Animated.View>
 
               <View className="mx-3 mt-5 flex-row rounded-2xl bg-white dark:bg-night-surface p-1.5">

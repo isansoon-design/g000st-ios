@@ -271,7 +271,8 @@ describe('AuthService', () => {
     const service = new AuthService(new MemoryAuthStore(), PEPPER, () => NOW);
     const owner = await service.register();
     const stranger = await service.register();
-    const page = await service.createPage(owner.session.accessToken, 'My Beacon', 'A short description');
+    const page = await service.createPage(owner.session.accessToken);
+    assert.equal(page.displayName, '');
 
     assert.equal(isValidG000stId(page.publicId), true);
     assert.notEqual(page.publicId, owner.user.publicId);
