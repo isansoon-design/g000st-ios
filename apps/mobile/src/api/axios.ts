@@ -2,6 +2,7 @@ import { create, isAxiosError, type InternalAxiosRequestConfig } from "axios";
 
 import { toApiError } from "@/api/api-error";
 import { tokenService } from "@/api/token-service";
+import { getActingPublicId } from '@/services/session/acting-identity';
 import { env } from "@/config/env";
 
 type RetriableRequestConfig = InternalAxiosRequestConfig & {
@@ -88,8 +89,12 @@ axiosInstance.interceptors.request.use(async (config) => {
 
   if (token) {
     setHeader(config, "Authorization", `Bearer ${token}`);
+    const actor = getActingPublicId();
+    if (actor && !config.url?.startsWith('/auth/') && !config.headers.has('X-Acting-Public-Id')) setHeader(config, 'X-Acting-Public-Id', actor);
+    else config.headers.delete('X-Acting-Public-Id');
   } else {
     config.headers.delete('Authorization');
+    config.headers.delete('X-Acting-Public-Id');
   }
 
   return config;

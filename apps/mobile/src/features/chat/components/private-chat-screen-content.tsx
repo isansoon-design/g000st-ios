@@ -319,6 +319,7 @@ function PrivateChatScreenContentComponent({
       }
     >
       <ChatConversationList
+        key={chat.conversations.find((item) => item.conversationId === initialConversationId)?.kind ?? initialKind ?? 'private'}
         conversations={chat.conversations}
         initialKind={chat.conversations.find((item) => item.conversationId === initialConversationId)?.kind ?? initialKind}
         namesByPublicId={namesByPublicId}

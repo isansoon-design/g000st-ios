@@ -6,13 +6,17 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { FeatureScreen } from '@/components/layout/feature-screen';
 import type { IdentityProfileFields } from '@/features/identity/hooks/use-identity-screen';
+import { BeaconSwitcher } from '@/features/identity/components/beacon-switcher';
 import { avatarImageSource } from '@/services/media/avatar-image-source';
 
 type IdentityScreenContentProps = Readonly<{
   avatarUrl?: string;
+  coverUrl?: string;
+  isPage: boolean;
   deleting: boolean;
   fields: IdentityProfileFields;
   loading: boolean;
+  onChangeCover: () => void;
   onChangePhoto: () => void;
   onCopyPublicId: () => void;
   onCopyRecoveryId: () => void;
@@ -23,6 +27,7 @@ type IdentityScreenContentProps = Readonly<{
   publicId: string;
   recoveryId: string | null;
   saving: boolean;
+  uploadingCover: boolean;
   uploadingPhoto: boolean;
 }>;
 
@@ -55,9 +60,12 @@ function IdentityAvatarImage({ avatarUrl }: { avatarUrl: string }) {
 
 function IdentityScreenContentComponent({
   avatarUrl,
+  coverUrl,
+  isPage,
   deleting,
   fields,
   loading,
+  onChangeCover,
   onChangePhoto,
   onCopyPublicId,
   onCopyRecoveryId,
@@ -68,6 +76,7 @@ function IdentityScreenContentComponent({
   publicId,
   recoveryId,
   saving,
+  uploadingCover,
   uploadingPhoto,
 }: IdentityScreenContentProps) {
   const router = useRouter();
@@ -89,12 +98,44 @@ function IdentityScreenContentComponent({
         keyboardShouldPersistTaps="handled"
         bottomOffset={20}
       >
+        <BeaconSwitcher />
+        {isPage && <Text className="mb-3 text-center text-xs font-bold text-black/55">You are interacting as this page. Its owner is not shown publicly.</Text>}
+        <Pressable
+          accessibilityHint="Choose an image up to 3 MB for your public profile banner"
+          accessibilityLabel={coverUrl ? 'Change cover photo' : 'Add cover photo'}
+          accessibilityRole="button"
+          className="mb-4 h-44 w-full overflow-hidden rounded-[22px] bg-[#171d29] active:opacity-85 disabled:opacity-60"
+          disabled={uploadingCover || uploadingPhoto}
+          onPress={onChangeCover}
+        >
+          {coverUrl ? (
+            <Image source={{ uri: coverUrl }} contentFit="cover" style={{ width: '100%', height: '100%', position: 'absolute' }} />
+          ) : (
+            <>
+              <View className="absolute -right-10 -top-20 h-56 w-56 rounded-full border-[28px] border-white/10" />
+              <View className="absolute bottom-5 left-20 h-28 w-28 rounded-full border-[18px] border-g000st-red/50" />
+            </>
+          )}
+          <View className="absolute inset-0 bg-black/35" />
+          <View className="flex-1 justify-between p-4">
+            <Text className="self-start rounded-full border border-white/35 bg-black/30 px-3 py-1 text-[10px] font-black uppercase tracking-[1px] text-white">Profile cover</Text>
+            <View className="flex-row items-end justify-between gap-3">
+              <View className="min-w-0 flex-1">
+                <Text className="text-lg font-black text-white">{coverUrl ? 'Your cover photo' : 'Make your profile yours'}</Text>
+                <Text className="mt-1 text-[11px] font-semibold text-white/80">Wide images look best · up to 3 MB</Text>
+              </View>
+              <View className="min-h-10 min-w-24 items-center justify-center rounded-full bg-white px-3 py-2">
+                {uploadingCover ? <ActivityIndicator color="#C62828" size="small" /> : <Text className="text-[11px] font-black text-[#17191d]">{coverUrl ? 'Change cover' : 'Add cover'}</Text>}
+              </View>
+            </View>
+          </View>
+        </Pressable>
         {/* Photo */}
         <Pressable
           accessibilityLabel="Change profile photo"
           accessibilityRole="button"
           className="h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#C8C8C8] active:opacity-80"
-          disabled={uploadingPhoto}
+          disabled={uploadingPhoto || uploadingCover}
           onPress={onChangePhoto}
         >
           {uploadingPhoto ? (
@@ -105,7 +146,7 @@ function IdentityScreenContentComponent({
             <Text className="text-3xl">◎</Text>
           )}
         </Pressable>
-        <Pressable accessibilityRole="button" className="mt-2 mb-4" disabled={uploadingPhoto} onPress={onChangePhoto}>
+        <Pressable accessibilityRole="button" className="mt-2 mb-4" disabled={uploadingPhoto || uploadingCover} onPress={onChangePhoto}>
           <Text className="text-xs font-black text-g000st-red">
             {uploadingPhoto ? 'Uploading photo…' : avatarUrl ? 'Change photo' : 'Add photo'}
           </Text>
@@ -128,15 +169,16 @@ function IdentityScreenContentComponent({
               <Switch
                 accessibilityLabel="Show my name"
                 accessibilityRole="switch"
+                disabled={isPage}
                 onValueChange={(value) => onSetField('showDisplayName', value)}
                 thumbColor="#FFFFFF"
                 trackColor={{ false: '#9A9A9A', true: '#C62828' }}
-                value={fields.showDisplayName}
+                value={isPage || fields.showDisplayName}
               />
             </View>
           </View>
           <Text className="mt-2 text-[11px] font-semibold leading-[16px] text-black/45">
-            Show your name to other users, or turn this off to use your 8-character alias ({publicId.slice(0, 8)}).
+            {isPage ? 'Page posts and comments always show the page name.' : `Show your name to other users, or turn this off to use your 8-character alias (${publicId.slice(0, 8)}).`}
           </Text>
         </View>
 
@@ -162,7 +204,9 @@ function IdentityScreenContentComponent({
 
         {/* Optional profile */}
         <View className={`mb-3 w-full ${CARD}`}>
-          <Text className={LABEL}>Optional profile</Text>
+          <Text className={LABEL}>{isPage ? 'Page description' : 'Optional profile'}</Text>
+
+          {!isPage && <>
 
           <Text className="mb-1 mt-2 text-[11px] font-bold text-black/45">Country</Text>
           <TextInput
@@ -207,7 +251,8 @@ function IdentityScreenContentComponent({
             value={fields.hobby}
           />
 
-          <Text className="mb-1 text-[11px] font-bold text-black/45">Bio</Text>
+          </>}
+          <Text className="mb-1 text-[11px] font-bold text-black/45">{isPage ? 'Short description' : 'Bio'}</Text>
           <TextInput
             className="h-24 rounded-field border border-black/10 bg-white px-3 py-2 text-[13px] font-bold text-g000st-black"
             multiline
@@ -217,9 +262,9 @@ function IdentityScreenContentComponent({
             value={fields.bio}
           />
 
-          <Text className="mt-2 text-[11px] font-semibold text-black/40">
+          {!isPage && <Text className="mt-2 text-[11px] font-semibold text-black/40">
             Nothing here is required. Fill in only what you want.
-          </Text>
+          </Text>}
         </View>
 
         {/* Save */}
@@ -233,7 +278,7 @@ function IdentityScreenContentComponent({
         </Pressable>
 
         {/* Recovery ID */}
-        <View className="my-3 w-full overflow-hidden rounded-[22px] border border-[#C62828]/35 bg-[#191919] p-4">
+        {!isPage && <View className="my-3 w-full overflow-hidden rounded-[22px] border border-[#C62828]/35 bg-[#191919] p-4">
           <View className="mb-3 flex-row items-center justify-between">
             <View>
               <Text className="text-[10px] font-black uppercase tracking-[1.5px] text-[#FFB9B9]">PRIVATE KEY</Text>
@@ -267,18 +312,18 @@ function IdentityScreenContentComponent({
               Keep this key secret. Never share it with anyone. You need it to sign in again.
             </Text>
           </View>
-        </View>
+        </View>}
         {/* Sign out */}
-        <Pressable
+        {!isPage && <Pressable
           accessibilityRole="button"
           className="mb-6 h-11 w-full items-center justify-center rounded-full border border-black/15 bg-white active:opacity-70"
           onPress={onSignOut}
         >
           <Text className="text-sm font-bold text-g000st-red">Sign out from this device</Text>
-        </Pressable>
+        </Pressable>}
 
         {/* Account deletion */}
-        <Pressable
+        {!isPage && <Pressable
           accessibilityHint="Permanently deletes your account"
           accessibilityRole="button"
           className="mb-10 h-11 w-full items-center justify-center rounded-full border border-g000st-red bg-transparent active:opacity-70 disabled:opacity-60"
@@ -290,7 +335,7 @@ function IdentityScreenContentComponent({
           ) : (
             <Text className="text-sm font-black text-g000st-red">Delete my account</Text>
           )}
-        </Pressable>
+        </Pressable>}
       </KeyboardAwareScrollView>
     </FeatureScreen>
   );

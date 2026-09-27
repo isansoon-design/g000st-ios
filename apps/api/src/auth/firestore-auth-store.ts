@@ -43,6 +43,34 @@ export class FirestoreAuthStore implements AuthStore {
     private readonly collectionPrefix: string,
   ) {}
 
+  async createPage(ownerPublicId: string, pagePublicId: string, displayName: string, bio: string, createdAtMs: number): Promise<'created' | 'public_id_unavailable'> {
+    const ownerRef = this.collection('users').doc(ownerPublicId);
+    const pageRef = this.collection('users').doc(pagePublicId);
+    const profileRef = this.collection('social_profiles').doc(pagePublicId);
+    return this.db.runTransaction(async (transaction) => {
+      const [owner, existing] = await Promise.all([transaction.get(ownerRef), transaction.get(pageRef)]);
+      if (owner.data()?.status !== 'active' || owner.data()?.ownerPublicId) throw new Error('Page owner is unavailable');
+      if (existing.exists) return 'public_id_unavailable';
+      transaction.create(pageRef, { createdAtMs, publicId: pagePublicId, ownerPublicId, role: DEFAULT_ROLE, status: 'active' });
+      transaction.create(profileRef, { displayName, showDisplayName: true, bio, updatedAtMs: createdAtMs });
+      return 'created';
+    });
+  }
+
+  async listPages(ownerPublicId: string): Promise<readonly Readonly<{ publicId: string; displayName: string; bio: string }>[]> {
+    const pages = await this.collection('users').where('ownerPublicId', '==', ownerPublicId).get();
+    const active = pages.docs.filter((page) => page.data().status === 'active');
+    return Promise.all(active.map(async (page) => {
+      const profile = (await this.collection('social_profiles').doc(page.id).get()).data();
+      return { publicId: page.id, displayName: String(profile?.displayName ?? ''), bio: String(profile?.bio ?? '') };
+    }));
+  }
+
+  async getPageOwner(pagePublicId: string): Promise<string | null> {
+    const page = await this.collection('users').doc(pagePublicId).get();
+    return page.data()?.status === 'active' && typeof page.data()?.ownerPublicId === 'string' ? page.data()!.ownerPublicId as string : null;
+  }
+
   async createAccount(reservation: AccountReservation): Promise<ReserveAccountResult> {
     const userRef = this.collection('users').doc(reservation.publicId);
     const recoveryRef = this.collection('recovery_credentials').doc(
@@ -101,6 +129,8 @@ export class FirestoreAuthStore implements AuthStore {
     const pushDevices = await this.collection('push_devices')
       .where('publicId', '==', publicId)
       .get();
+    const pages = await this.collection('users').where('ownerPublicId', '==', publicId).get();
+    const pageDevices = await Promise.all(pages.docs.map((page) => this.collection('push_devices').where('publicId', '==', page.id).get()));
 
     const batch = this.db.batch();
     batch.update(userRef, { deletedAtMs, status: 'deleted' });
@@ -112,6 +142,11 @@ export class FirestoreAuthStore implements AuthStore {
     });
     for (const credential of recoveryCredentials.docs) batch.delete(credential.ref);
     for (const device of pushDevices.docs) batch.delete(device.ref);
+    for (const devices of pageDevices) for (const device of devices.docs) batch.delete(device.ref);
+    for (const page of pages.docs) {
+      batch.update(page.ref, { deletedAtMs, status: 'deleted' });
+      batch.set(this.collection('social_profiles').doc(page.id), { deletedAtMs, displayName: 'Deleted account', showDisplayName: true, updatedAtMs: deletedAtMs });
+    }
     await batch.commit();
   }
 
@@ -167,7 +202,11 @@ export class FirestoreAuthStore implements AuthStore {
 
   async isUserActive(publicId: string): Promise<boolean> {
     const user = await this.collection('users').doc(publicId).get();
-    return user.exists && user.data()?.status === 'active';
+    if (!user.exists || user.data()?.status !== 'active') return false;
+    const ownerPublicId = user.data()?.ownerPublicId;
+    if (typeof ownerPublicId !== 'string') return true;
+    const owner = await this.collection('users').doc(ownerPublicId).get();
+    return owner.data()?.status === 'active';
   }
 
   async rotateRefresh(

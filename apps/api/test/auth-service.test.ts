@@ -25,6 +25,7 @@ class MemoryAuthStore implements AuthStore {
   private readonly recoveries = new Map<string, RecoveryCredentialRecord>();
   private readonly refresh = new Map<string, StoredSession & { rotated: boolean }>();
   private readonly users = new Map<string, AccountRole>();
+  private readonly pages = new Map<string, { ownerPublicId: string; displayName: string; bio: string }>();
 
   constructor(private readonly forcedCreateResults: ReserveAccountResult[] = []) {}
 
@@ -47,6 +48,7 @@ class MemoryAuthStore implements AuthStore {
 
   async deleteAccount(publicId: string): Promise<void> {
     this.users.delete(publicId);
+    for (const [pageId, page] of this.pages) if (page.ownerPublicId === publicId) { this.pages.delete(pageId); this.users.delete(pageId); }
     for (const [lookupHash, credential] of this.recoveries) {
       if (credential.publicId === publicId) this.recoveries.delete(lookupHash);
     }
@@ -79,6 +81,21 @@ class MemoryAuthStore implements AuthStore {
 
   async isUserActive(publicId: string): Promise<boolean> {
     return this.users.has(publicId);
+  }
+
+  async createPage(ownerPublicId: string, pagePublicId: string, displayName: string, bio: string): Promise<'created' | 'public_id_unavailable'> {
+    if (this.users.has(pagePublicId)) return 'public_id_unavailable';
+    this.users.set(pagePublicId, 'user');
+    this.pages.set(pagePublicId, { ownerPublicId, displayName, bio });
+    return 'created';
+  }
+
+  async listPages(ownerPublicId: string) {
+    return [...this.pages].filter(([, page]) => page.ownerPublicId === ownerPublicId).map(([publicId, page]) => ({ publicId, displayName: page.displayName, bio: page.bio }));
+  }
+
+  async getPageOwner(pagePublicId: string) {
+    return this.pages.get(pagePublicId)?.ownerPublicId ?? null;
   }
 
   async rotateRefresh(
@@ -235,5 +252,24 @@ describe('AuthService', () => {
       () => service.restore(registered.recoveryId),
       expectApiError('INVALID_RECOVERY_ID'),
     );
+  });
+
+  it('lets only the owner act as a page and never issues the page its own session', async () => {
+    const service = new AuthService(new MemoryAuthStore(), PEPPER, () => NOW);
+    const owner = await service.register();
+    const stranger = await service.register();
+    const page = await service.createPage(owner.session.accessToken, 'My Beacon', 'A short description');
+
+    assert.equal(isValidG000stId(page.publicId), true);
+    assert.notEqual(page.publicId, owner.user.publicId);
+    assert.deepEqual(await service.listPages(owner.session.accessToken), [page]);
+    assert.deepEqual(await service.listPages(stranger.session.accessToken), []);
+    assert.equal((await service.getActor(owner.session.accessToken, page.publicId)).publicId, page.publicId);
+    assert.equal((await service.getUser(owner.session.accessToken)).publicId, owner.user.publicId);
+    await assert.rejects(() => service.getActor(stranger.session.accessToken, page.publicId), expectApiError('PAGE_ACCESS_DENIED'));
+    await assert.rejects(() => service.restore(page.publicId), expectApiError('INVALID_RECOVERY_ID'));
+
+    await service.deleteAccount(owner.session.accessToken);
+    await assert.rejects(() => service.getActor(owner.session.accessToken, page.publicId), expectApiError('SESSION_EXPIRED'));
   });
 });

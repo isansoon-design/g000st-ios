@@ -34,6 +34,9 @@ export type RotateRefreshResult =
   | 'replayed';
 
 export interface AuthStore {
+  createPage?(ownerPublicId: string, pagePublicId: string, displayName: string, bio: string, createdAtMs: number): Promise<'created' | 'public_id_unavailable'>;
+  listPages?(ownerPublicId: string): Promise<readonly Readonly<{ publicId: string; displayName: string; bio: string }>[]>;
+  getPageOwner?(pagePublicId: string): Promise<string | null>;
   createAccount(reservation: AccountReservation): Promise<ReserveAccountResult>;
   createSession(publicId: string, material: SessionMaterial, createdAtMs: number): Promise<void>;
   deleteAccount(publicId: string, deletedAtMs: number): Promise<void>;

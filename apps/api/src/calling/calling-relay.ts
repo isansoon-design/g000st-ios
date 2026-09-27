@@ -69,7 +69,7 @@ export class CallingRelay {
     const token = url.searchParams.get('token') ?? '';
 
     try {
-      const user = await this.authService.getUser(token);
+      const user = await this.authService.getActor(token, url.searchParams.get('actor') ?? undefined);
       this.wss.handleUpgrade(request, socket, head, (ws) => {
         this.wss.emit('connection', ws, user.publicId);
       });

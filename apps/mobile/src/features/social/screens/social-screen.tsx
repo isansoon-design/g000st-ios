@@ -67,7 +67,8 @@ cssInterop(Image, { className: "style" });
 
 export function SocialScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { activePublicId, user } = useAuth();
+  const isPage = !!activePublicId && activePublicId !== user?.publicId;
   const [view, setView] = useState<ViewName>("home");
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [alerts, setAlerts] = useState<SocialAlert[]>([]);
@@ -92,7 +93,7 @@ export function SocialScreen() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingMoreRef = useRef(false);
-  const userPublicId = user?.publicId;
+  const userPublicId = activePublicId ?? undefined;
 
   const load = useCallback(async () => {
     try {
@@ -159,7 +160,7 @@ export function SocialScreen() {
         }
       });
       return () => { clearTimeout(timer); subscription.remove(); };
-    }, [load, loadSuggestions]),
+    }, [load, loadSuggestions, view]),
   );
 
   const loadMore = useCallback(async () => {
@@ -296,7 +297,7 @@ export function SocialScreen() {
       const post = await createSocialPost(
         clientPostId,
         content,
-        visibility,
+        isPage ? 'public' : visibility,
         media,
       );
       setPosts((items) => [post, ...items]);
@@ -339,7 +340,7 @@ export function SocialScreen() {
       const post = await createSocialPost(
         randomUUID(),
         shareDraft.trim(),
-        shareVisibility,
+        isPage ? 'public' : shareVisibility,
         undefined,
         sharingPost.sharedPostId ?? sharingPost.id,
       );
@@ -435,13 +436,14 @@ export function SocialScreen() {
                 </Text>
               </Pressable>
               <Switch
-                value={visibility === "public"}
+                disabled={isPage}
+                value={isPage || visibility === "public"}
                 onValueChange={(value) =>
                   setVisibility(value ? "public" : "anonymous")
                 }
               />
               <Text className="ml-2 flex-1 text-xs font-bold">
-                Show identity
+                {isPage ? 'Page name is always shown' : 'Show identity'}
               </Text>
               <Pressable
                 disabled={!draft.trim() || posting}
@@ -640,13 +642,14 @@ export function SocialScreen() {
             />
             <View className="flex-row items-center">
               <Switch
-                value={shareVisibility === "public"}
+                disabled={isPage}
+                value={isPage || shareVisibility === "public"}
                 onValueChange={(value) =>
                   setShareVisibility(value ? "public" : "anonymous")
                 }
               />
               <Text className="ml-2 flex-1 text-sm font-bold">
-                Show my identity
+                {isPage ? 'Page name is always shown' : 'Show my identity'}
               </Text>
             </View>
             <View className="flex-row gap-2">
@@ -672,7 +675,7 @@ export function SocialScreen() {
       {commentsPost && (
         <SocialCommentsModal
           post={commentsPost}
-          visibility={visibility}
+          visibility={isPage ? 'public' : visibility}
           onClose={() => setCommentsPost(undefined)}
           onCountChange={(postId, delta) =>
             setPosts((items) =>

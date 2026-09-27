@@ -85,7 +85,7 @@ export function usePrivateChat(
   initialConversationId?: string,
   openRequestId?: string,
 ) {
-  const { user } = useAuth();
+  const { activePublicId } = useAuth();
   const queryClient = useQueryClient();
   const [activeConversation, setActiveConversation] =
     useState<ActiveConversation | null>(null);
@@ -347,7 +347,7 @@ export function usePrivateChat(
       );
       return;
     }
-    if (participantPublicId === user?.publicId) {
+    if (participantPublicId === activePublicId) {
       setParticipantError(
         "You cannot start a conversation with your own account.",
       );
@@ -355,7 +355,7 @@ export function usePrivateChat(
     }
 
     startMutation.mutate(participantPublicId);
-  }, [participantInput, startMutation, user?.publicId]);
+  }, [participantInput, startMutation, activePublicId]);
 
   const openConversation = useCallback(
     (conversation: ChatConversationSummary) => {
@@ -418,7 +418,7 @@ export function usePrivateChat(
       !activeConversation ||
       activeConversation.participantStatus === "deleted" ||
       (!content && chatAttachments.attachments.length === 0) ||
-      !user?.publicId
+      !activePublicId
     ) {
       return;
     }
@@ -453,7 +453,7 @@ export function usePrivateChat(
           expiresAtMs: nowMs + (isMarket ? MARKET_MESSAGE_RETENTION_MS : MESSAGE_RETENTION_MS),
           id: clientMessageId,
           locked: false,
-          senderPublicId: user.publicId,
+          senderPublicId: activePublicId,
           status: "pending",
           type: "text",
         },
@@ -479,14 +479,14 @@ export function usePrivateChat(
     conversationsQuery.data,
     draft,
     sendMutation,
-    user,
+    activePublicId,
   ]);
 
   const submitVoiceMessage = useCallback(async (uri: string, durationMs: number) => {
     if (
       !activeConversation ||
       activeConversation.participantStatus === "deleted" ||
-      !user?.publicId ||
+      !activePublicId ||
       sendMutation.isPending ||
       isUploadingAttachments
     ) {
@@ -532,7 +532,7 @@ export function usePrivateChat(
     burnAfterRead,
     isUploadingAttachments,
     sendMutation,
-    user?.publicId,
+    activePublicId,
   ]);
 
   const retryMessage = useCallback(
@@ -632,7 +632,7 @@ export function usePrivateChat(
     toggleBurnAfterRead: () => setBurnAfterRead((current) => !current),
     updateDraft,
     updateParticipantInput,
-    userPublicId: user?.publicId ?? "",
+    userPublicId: activePublicId ?? "",
     loadOlderMessages: messagesQuery.fetchNextPage,
   };
 }

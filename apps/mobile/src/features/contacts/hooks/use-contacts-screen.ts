@@ -23,7 +23,7 @@ function errorMessage(error: unknown): string {
 }
 
 export function useContactsScreen() {
-  const { user } = useAuth();
+  const { activePublicId } = useAuth();
   const router = useRouter();
   const { confirm } = useConfirmModal();
   const { callUser } = useCalling();
@@ -124,7 +124,7 @@ export function useContactsScreen() {
       setAddError(`Public ID must be exactly ${G000ST_ID_LENGTH} letters or numbers.`);
       return;
     }
-    if (publicId === user?.publicId) {
+    if (publicId === activePublicId) {
       setAddError('You cannot add yourself.');
       return;
     }
@@ -144,7 +144,7 @@ export function useContactsScreen() {
     } finally {
       setIsAdding(false);
     }
-  }, [addValue, contacts, load, user?.publicId]);
+  }, [addValue, contacts, load, activePublicId]);
 
   const requestRemove = useCallback(
     async (contact: Contact) => {

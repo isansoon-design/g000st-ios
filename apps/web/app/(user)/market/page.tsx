@@ -29,7 +29,7 @@ export default function MarketPage() {
   const [editingPost, setEditingPost] = useState<MarketPost>();
   const feedRef = useRef<HTMLElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const myId = sessionStorage.get()?.user.publicId;
+  const myId = sessionStorage.getActingPublicId() ?? undefined;
 
   const load = useCallback(async () => {
     try { const page = await listMarketPosts(undefined, view === 'mine' ? myId : undefined); setPosts(page.items); setNextCursor(page.nextCursor); }

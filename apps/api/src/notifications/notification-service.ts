@@ -50,6 +50,7 @@ export class NotificationService implements ChatNotifier, CallingNotifier {
       body: 'You received a new private message.',
       data: {
         conversationId: input.conversationId,
+        recipientPublicId: input.recipientPublicId,
         type: 'chat.message',
         url: `g000st://chat?conversationId=${input.conversationId}`,
       },
@@ -64,6 +65,7 @@ export class NotificationService implements ChatNotifier, CallingNotifier {
       data: {
         callId: input.callId,
         callerPublicId: input.callerPublicId,
+        recipientPublicId: input.calleePublicId,
         media: input.media,
         type: 'calling.invite',
         url: `g000st://calling?callId=${input.callId}`,

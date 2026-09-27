@@ -7,9 +7,12 @@ export function IdentityScreen() {
   return (
     <IdentityScreenContent
       avatarUrl={identity.avatarUrl}
+      coverUrl={identity.coverUrl}
+      isPage={identity.isPage}
       fields={identity.fields}
       deleting={identity.deleting}
       loading={identity.loading}
+      onChangeCover={identity.changeCover}
       onChangePhoto={identity.changePhoto}
       onCopyPublicId={identity.copyPublicId}
       onCopyRecoveryId={identity.copyRecoveryId}
@@ -20,6 +23,7 @@ export function IdentityScreen() {
       publicId={identity.publicId}
       recoveryId={identity.recoveryId}
       saving={identity.saving}
+      uploadingCover={identity.uploadingCover}
       uploadingPhoto={identity.uploadingPhoto}
     />
   );

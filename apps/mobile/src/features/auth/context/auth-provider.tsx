@@ -1,6 +1,9 @@
 import { type PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { unregisterPushDevice } from '@/api/notifications';
+import { listBeaconPages } from '@/api/auth';
+import { unregisterVoipToken } from '@/api/calling';
 import { getSocialProfile } from '@/api/social';
 import type { AuthenticationResult, AuthenticatedUser } from '@/domain/auth/types';
 import {
@@ -13,10 +16,19 @@ import { getPushDeviceId } from '@/services/notifications/device-id';
 import { sessionStorage } from '@/services/session/session-storage';
 import { recoveryIdStorage } from '@/services/session/recovery-id-storage';
 import { savedAccounts } from '@/services/session/saved-accounts';
+import { setActingPublicId } from '@/services/session/acting-identity';
 
 export function AuthProvider({ children }: PropsWithChildren) {
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
+  const [activePublicId, setActivePublicIdState] = useState<string | null>(null);
+
+  const setActivePublicId = useCallback((publicId: string) => {
+    setActingPublicId(publicId);
+    setActivePublicIdState(publicId);
+    queryClient.clear();
+  }, [queryClient]);
 
   useEffect(() => {
     let active = true;
@@ -27,10 +39,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (!active) return;
 
         setUser(persisted?.user ?? null);
+        setActingPublicId(persisted?.user.publicId ?? null);
+        setActivePublicIdState(persisted?.user.publicId ?? null);
         setStatus(persisted ? 'authenticated' : 'anonymous');
       } catch {
         if (!active) return;
         setUser(null);
+        setActingPublicId(null);
+        setActivePublicIdState(null);
         setStatus('anonymous');
       }
     };
@@ -40,6 +56,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const unsubscribe = subscribeToSessionCleared(() => {
       if (!active) return;
       setUser(null);
+      setActingPublicId(null);
+      setActivePublicIdState(null);
       setStatus('anonymous');
     });
 
@@ -58,8 +76,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       await sessionStorage.clear();
       throw error;
     }
+    setActingPublicId(result.user.publicId);
     emitSessionChanged();
     setUser(result.user);
+    setActivePublicIdState(result.user.publicId);
     setStatus('authenticated');
     void getSocialProfile(result.user.publicId).then((profile) => savedAccounts.updateProfile(profile)).catch(() => undefined);
   }, []);
@@ -73,17 +93,24 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const deviceId = await getPushDeviceId();
     if (deviceId) {
       try {
-        await unregisterPushDevice(deviceId);
+        const pages = await listBeaconPages();
+        const actors = [current?.user.publicId, ...pages.map((page) => page.publicId)].filter((id): id is string => !!id);
+        await Promise.allSettled(actors.flatMap((publicId) => [
+          unregisterPushDevice(deviceId, publicId),
+          unregisterVoipToken(deviceId, publicId),
+        ]));
       } catch {
         // Signing out locally must still succeed if the device is offline.
       }
     }
     await sessionStorage.clear();
+    setActingPublicId(null);
+    setActivePublicIdState(null);
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ completeAuthentication, signOut, status, user }),
-    [completeAuthentication, signOut, status, user],
+    () => ({ activePublicId, setActivePublicId, completeAuthentication, signOut, status, user }),
+    [activePublicId, setActivePublicId, completeAuthentication, signOut, status, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

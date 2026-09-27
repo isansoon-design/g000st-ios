@@ -70,7 +70,10 @@ export default function SocialPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const feedScrollRef = useRef<HTMLElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const myId = sessionStorage.get()?.user.publicId;
+  const myId = sessionStorage.getActingPublicId() ?? undefined;
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
+  const isPage = hydrated && !!myId && myId !== sessionStorage.get()?.user.publicId;
 
   const load = useCallback(async () => {
     try {
@@ -184,7 +187,7 @@ export default function SocialPage() {
       const post = await createSocialPost(
         clientPostId,
         draft,
-        visibility,
+        isPage ? 'public' : visibility,
         uploaded,
       );
       setPosts((items) => [post, ...items]);
@@ -217,7 +220,7 @@ export default function SocialPage() {
       const post = await createSocialPost(
         crypto.randomUUID(),
         shareDraft.trim(),
-        shareVisibility,
+        isPage ? 'public' : shareVisibility,
         undefined,
         sharingPost.sharedPostId ?? sharingPost.id,
       );
@@ -307,12 +310,13 @@ export default function SocialPage() {
               <label className="flex flex-1 items-center gap-2 text-xs font-bold">
                 <input
                   type="checkbox"
-                  checked={visibility === "public"}
+                  checked={isPage || visibility === "public"}
+                  disabled={isPage}
                   onChange={(event) =>
                     setVisibility(event.target.checked ? "public" : "anonymous")
                   }
                 />{" "}
-                Show my identity
+                {isPage ? 'Page name is always shown' : 'Show my identity'}
               </label>
               <button
                 disabled={busy || !draft.trim()}
@@ -584,7 +588,7 @@ export default function SocialPage() {
       </nav>
       <SocialCommentsModal
         post={commentsPost}
-        visibility={visibility}
+        visibility={isPage ? 'public' : visibility}
         onClose={() => setCommentsPost(undefined)}
         onCountChange={(postId, delta) =>
           setPosts((items) =>
@@ -641,14 +645,15 @@ export default function SocialPage() {
             <label className="flex items-center gap-2 text-sm font-bold">
               <input
                 type="checkbox"
-                checked={shareVisibility === "public"}
+                checked={isPage || shareVisibility === "public"}
+                disabled={isPage}
                 onChange={(event) =>
                   setShareVisibility(
                     event.target.checked ? "public" : "anonymous",
                   )
                 }
               />
-              Show my identity
+              {isPage ? 'Page name is always shown' : 'Show my identity'}
             </label>
             <div className="flex gap-2">
               <button

@@ -27,7 +27,8 @@ function resolveWsUrl(token: string): string {
   const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100").replace(/\/+$/, "");
   const apiBasePath = `/${(process.env.NEXT_PUBLIC_API_BASE_PATH || "/api/v1").replace(/^\/+|\/+$/g, "")}`;
   const wsOrigin = apiOrigin.replace(/^http/, "ws");
-  return `${wsOrigin}${apiBasePath}/calling/socket?token=${encodeURIComponent(token)}`;
+  const actor = sessionStorage.getActingPublicId();
+  return `${wsOrigin}${apiBasePath}/calling/socket?token=${encodeURIComponent(token)}${actor ? `&actor=${encodeURIComponent(actor)}` : ''}`;
 }
 
 /**

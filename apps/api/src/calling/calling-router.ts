@@ -40,7 +40,7 @@ export function createCallingRouter(authService: AuthService, service: CallingSe
 
   router.use(
     asyncRoute(async (request, _response, next) => {
-      request.authenticatedPublicId = (await authService.getUser(bearerToken(request))).publicId;
+      request.authenticatedPublicId = (await authService.getActor(bearerToken(request), request.header('x-acting-public-id') ?? undefined)).publicId;
       next();
     }),
   );

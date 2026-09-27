@@ -46,9 +46,9 @@ export function createBillingRouter(authService: AuthService, service: BillingSe
 
   router.use(
     asyncRoute(async (request, _response, next) => {
-      const user = await authService.getUser(bearerToken(request));
-      request.authenticatedPublicId = user.publicId;
-      request.authenticatedRole = user.role;
+      const actor = await authService.getActor(bearerToken(request), request.header('x-acting-public-id') ?? undefined);
+      request.authenticatedPublicId = actor.publicId;
+      request.authenticatedRole = actor.role;
       next();
     }),
   );

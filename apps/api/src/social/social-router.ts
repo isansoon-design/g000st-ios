@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { AuthService } from '../auth/auth-service.js';
 import { G000ST_ID_LENGTH } from '../core/identity.js';
 import { asyncRoute } from '../http/async-route.js';
+import { ApiError } from '../http/api-error.js';
 import { SocialService } from './social-service.js';
 import { MAX_AVATAR_BYTES, MAX_SOCIAL_IMAGES, MAX_SOCIAL_MEDIA_BYTES } from './social-policy.js';
 
@@ -41,7 +42,7 @@ function limiter(limit: number) {
 export function createSocialRouter(authService: AuthService, service: SocialService): Router {
   const router = Router();
   router.use(asyncRoute(async (request, _response, next) => {
-    request.authenticatedPublicId = (await authService.getUser(bearerToken(request))).publicId;
+    request.authenticatedPublicId = (await authService.getActor(bearerToken(request), request.header('x-acting-public-id') ?? undefined)).publicId;
     next();
   }));
 
@@ -66,11 +67,21 @@ export function createSocialRouter(authService: AuthService, service: SocialServ
   router.delete('/posts/:postId', limiter(30), asyncRoute(async (request, response) => { await service.deletePost(request.authenticatedPublicId, uuid.parse(request.params.postId)); response.status(204).send(); }));
   router.post('/posts/:postId/like', limiter(120), asyncRoute(async (request, response) => { response.json(await service.toggleLike(request.authenticatedPublicId, uuid.parse(request.params.postId))); }));
   router.get('/posts/:postId/comments', asyncRoute(async (request, response) => { const query = cursorQuery.parse(request.query); response.json(await service.listComments(request.authenticatedPublicId, uuid.parse(request.params.postId), query.limit, query.cursor)); }));
-  router.post('/posts/:postId/comments', limiter(60), asyncRoute(async (request, response) => { response.status(201).json({ comment: await service.createComment(request.authenticatedPublicId, uuid.parse(request.params.postId), createCommentBody.parse(request.body)) }); }));
+  router.post('/posts/:postId/comments', limiter(60), asyncRoute(async (request, response) => {
+    const body = createCommentBody.parse(request.body);
+    response.status(201).json({ comment: await service.createComment(request.authenticatedPublicId, uuid.parse(request.params.postId), body) });
+  }));
   router.delete('/posts/:postId/comments/:commentId', limiter(60), asyncRoute(async (request, response) => { await service.deleteComment(request.authenticatedPublicId, uuid.parse(request.params.postId), uuid.parse(request.params.commentId)); response.status(204).send(); }));
   router.post('/profiles/:publicId/camp', limiter(60), asyncRoute(async (request, response) => { response.json(await service.toggleCamp(request.authenticatedPublicId, publicId.parse(request.params.publicId))); }));
   router.get('/profiles/:publicId', asyncRoute(async (request, response) => { response.json({ profile: await service.getProfile(request.authenticatedPublicId, publicId.parse(request.params.publicId)) }); }));
-  router.put('/profile', limiter(20), asyncRoute(async (request, response) => { response.json({ profile: await service.updateProfile(request.authenticatedPublicId, profileBody.parse(request.body)) }); }));
+  router.put('/profile', limiter(20), asyncRoute(async (request, response) => {
+    const body = profileBody.parse(request.body);
+    if (await authService.isPage(request.authenticatedPublicId)) {
+      if (body.showDisplayName === false || body.displayName === '') throw new ApiError(400, 'PAGE_NAME_REQUIRED', 'A page must show its name.');
+      body.showDisplayName = true;
+    }
+    response.json({ profile: await service.updateProfile(request.authenticatedPublicId, body) });
+  }));
   router.post('/avatar-uploads', limiter(20), asyncRoute(async (request, response) => { response.status(201).json({ upload: await service.createAvatarUpload(request.authenticatedPublicId, avatarUploadBody.parse(request.body)) }); }));
   router.post('/cover-uploads', limiter(20), asyncRoute(async (request, response) => { response.status(201).json({ upload: await service.createCoverUpload(request.authenticatedPublicId, avatarUploadBody.parse(request.body)) }); }));
   router.get('/alerts', asyncRoute(async (request, response) => { const query = cursorQuery.parse(request.query); response.json(await service.listAlerts(request.authenticatedPublicId, query.limit, query.cursor)); }));

@@ -3,6 +3,7 @@ import type { PersistedSession } from "@/features/auth/types";
 export const SESSION_KEY = "g000st.session.v1";
 const RECOVERY_ID_KEY = "g000st.recovery-id.v1";
 const SAVED_ACCOUNTS_KEY = "g000st.saved-accounts.v1";
+const ACTING_ID_KEY = 'g000st.acting-id.v1';
 export type SavedAccount = Readonly<{ publicId: string; recoveryId: string; displayName?: string; avatarUrl?: string }>;
 
 function readSavedAccounts(): SavedAccount[] {
@@ -54,6 +55,22 @@ function setCookie(name: string, value: string | null): void {
 }
 
 export const sessionStorage = {
+  getActingPublicId(): string | null {
+    const owner = this.get()?.user.publicId;
+    if (!owner) return null;
+    if (typeof window === 'undefined') return owner;
+    try {
+      const stored = JSON.parse(window.sessionStorage.getItem(ACTING_ID_KEY) ?? 'null') as { ownerPublicId?: unknown; publicId?: unknown } | null;
+      return stored?.ownerPublicId === owner && typeof stored.publicId === 'string' && /^[A-Za-z0-9]{50}$/.test(stored.publicId) ? stored.publicId : owner;
+    } catch { return owner; }
+  },
+
+  setActingPublicId(publicId: string): void {
+    const owner = this.get()?.user.publicId;
+    if (!owner || !/^[A-Za-z0-9]{50}$/.test(publicId) || typeof window === 'undefined') return;
+    window.sessionStorage.setItem(ACTING_ID_KEY, JSON.stringify({ ownerPublicId: owner, publicId }));
+    sessionVersion += 1;
+  },
   getVersion(): number {
     return sessionVersion;
   },
@@ -156,6 +173,7 @@ export const sessionStorage = {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(SESSION_KEY);
       window.localStorage.removeItem(RECOVERY_ID_KEY);
+      window.sessionStorage.removeItem(ACTING_ID_KEY);
     }
     setCookie(SESSION_HINT_COOKIE, null);
     setCookie("user_role", null);

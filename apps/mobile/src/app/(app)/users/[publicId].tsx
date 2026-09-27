@@ -24,9 +24,9 @@ export default function UserProfileScreen() {
   const { publicId } = useLocalSearchParams<{ publicId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { activePublicId } = useAuth();
   const { callUser } = useCalling();
-  const own = publicId === user?.publicId;
+  const own = publicId === activePublicId;
   const [profile, setProfile] = useState<SocialProfile>();
   const [social, setSocial] = useState<SocialPost[]>([]);
   const [market, setMarket] = useState<MarketPost[]>([]);
@@ -40,15 +40,19 @@ export default function UserProfileScreen() {
   useEffect(() => {
     if (!publicId) return;
     let active = true;
-    setLoading(true);
-    setProfile(undefined);
-    setSocial([]);
-    setMarket([]);
-    setCursors({});
-    setError('');
-    Promise.all([getSocialProfile(publicId), listSocialPosts(publicId), listMarketPosts(publicId)])
-      .then(([person, socialPage, marketPage]) => {
-        if (!active) return;
+    void Promise.resolve().then(() => {
+      if (!active) return null;
+      setLoading(true);
+      setProfile(undefined);
+      setSocial([]);
+      setMarket([]);
+      setCursors({});
+      setError('');
+      return Promise.all([getSocialProfile(publicId), listSocialPosts(publicId), listMarketPosts(publicId)]);
+    })
+      .then((result) => {
+        if (!active || !result) return;
+        const [person, socialPage, marketPage] = result;
         setProfile(person);
         setSocial(socialPage.items);
         setMarket(marketPage.items);

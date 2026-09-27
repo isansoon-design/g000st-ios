@@ -22,7 +22,7 @@ export default function ContactsPage() {
   const router = useRouter();
   const { confirm } = useConfirmModal();
   const { callUser } = useCalling();
-  const myId = sessionStorage.get()?.user.publicId;
+  const myId = sessionStorage.getActingPublicId();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("all");

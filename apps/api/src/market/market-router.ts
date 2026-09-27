@@ -23,7 +23,7 @@ function limiter(limit: number) { return rateLimit({ legacyHeaders: false, limit
 
 export function createMarketRouter(authService: AuthService, service: MarketService): Router {
   const router = Router();
-  router.use(asyncRoute(async (request, _response, next) => { request.authenticatedPublicId = (await authService.getUser(bearerToken(request))).publicId; next(); }));
+  router.use(asyncRoute(async (request, _response, next) => { request.authenticatedPublicId = (await authService.getActor(bearerToken(request), request.header('x-acting-public-id') ?? undefined)).publicId; next(); }));
   router.get('/posts', asyncRoute(async (request, response) => { const query = cursorQuery.extend({ ownerId: publicId.optional() }).parse(request.query); response.json(await service.listPosts(request.authenticatedPublicId, query.limit, query.cursor, query.ownerId)); }));
   router.post('/posts', limiter(12), asyncRoute(async (request, response) => { const { clientPostId, ...body } = createBody.parse(request.body); response.status(201).json({ post: await service.createPost(request.authenticatedPublicId, body, clientPostId) }); }));
   router.post('/uploads', limiter(20), asyncRoute(async (request, response) => { response.status(201).json({ upload: await service.createUpload(request.authenticatedPublicId, uploadBody.parse(request.body)) }); }));

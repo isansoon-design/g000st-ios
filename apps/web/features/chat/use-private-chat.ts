@@ -86,7 +86,7 @@ export function usePrivateChat(initialConversationId?: string) {
   const unreadCountsRef = useRef(new Map<string, number>());
   const activeConversationIdRef = useRef<string | null>(null);
   const knownMessageIdsRef = useRef<{ conversationId: string; ids: Set<string> } | null>(null);
-  const userPublicId = sessionStorage.get()?.user.publicId ?? "";
+  const userPublicId = sessionStorage.getActingPublicId() ?? "";
 
   const loadConversations = useCallback(async (showLoader = false) => {
     if (showLoader) setIsLoadingConversations(true);

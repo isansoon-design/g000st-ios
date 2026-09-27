@@ -18,13 +18,16 @@ export class FirestoreNotificationStore implements NotificationStore {
     publicId: string;
     updatedAtMs: number;
   }>): Promise<void> {
-    await this.devices().doc(this.tokenHash(input.expoPushToken)).set(
+    const tokenHash = this.tokenHash(input.expoPushToken);
+    await this.devices().doc(`${input.publicId}_${tokenHash}`).set(
       {
         ...input,
         disabledAtMs: null,
       },
       { merge: true },
     );
+    const legacy = this.devices().doc(tokenHash);
+    if ((await legacy.get()).data()?.publicId === input.publicId) await legacy.delete();
   }
 
   async removeDevice(publicId: string, deviceId: string): Promise<void> {
@@ -59,10 +62,10 @@ export class FirestoreNotificationStore implements NotificationStore {
   }
 
   async disableToken(expoPushToken: string): Promise<void> {
-    await this.devices().doc(this.tokenHash(expoPushToken)).set(
-      { disabledAtMs: Date.now() },
-      { merge: true },
-    );
+    const matches = await this.devices().where('expoPushToken', '==', expoPushToken).get();
+    const batch = this.db.batch();
+    for (const document of matches.docs) batch.update(document.ref, { disabledAtMs: Date.now() });
+    await batch.commit();
   }
 
   private devices() {

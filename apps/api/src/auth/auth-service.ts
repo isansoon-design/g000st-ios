@@ -132,6 +132,35 @@ export class AuthService {
     return account;
   }
 
+  async getActor(accessToken: string, actAsPublicId?: string): Promise<AuthenticationResult['user']> {
+    const user = await this.getUser(accessToken);
+    if (!actAsPublicId || actAsPublicId === user.publicId) return user;
+    const owner = await this.store.getPageOwner?.(actAsPublicId);
+    if (owner !== user.publicId) throw new ApiError(403, 'PAGE_ACCESS_DENIED', 'You cannot use this page.');
+    return { publicId: actAsPublicId, role: 'user' };
+  }
+
+  async createPage(accessToken: string, displayName: string, bio: string) {
+    const user = await this.getUser(accessToken);
+    if (!this.store.createPage) throw new ApiError(503, 'PAGES_UNAVAILABLE', 'Pages are unavailable.');
+    for (let attempt = 0; attempt < GENERATED_ID_ATTEMPTS; attempt += 1) {
+      const publicId = generateG000stId();
+      if (await this.store.createPage(user.publicId, publicId, displayName, bio, this.now()) === 'created') {
+        return { publicId, displayName, bio };
+      }
+    }
+    throw new ApiError(503, 'IDENTITY_GENERATION_FAILED', 'Could not create a page. Try again.');
+  }
+
+  async listPages(accessToken: string) {
+    const user = await this.getUser(accessToken);
+    return await this.store.listPages?.(user.publicId) ?? [];
+  }
+
+  async isPage(publicId: string): Promise<boolean> {
+    return (await this.store.getPageOwner?.(publicId)) != null;
+  }
+
   async deleteAccount(accessToken: string): Promise<void> {
     const account = await this.getUser(accessToken);
     await this.store.deleteAccount(account.publicId, this.now());

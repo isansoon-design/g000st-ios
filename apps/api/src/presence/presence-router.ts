@@ -17,7 +17,7 @@ function limiter(limit: number) {
 export function createPresenceRouter(authService: AuthService, service: PresenceService): Router {
   const router = Router();
   router.use(asyncRoute(async (request, _response, next) => {
-    request.authenticatedPublicId = (await authService.getUser(bearerToken(request))).publicId;
+    request.authenticatedPublicId = (await authService.getActor(bearerToken(request), request.header('x-acting-public-id') ?? undefined)).publicId;
     next();
   }));
 

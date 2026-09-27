@@ -3,10 +3,11 @@ import { useAudioPlayer } from 'expo-audio';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
 import { listChatConversations } from '@/api/chat';
+import { listBeaconPages } from '@/api/auth';
 import { registerPushDevice } from '@/api/notifications';
 import { env } from '@/config/env';
 import { useAuth } from '@/features/auth/hooks/use-auth';
@@ -20,8 +21,6 @@ import {
   isFocusedConversationNotification,
 } from '@/services/notifications/chat-notification-presentation';
 import { getOrCreatePushDeviceId } from '@/services/notifications/device-id';
-
-let registrationInFlight: Promise<void> | null = null;
 
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
@@ -46,9 +45,11 @@ function reportRegistrationError(error: unknown): void {
 }
 
 async function registerCurrentDevice(
+  ownerPublicId: string,
   devicePushToken?: Notifications.DevicePushToken,
 ): Promise<void> {
   if (Platform.OS !== 'android' && Platform.OS !== 'ios') return;
+  const platform = Platform.OS;
 
   const projectId =
     env.easProjectId ??
@@ -85,37 +86,28 @@ async function registerCurrentDevice(
       projectId,
     }),
   ]);
-  await registerPushDevice({
+  const pages = await listBeaconPages();
+  await Promise.all([ownerPublicId, ...pages.map((page) => page.publicId)].map((actorPublicId) => registerPushDevice({
     deviceId,
     expoPushToken: token.data,
-    platform: Platform.OS,
-  });
-}
-
-function registerCurrentDeviceOnce(
-  devicePushToken?: Notifications.DevicePushToken,
-): Promise<void> {
-  if (registrationInFlight) return registrationInFlight;
-
-  registrationInFlight = registerCurrentDevice(devicePushToken).finally(() => {
-    registrationInFlight = null;
-  });
-  return registrationInFlight;
+    platform,
+  }, actorPublicId)));
 }
 
 export function NotificationsBootstrap() {
-  const { status } = useAuth();
+  const { activePublicId, setActivePublicId, status, user } = useAuth();
   const queryClient = useQueryClient();
+  const pendingResponse = useRef<Notifications.NotificationResponse | null>(null);
   const focusedMessagePlayer = useAudioPlayer(require('../../../assets/sounds/focused-message.wav'));
 
   useEffect(() => {
-    if (status !== 'authenticated') return;
+    if (status !== 'authenticated' || !user) return;
 
     let isActive = true;
 
-    void registerCurrentDeviceOnce().catch(reportRegistrationError);
+    void registerCurrentDevice(user.publicId).catch(reportRegistrationError);
     const tokenSubscription = Notifications.addPushTokenListener((devicePushToken) => {
-      void registerCurrentDeviceOnce(devicePushToken).catch(reportRegistrationError);
+      void registerCurrentDevice(user.publicId, devicePushToken).catch(reportRegistrationError);
     });
 
     const refreshChat = (notification: Notifications.Notification) => {
@@ -143,8 +135,20 @@ export function NotificationsBootstrap() {
         return;
       }
 
+      const recipientId = response.notification.request.content.data?.recipientPublicId;
+      if (typeof recipientId === 'string' && recipientId !== activePublicId) {
+        const pages = await listBeaconPages().catch(() => []);
+        if (recipientId !== user.publicId && !pages.some((page) => page.publicId === recipientId)) return;
+        pendingResponse.current = response;
+        setActivePublicId(recipientId);
+        return;
+      }
+
       const conversationId = conversationIdFromNotification(response.notification);
-      if (!conversationId) return;
+      if (!conversationId) {
+        Notifications.clearLastNotificationResponse();
+        return;
+      }
 
       try {
         await queryClient.fetchQuery({
@@ -171,7 +175,9 @@ export function NotificationsBootstrap() {
         void openConversation(response);
       },
     );
-    void openConversation(Notifications.getLastNotificationResponse());
+    const resume = pendingResponse.current;
+    pendingResponse.current = null;
+    void openConversation(resume ?? Notifications.getLastNotificationResponse());
 
     return () => {
       isActive = false;
@@ -179,7 +185,7 @@ export function NotificationsBootstrap() {
       responseSubscription.remove();
       tokenSubscription.remove();
     };
-  }, [focusedMessagePlayer, queryClient, status]);
+  }, [activePublicId, focusedMessagePlayer, queryClient, setActivePublicId, status, user]);
 
   return null;
 }

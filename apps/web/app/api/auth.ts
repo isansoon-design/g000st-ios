@@ -36,6 +36,18 @@ export async function deleteAccount(): Promise<void> {
   await axiosInstance.delete("/auth/me");
 }
 
+export type BeaconPage = Readonly<{ publicId: string; displayName: string; bio: string }>;
+
+export async function listBeaconPages(): Promise<BeaconPage[]> {
+  const { data } = await axiosInstance.get<{ pages: BeaconPage[] }>('/auth/pages');
+  return data.pages;
+}
+
+export async function createBeaconPage(displayName: string, bio: string): Promise<BeaconPage> {
+  const { data } = await axiosInstance.post<{ page: BeaconPage }>('/auth/pages', { displayName, bio });
+  return data.page;
+}
+
 export function logout(forgetAccount = false): void {
   const current = sessionStorage.get();
   if (current && !forgetAccount) {

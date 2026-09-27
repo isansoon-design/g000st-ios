@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 
 import type { ChatConversationSummary } from '@/domain/chat/types';
@@ -37,7 +37,6 @@ function ChatConversationListComponent({
   onStart,
 }: ChatConversationListProps) {
   const [kind, setKind] = useState<'private' | 'market'>(initialKind ?? 'private');
-  useEffect(() => { if (initialKind) setKind(initialKind); }, [initialKind]);
   const visibleConversations = conversations.filter((conversation) => (conversation.kind ?? 'private') === kind);
   if (isLoading) {
     return (

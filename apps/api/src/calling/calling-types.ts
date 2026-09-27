@@ -39,4 +39,5 @@ export type IncomingCallPushEvent = Readonly<{
   hasVideo: boolean;
   startedAt: string;
   caller: Readonly<{ id: string; displayName?: string }>;
+  metadata?: Readonly<{ recipientPublicId: string }>;
 }>;

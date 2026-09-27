@@ -63,7 +63,7 @@ export function createChatRouter(authService: AuthService, chatService: ChatServ
   router.use(
     asyncRoute(async (request, _response, next) => {
       request.authenticatedPublicId = (
-        await authService.getUser(bearerToken(request))
+        await authService.getActor(bearerToken(request), request.header('x-acting-public-id') ?? undefined)
       ).publicId;
       next();
     }),

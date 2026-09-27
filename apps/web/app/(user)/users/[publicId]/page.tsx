@@ -29,7 +29,7 @@ export default function PublicUserPage() {
   const [error, setError] = useState("");
   const [uploadingCover, setUploadingCover] = useState(false);
 
-  useEffect(() => { setOwn(sessionStorage.get()?.user.publicId === publicId); }, [publicId]);
+  useEffect(() => { setOwn(sessionStorage.getActingPublicId() === publicId); }, [publicId]);
 
   useEffect(() => {
     let active = true;

@@ -62,7 +62,7 @@ const EMPTY_FIELDS: MarketPostFields = {
 export function MarketScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { activePublicId } = useAuth();
   const { callUser } = useCalling();
   const [view, setView] = useState<ViewName>("home");
   const [posts, setPosts] = useState<MarketPost[]>([]);
@@ -78,7 +78,7 @@ export function MarketScreen() {
   const [commentsPost, setCommentsPost] = useState<MarketPost>();
   const [editingPost, setEditingPost] = useState<MarketPost>();
   const loadingMoreRef = useRef(false);
-  const userPublicId = user?.publicId;
+  const userPublicId = activePublicId ?? undefined;
 
   const load = useCallback(async () => {
     setLoading(true);

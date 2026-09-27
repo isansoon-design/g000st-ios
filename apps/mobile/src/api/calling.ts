@@ -20,10 +20,11 @@ export async function registerVoipToken(
   deviceId: string,
   tokenType: 'APNS_VOIP' | 'FCM',
   token: string,
+  actorPublicId?: string,
 ): Promise<void> {
-  await axiosInstance.post('/calling/voip-token', { deviceId, tokenType, token });
+  await axiosInstance.post('/calling/voip-token', { deviceId, tokenType, token }, actorPublicId ? { headers: { 'X-Acting-Public-Id': actorPublicId } } : undefined);
 }
 
-export async function unregisterVoipToken(deviceId: string): Promise<void> {
-  await axiosInstance.delete(`/calling/voip-token/${deviceId}`);
+export async function unregisterVoipToken(deviceId: string, actorPublicId?: string): Promise<void> {
+  await axiosInstance.delete(`/calling/voip-token/${deviceId}`, actorPublicId ? { headers: { 'X-Acting-Public-Id': actorPublicId } } : undefined);
 }

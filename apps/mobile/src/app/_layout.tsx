@@ -21,7 +21,7 @@ import Toast from 'react-native-toast-message';
 void SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
-  const { status, user } = useAuth();
+  const { activePublicId, status } = useAuth();
 
   useEffect(() => {
     if (status !== 'loading') void SplashScreen.hideAsync();
@@ -29,7 +29,7 @@ function RootNavigator() {
 
   if (status === 'loading') return <View className="flex-1 bg-g000st-metal" />;
 
-  return <Stack key={user?.publicId ?? 'anonymous'} screenOptions={{ headerShown: false }} />;
+  return <Stack key={activePublicId ?? 'anonymous'} screenOptions={{ headerShown: false }} />;
 }
 
 export default function RootLayout() {

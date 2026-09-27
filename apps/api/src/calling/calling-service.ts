@@ -109,6 +109,7 @@ export class CallingService {
       hasVideo: media === 'video',
       startedAt: new Date(this.now()).toISOString(),
       caller: { id: callerPublicId },
+      metadata: { recipientPublicId: calleePublicId },
     };
 
     const deliveredNatively = await this.sendNativeIncomingCallPush(devices, event);

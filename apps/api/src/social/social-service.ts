@@ -115,6 +115,9 @@ export class SocialService {
   }
 
   async createPost(ownerId: string, input: CreateSocialPostInput, clientPostId: string) {
+    if (input.visibility !== 'public' && await this.authStore.getPageOwner?.(ownerId)) {
+      throw new ApiError(400, 'PAGE_NAME_REQUIRED', 'Page posts must show the page name.');
+    }
     const { media: pendingMedia, ...postInput } = input;
     if (!input.content.trim() && !input.sharedPostId) throw new ApiError(400, 'INVALID_POST', 'A post must contain text or share another post.');
     if (input.sharedPostId && pendingMedia?.length) throw new ApiError(400, 'INVALID_SHARED_POST', 'A shared post cannot include new media.');
@@ -165,6 +168,9 @@ export class SocialService {
   }
 
   async createComment(viewerId: string, postId: string, input: CreateSocialCommentInput) {
+    if (input.visibility !== 'public' && await this.authStore.getPageOwner?.(viewerId)) {
+      throw new ApiError(400, 'PAGE_NAME_REQUIRED', 'Page comments must show the page name.');
+    }
     const comment = await this.store.createComment(viewerId, postId, { ...input, content: input.content.trim() }, this.now());
     if (!comment) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found.');
     return comment;
@@ -217,6 +223,9 @@ export class SocialService {
   }
 
   async updateProfile(publicId: string, input: UpdateSocialProfileInput) {
+    if (await this.authStore.getPageOwner?.(publicId) && (input.showDisplayName === false || input.displayName?.trim() === '')) {
+      throw new ApiError(400, 'PAGE_NAME_REQUIRED', 'A page must show its name.');
+    }
     const { avatarMedia, coverMedia, ...fields } = input;
     let avatarObjectKey: string | undefined;
     let coverObjectKey: string | undefined;

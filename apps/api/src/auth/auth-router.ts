@@ -10,6 +10,7 @@ const exactId = z.string().length(G000ST_ID_LENGTH).regex(/^[A-Za-z0-9]+$/);
 const registerBody = z.object({ requestedPublicId: exactId.optional() }).strict();
 const restoreBody = z.object({ recoveryId: exactId }).strict();
 const refreshBody = z.object({ refreshToken: z.string().min(1).max(512) }).strict();
+const pageBody = z.object({ displayName: z.string().trim().min(1).max(60), bio: z.string().trim().max(500).default('') }).strict();
 
 function authRateLimit(max: number) {
   return rateLimit({
@@ -66,6 +67,15 @@ export function createAuthRouter(authService: AuthService): Router {
       response.status(200).json({ user: await authService.getUser(bearerToken(request)) });
     }),
   );
+
+  router.get('/pages', asyncRoute(async (request, response) => {
+    response.json({ pages: await authService.listPages(bearerToken(request)) });
+  }));
+
+  router.post('/pages', authRateLimit(20), asyncRoute(async (request, response) => {
+    const body = pageBody.parse(request.body);
+    response.status(201).json({ page: await authService.createPage(bearerToken(request), body.displayName, body.bio) });
+  }));
 
   router.delete(
     '/me',

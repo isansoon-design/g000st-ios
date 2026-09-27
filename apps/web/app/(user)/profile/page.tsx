@@ -10,9 +10,11 @@ import {
   getSocialProfile,
   updateSocialProfile,
   uploadAvatarMedia,
+  uploadCoverMedia,
   type SocialProfile,
 } from "@/app/api/social";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
+import { BeaconSwitcher } from '@/features/profile/beacon-switcher';
 
 type ProfileFields = {
   displayName: string;
@@ -46,15 +48,19 @@ const fieldClass =
 
 export default function ProfilePage() {
   const { confirm } = useConfirmModal();
-  const publicId = sessionStorage.get()?.user.publicId ?? "";
-  const recoveryId = sessionStorage.getRecoveryId(publicId);
+  const accountPublicId = sessionStorage.get()?.user.publicId ?? '';
+  const publicId = sessionStorage.getActingPublicId() ?? accountPublicId;
+  const isPage = !!publicId && publicId !== accountPublicId;
+  const recoveryId = sessionStorage.getRecoveryId(accountPublicId);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
   const [fields, setFields] = useState<ProfileFields>(EMPTY_FIELDS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!publicId) return;
@@ -64,7 +70,7 @@ export default function ProfilePage() {
         const loaded = await getSocialProfile(publicId);
         if (cancelled) return;
         setProfile(loaded);
-        sessionStorage.updateSavedProfile(loaded);
+        if (!isPage) sessionStorage.updateSavedProfile(loaded);
         setFields(toFields(loaded));
       } catch (error) {
         if (!cancelled) toast.error(error instanceof Error ? error.message : "Could not load your profile.");
@@ -75,7 +81,7 @@ export default function ProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [publicId]);
+  }, [publicId, isPage]);
 
   const setField = useCallback(<K extends keyof ProfileFields>(key: K, value: ProfileFields[K]) => {
     setFields((current) => ({ ...current, [key]: value }));
@@ -112,7 +118,7 @@ export default function ProfilePage() {
       const media = await uploadAvatarMedia(file);
       const saved = await updateSocialProfile({ avatarMedia: media });
       setProfile(saved);
-      sessionStorage.updateSavedProfile(saved);
+      if (!isPage) sessionStorage.updateSavedProfile(saved);
       toast.success("Profile photo updated.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update your photo.");
@@ -121,21 +127,47 @@ export default function ProfilePage() {
     }
   };
 
+  const onCoverChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type) || !file.size || file.size > 3 * 1024 * 1024) {
+      toast.error("Choose a JPEG, PNG, WebP, or GIF image up to 3 MB.");
+      return;
+    }
+    setUploadingCover(true);
+    try {
+      const coverMedia = await uploadCoverMedia(file);
+      const updated = await updateSocialProfile({ coverMedia });
+      const saved = await getSocialProfile(publicId);
+      if (!saved.coverUrl || saved.updatedAtMs < updated.updatedAtMs) {
+        throw new Error("Could not confirm your cover photo. Please try again.");
+      }
+      setProfile(saved);
+      toast.success("Cover photo updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update your cover photo.");
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
   const saveProfile = async () => {
     setSaving(true);
     try {
+      if (isPage && !fields.displayName.trim()) throw new Error('A page must have a name.');
       const age = fields.age.trim() ? Number(fields.age.trim()) : undefined;
       const saved = await updateSocialProfile({
-        age,
+        ...(!isPage && age ? { age } : {}),
         bio: fields.bio.trim() || undefined,
-        country: fields.country.trim() || undefined,
+        ...(!isPage && fields.country.trim() ? { country: fields.country.trim() } : {}),
         displayName: fields.displayName.trim() || undefined,
-        showDisplayName: fields.showDisplayName,
-        hobby: fields.hobby.trim() || undefined,
-        sex: fields.sex || undefined,
+        showDisplayName: isPage ? true : fields.showDisplayName,
+        ...(!isPage && fields.hobby.trim() ? { hobby: fields.hobby.trim() } : {}),
+        ...(!isPage && fields.sex ? { sex: fields.sex } : {}),
       });
       setProfile(saved);
-      sessionStorage.updateSavedProfile(saved);
+      if (!isPage) sessionStorage.updateSavedProfile(saved);
       setFields(toFields(saved));
       toast.success("Profile saved!");
     } catch (error) {
@@ -146,7 +178,7 @@ export default function ProfilePage() {
   };
 
   const signOut = async () => {
-    const canRestore = !!sessionStorage.getRecoveryId(publicId);
+    const canRestore = !!sessionStorage.getRecoveryId(accountPublicId);
     const confirmed = await confirm({
       cancelLabel: "Cancel",
       confirmLabel: "Sign out",
@@ -160,7 +192,7 @@ export default function ProfilePage() {
 
     try {
       logout();
-      if (profile) sessionStorage.updateSavedProfile(profile);
+      if (profile && !isPage) sessionStorage.updateSavedProfile(profile);
       window.location.replace("/login");
     } catch {
       toast.error("Could not sign out. Your account is still signed in.");
@@ -182,7 +214,7 @@ export default function ProfilePage() {
     try {
       await deleteAccount();
       try {
-        sessionStorage.removeSavedAccount(publicId);
+        sessionStorage.removeSavedAccount(accountPublicId);
       } finally {
         logout(true);
         window.location.replace("/login");
@@ -208,20 +240,55 @@ export default function ProfilePage() {
         }}
       >
         <span style={{ fontWeight: 900, fontSize: 16 }}>ID &amp; Profile</span>
-        <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(0,0,0,.35)" }}>OPTIONAL</span>
+        <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.1em", color: "rgba(0,0,0,.35)" }}>PROFILE</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4" style={{ WebkitOverflowScrolling: "touch" }}>
         <div className="mx-auto flex max-w-md flex-col items-center">
+          <BeaconSwitcher />
           {loading ? (
             <div className="py-20 text-sm font-bold text-black/40">Loading…</div>
           ) : (
             <>
+              {isPage && <p className="mb-3 text-center text-xs font-bold text-black/55">You are interacting as this page. Its owner is not shown publicly.</p>}
+              <button
+                aria-label={profile?.coverUrl ? "Change cover photo" : "Add cover photo"}
+                className="relative mb-4 h-44 w-full overflow-hidden rounded-[22px] bg-[#171d29] text-left transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C62828] disabled:opacity-60"
+                disabled={uploadingCover || uploadingPhoto}
+                onClick={() => coverInputRef.current?.click()}
+                title="Choose an image up to 3 MB for your public profile banner"
+                type="button"
+              >
+                {profile?.coverUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profile.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                ) : (
+                  <>
+                    <span className="absolute -right-10 -top-20 h-56 w-56 rounded-full border-[28px] border-white/10" />
+                    <span className="absolute bottom-5 left-20 h-28 w-28 rounded-full border-[18px] border-[#C62828]/50" />
+                  </>
+                )}
+                <span className="absolute inset-0 bg-black/35" />
+                <span className="relative flex h-full flex-col justify-between p-4">
+                  <span className="self-start rounded-full border border-white/35 bg-black/30 px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white">Profile cover</span>
+                  <span className="flex items-end justify-between gap-3">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-lg font-black text-white">{profile?.coverUrl ? "Your cover photo" : "Make your profile yours"}</span>
+                      <span className="mt-1 block text-[11px] font-semibold text-white/80">Wide images look best · up to 3 MB</span>
+                    </span>
+                    <span className="flex min-h-10 min-w-24 items-center justify-center rounded-full bg-white px-3 py-2 text-[11px] font-black text-[#17191d]">
+                      {uploadingCover ? "Uploading…" : profile?.coverUrl ? "Change cover" : "Add cover"}
+                    </span>
+                  </span>
+                </span>
+              </button>
+              <input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" disabled={uploadingCover || uploadingPhoto} onChange={(event) => { void onCoverChange(event); }} />
               {/* Photo */}
               <button
                 aria-label="Change profile photo"
+                disabled={uploadingPhoto || uploadingCover}
                 onClick={() => photoInputRef.current?.click()}
-                className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#C8C8C8] shadow-md transition hover:opacity-80"
+                className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#C8C8C8] shadow-md transition hover:opacity-80 disabled:opacity-60"
               >
                 {uploadingPhoto ? (
                   <span className="text-xs font-bold text-black/40">…</span>
@@ -232,8 +299,8 @@ export default function ProfilePage() {
                   <span className="text-3xl opacity-40">◎</span>
                 )}
               </button>
-              <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={onPhotoChange} />
-              <button onClick={() => photoInputRef.current?.click()} className="mb-4 mt-2 text-xs font-black text-[#C62828]">
+              <input ref={photoInputRef} type="file" accept="image/*" className="hidden" disabled={uploadingPhoto || uploadingCover} onChange={onPhotoChange} />
+              <button disabled={uploadingPhoto || uploadingCover} onClick={() => photoInputRef.current?.click()} className="mb-4 mt-2 text-xs font-black text-[#C62828] disabled:opacity-60">
                 {profile?.avatarUrl ? "Change photo" : "Add photo"}
               </button>
               <Link href={`/users/${publicId}`} className="mb-4 rounded-full bg-[#17191d] px-5 py-2.5 text-xs font-black text-white transition hover:bg-[#c62828]">View public profile</Link>
@@ -251,19 +318,20 @@ export default function ProfilePage() {
                   <div className="flex shrink-0 flex-col items-center">
                     <span className="mb-1 text-[10px] font-black text-black/55">Show name</span>
                     <button
-                      aria-checked={fields.showDisplayName}
+                      aria-checked={isPage || fields.showDisplayName}
                       aria-label="Show my name"
-                      className={`relative h-7 w-12 rounded-full transition-colors ${fields.showDisplayName ? "bg-[#C62828]" : "bg-[#9A9A9A]"}`}
+                      className={`relative h-7 w-12 rounded-full transition-colors ${isPage || fields.showDisplayName ? "bg-[#C62828]" : "bg-[#9A9A9A]"}`}
+                      disabled={isPage}
                       onClick={() => setField("showDisplayName", !fields.showDisplayName)}
                       role="switch"
                       type="button"
                     >
-                      <span className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${fields.showDisplayName ? "translate-x-5" : "translate-x-0"}`} />
+                      <span className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${isPage || fields.showDisplayName ? "translate-x-5" : "translate-x-0"}`} />
                     </button>
                   </div>
                 </div>
                 <p className="mt-2 text-[11px] font-semibold leading-[16px] text-black/45">
-                  Show your name to other users, or turn this off to use your 8-character alias ({publicId.slice(0, 8)}).
+                  {isPage ? 'Page posts and comments always show the page name.' : `Show your name to other users, or turn this off to use your 8-character alias (${publicId.slice(0, 8)}).`}
                 </p>
               </div>
 
@@ -290,7 +358,9 @@ export default function ProfilePage() {
 
               {/* Optional profile */}
               <div className={`mb-3 w-full ${cardClass}`}>
-                <div className={labelClass}>Optional profile</div>
+                <div className={labelClass}>{isPage ? 'Page description' : 'Optional profile'}</div>
+
+                {!isPage && <>
 
                 <div className="mb-1 mt-2 text-[11px] font-bold text-black/45">Country</div>
                 <input
@@ -332,7 +402,8 @@ export default function ProfilePage() {
                   value={fields.hobby}
                 />
 
-                <div className="mb-1 text-[11px] font-bold text-black/45">Bio</div>
+                </>}
+                <div className="mb-1 text-[11px] font-bold text-black/45">{isPage ? 'Short description' : 'Bio'}</div>
                 <textarea
                   className="h-24 w-full resize-none rounded-[12px] border border-black/10 bg-white p-3 text-[13px] font-bold text-[#111] outline-none focus:border-[#9A9A9A]"
                   onChange={(event) => setField("bio", event.target.value)}
@@ -340,9 +411,9 @@ export default function ProfilePage() {
                   value={fields.bio}
                 />
 
-                <p className="mt-2 text-[11px] font-semibold text-black/40">
+                {!isPage && <p className="mt-2 text-[11px] font-semibold text-black/40">
                   Nothing here is required. Fill in only what you want.
-                </p>
+                </p>}
               </div>
 
               {/* Save */}
@@ -355,7 +426,7 @@ export default function ProfilePage() {
               </button>
 
               {/* Recovery ID */}
-              <div className="mb-3 w-full overflow-hidden rounded-[22px] border border-[#C62828]/35 bg-[#191919] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
+              {!isPage && <div className="mb-3 w-full overflow-hidden rounded-[22px] border border-[#C62828]/35 bg-[#191919] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
                     <div className="text-[10px] font-black uppercase tracking-[0.15em] text-[#FFB9B9]">Private key</div>
@@ -387,24 +458,24 @@ export default function ProfilePage() {
                 <p className="mt-3 rounded-[12px] border border-[#FFB9B9]/25 bg-[#C62828]/15 p-3 text-[12px] font-bold leading-[18px] text-[#FFE0E0]">
                   Keep this key secret. Never share it with anyone. You need it to sign in again.
                 </p>
-              </div>
+              </div>}
 
               {/* Sign out */}
-              <button
+              {!isPage && <button
                 onClick={() => void signOut()}
                 className="mb-6 h-11 w-full rounded-full border border-black/15 bg-white text-sm font-bold text-[#C62828] transition hover:bg-black/5"
               >
                 Sign out from this device
-              </button>
+              </button>}
 
               {/* Account deletion */}
-              <button
+              {!isPage && <button
                 disabled={deleting}
                 onClick={() => void removeAccount()}
                 className="mb-10 h-11 w-full rounded-full border border-[#C62828] bg-transparent text-sm font-black text-[#C62828] transition hover:bg-[#C62828]/5 disabled:opacity-60"
               >
                 {deleting ? "Deleting…" : "Delete my account"}
-              </button>
+              </button>}
             </>
           )}
         </div>

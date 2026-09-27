@@ -10,6 +10,7 @@ import {
   getSocialProfile,
   updateSocialProfile,
   uploadAvatarMedia,
+  uploadCoverMedia,
 } from "@/api/social";
 import type { SocialProfile } from "@/domain/social/types";
 import { useAuth } from "@/features/auth/hooks/use-auth";
@@ -52,8 +53,10 @@ function toFields(profile: SocialProfile | null): IdentityProfileFields {
 }
 
 export function useIdentityScreen() {
-  const { signOut, user } = useAuth();
+  const { activePublicId, signOut, user } = useAuth();
   const accountPublicId = user?.publicId;
+  const profilePublicId = activePublicId ?? accountPublicId;
+  const isPage = !!profilePublicId && profilePublicId !== accountPublicId;
   const { confirm } = useConfirmModal();
   const [profile, setProfile] = useState<SocialProfile | null>(null);
   const [fields, setFields] = useState<IdentityProfileFields>(EMPTY_FIELDS);
@@ -61,6 +64,7 @@ export function useIdentityScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const photoChangeInProgress = useRef(false);
   const photoChangeVersion = useRef(0);
   const lastProfileRefreshMs = useRef(0);
@@ -82,15 +86,15 @@ export function useIdentityScreen() {
   }, [user?.publicId]);
 
   useEffect(() => {
-    if (!user?.publicId) return;
+    if (!profilePublicId) return;
     let cancelled = false;
     (async () => {
       try {
-        const loaded = await getSocialProfile(user.publicId);
+        const loaded = await getSocialProfile(profilePublicId);
         if (cancelled) return;
         setProfile(loaded);
         lastProfileRefreshMs.current = Date.now();
-        void savedAccounts.updateProfile(loaded);
+        if (!isPage) void savedAccounts.updateProfile(loaded);
         setFields(toFields(loaded));
       } catch (error) {
         if (!cancelled) {
@@ -110,24 +114,24 @@ export function useIdentityScreen() {
     return () => {
       cancelled = true;
     };
-  }, [user?.publicId]);
+  }, [profilePublicId, isPage]);
 
   const refreshProfilePhoto = useCallback(async () => {
-    if (!accountPublicId || photoChangeInProgress.current || !lastProfileRefreshMs.current || profileRefreshInFlight.current) return;
+    if (!profilePublicId || photoChangeInProgress.current || !lastProfileRefreshMs.current || profileRefreshInFlight.current) return;
     profileRefreshInFlight.current = true;
     const version = photoChangeVersion.current;
     try {
-      const loaded = await getSocialProfile(accountPublicId);
+      const loaded = await getSocialProfile(profilePublicId);
       if (photoChangeInProgress.current || version !== photoChangeVersion.current) return;
       setProfile(loaded);
       lastProfileRefreshMs.current = Date.now();
-      void savedAccounts.updateProfile(loaded);
+      if (!isPage) void savedAccounts.updateProfile(loaded);
     } catch {
       // Keep the current profile visible; the next focus can retry the refresh.
     } finally {
       profileRefreshInFlight.current = false;
     }
-  }, [accountPublicId]);
+  }, [profilePublicId, isPage]);
 
   useFocusEffect(useCallback(() => {
     void refreshProfilePhoto();
@@ -148,14 +152,14 @@ export function useIdentityScreen() {
   );
 
   const copyPublicId = useCallback(async () => {
-    if (!user?.publicId) return;
-    await copyText(user.publicId);
+    if (!profilePublicId) return;
+    await copyText(profilePublicId);
     Toast.show({
       text1: "Copied",
       text2: "Public ID copied.",
       type: "success",
     });
-  }, [user]);
+  }, [profilePublicId]);
 
   const copyRecoveryId = useCallback(async () => {
     if (!recoveryId) return;
@@ -168,7 +172,7 @@ export function useIdentityScreen() {
   }, [recoveryId]);
 
   const changePhoto = useCallback(async () => {
-    if (!accountPublicId || photoChangeInProgress.current) return;
+    if (!profilePublicId || photoChangeInProgress.current) return;
     photoChangeInProgress.current = true;
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -198,13 +202,13 @@ export function useIdentityScreen() {
       });
       const updated = await updateSocialProfile({ avatarMedia: media });
       // Use a fresh read so success also confirms the photo survives a new session.
-      const saved = await getSocialProfile(accountPublicId);
+      const saved = await getSocialProfile(profilePublicId);
       if (!saved.avatarUrl || saved.updatedAtMs < updated.updatedAtMs) {
         throw new Error("Could not confirm your profile photo. Please try again.");
       }
       setProfile(saved);
       lastProfileRefreshMs.current = Date.now();
-      void savedAccounts.updateProfile(saved);
+      if (!isPage) void savedAccounts.updateProfile(saved);
       Toast.show({
         text1: "Photo",
         text2: "Profile photo updated.",
@@ -223,23 +227,72 @@ export function useIdentityScreen() {
       setUploadingPhoto(false);
       photoChangeInProgress.current = false;
     }
-  }, [accountPublicId]);
+  }, [profilePublicId, isPage]);
+
+  const changeCover = useCallback(async () => {
+    if (!profilePublicId || photoChangeInProgress.current) return;
+    photoChangeInProgress.current = true;
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Toast.show({ text1: "Cover", text2: "Photo library permission is required.", type: "error" });
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.85,
+      });
+      if (result.canceled || !result.assets[0]) return;
+      photoChangeVersion.current += 1;
+      setUploadingCover(true);
+      const asset = result.assets[0];
+      const byteSize = new File(asset.uri).size ?? 0;
+      if (!byteSize || byteSize > 3 * 1024 * 1024 || !asset.mimeType || !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(asset.mimeType)) {
+        Toast.show({ text1: "Cover", text2: "Choose a JPEG, PNG, WebP, or GIF image up to 3 MB.", type: "error" });
+        return;
+      }
+      const media = await uploadCoverMedia({
+        byteSize,
+        contentType: asset.mimeType,
+        fileName: asset.fileName || "cover",
+        uri: asset.uri,
+      });
+      const updated = await updateSocialProfile({ coverMedia: media });
+      const saved = await getSocialProfile(profilePublicId);
+      if (!saved.coverUrl || saved.updatedAtMs < updated.updatedAtMs) {
+        throw new Error("Could not confirm your cover photo. Please try again.");
+      }
+      setProfile(saved);
+      lastProfileRefreshMs.current = Date.now();
+      Toast.show({ text1: "Cover", text2: "Cover photo updated.", type: "success" });
+    } catch (error) {
+      Toast.show({
+        text1: "Cover",
+        text2: error instanceof Error ? error.message : "Could not update your cover photo.",
+        type: "error",
+      });
+    } finally {
+      setUploadingCover(false);
+      photoChangeInProgress.current = false;
+    }
+  }, [profilePublicId]);
 
   const save = useCallback(async () => {
     setSaving(true);
     try {
+      if (isPage && !fields.displayName.trim()) throw new Error('A page must have a name.');
       const age = fields.age.trim() ? Number(fields.age.trim()) : undefined;
       const saved = await updateSocialProfile({
-        age,
+        ...(!isPage && age ? { age } : {}),
         bio: fields.bio.trim() || undefined,
-        country: fields.country.trim() || undefined,
+        ...(!isPage && fields.country.trim() ? { country: fields.country.trim() } : {}),
         displayName: fields.displayName.trim() || undefined,
-        showDisplayName: fields.showDisplayName,
-        hobby: fields.hobby.trim() || undefined,
-        sex: fields.sex || undefined,
+        showDisplayName: isPage ? true : fields.showDisplayName,
+        ...(!isPage && fields.hobby.trim() ? { hobby: fields.hobby.trim() } : {}),
+        ...(!isPage && fields.sex ? { sex: fields.sex } : {}),
       });
       setProfile(saved);
-      void savedAccounts.updateProfile(saved);
+      if (!isPage) void savedAccounts.updateProfile(saved);
       setFields(toFields(saved));
       Toast.show({
         text1: "Profile",
@@ -258,7 +311,7 @@ export function useIdentityScreen() {
     } finally {
       setSaving(false);
     }
-  }, [fields]);
+  }, [fields, isPage]);
 
   const requestSignOut = useCallback(async () => {
     let canRestore = false;
@@ -279,12 +332,12 @@ export function useIdentityScreen() {
         const secret = await recoveryIdStorage.get(accountPublicId);
         if (secret) await savedAccounts.save(accountPublicId, secret);
       }
-      if (profile) await savedAccounts.updateProfile(profile);
+      if (profile && !isPage) await savedAccounts.updateProfile(profile);
       await signOut();
     } catch {
       Toast.show({ type: "error", text1: "Could not sign out", text2: "Your account is still signed in." });
     }
-  }, [confirm, profile, signOut, accountPublicId]);
+  }, [confirm, profile, signOut, accountPublicId, isPage]);
 
   const requestDeleteAccount = useCallback(async () => {
     const confirmed = await confirm({
@@ -320,13 +373,16 @@ export function useIdentityScreen() {
 
   return {
     avatarUrl: profile?.avatarUrl,
+    coverUrl: profile?.coverUrl,
+    isPage,
+    changeCover,
     changePhoto,
     copyPublicId,
     copyRecoveryId,
     deleting,
     fields,
     loading,
-    publicId: user?.publicId ?? "",
+    publicId: profilePublicId ?? "",
     recoveryId,
     requestSignOut,
     requestDeleteAccount,
@@ -334,5 +390,6 @@ export function useIdentityScreen() {
     saving,
     setField,
     uploadingPhoto,
+    uploadingCover,
   };
 }

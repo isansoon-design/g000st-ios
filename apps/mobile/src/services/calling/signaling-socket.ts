@@ -1,4 +1,5 @@
 import { tokenService } from '@/api/token-service';
+import { getActingPublicId } from '@/services/session/acting-identity';
 import { env } from '@/config/env';
 
 export type RelayMessageType =
@@ -49,7 +50,8 @@ export class SignalingSocket {
     const token = await tokenService.getAccess();
     if (!token) return;
 
-    const socket = new WebSocket(`${resolveWsBase()}/calling/socket?token=${encodeURIComponent(token)}`);
+    const actor = getActingPublicId();
+    const socket = new WebSocket(`${resolveWsBase()}/calling/socket?token=${encodeURIComponent(token)}${actor ? `&actor=${encodeURIComponent(actor)}` : ''}`);
     this.socket = socket;
 
     socket.onopen = () => {
