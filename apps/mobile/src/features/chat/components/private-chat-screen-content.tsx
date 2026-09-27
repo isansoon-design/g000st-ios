@@ -1,6 +1,6 @@
-import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useState } from 'react';
-import { Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Modal, Pressable, Text, TextInput, View } from 'react-native';
 
 import { deleteChatMessage, editChatMessage } from '@/api/chat';
 import { getPeerPreferences, listContactNicknames, updateContactNickname, updatePeerPreferences, type PeerPreferences } from '@/api/contacts';
@@ -14,6 +14,7 @@ import { ChatConversationList } from '@/features/chat/components/chat-conversati
 import { ChatThread } from '@/features/chat/components/chat-thread';
 import { NewChatModal } from '@/features/chat/components/new-chat-modal';
 import { usePrivateChat } from '@/features/chat/hooks/use-private-chat';
+import { chatConversationHref } from '@/features/chat/navigation';
 import { useConfirmModal } from '@/providers/confirm-modal-provider';
 import Toast from 'react-native-toast-message';
 
@@ -32,12 +33,14 @@ type PrivateChatScreenContentProps = Readonly<{
   initialConversationId?: string;
   initialKind?: 'private' | 'market';
   openRequestId?: string;
+  view: 'list' | 'conversation';
 }>;
 
 function PrivateChatScreenContentComponent({
   initialConversationId,
   initialKind,
   openRequestId,
+  view,
 }: PrivateChatScreenContentProps) {
   const chat = usePrivateChat(initialConversationId, openRequestId);
   const { callUser } = useCalling();
@@ -48,13 +51,37 @@ function PrivateChatScreenContentComponent({
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
   const [messageDraft, setMessageDraft] = useState('');
+  const [openingTimedOutId, setOpeningTimedOutId] = useState<string | null>(null);
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
   const [peerPreferences, setPeerPreferences] = useState<PeerPreferences | null>(null);
   const [followingPeer, setFollowingPeer] = useState<boolean | null>(null);
-  const navigation = useNavigation();
   const { confirm } = useConfirmModal();
   const closeConversation = chat.closeConversation;
   const router = useRouter();
+  useEffect(() => {
+    if (view !== 'conversation' || !initialConversationId ||
+      chat.activeConversation?.conversationId === initialConversationId ||
+      openingTimedOutId === initialConversationId) return;
+    const timer = setTimeout(() => setOpeningTimedOutId(initialConversationId), 8_000);
+    return () => clearTimeout(timer);
+  }, [view, initialConversationId, chat.activeConversation?.conversationId, openingTimedOutId]);
+
+  useFocusEffect(useCallback(() => {
+    if (view !== 'conversation') return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.dismissTo('/(app)/(tabs)/chat');
+      return true;
+    });
+    return () => subscription.remove();
+  }, [view, router]));
+
+  useEffect(() => {
+    if (view !== 'list' || !chat.activeConversation) return;
+    const conversationId = chat.activeConversation.conversationId;
+    closeConversation();
+    router.push(chatConversationHref(conversationId));
+  }, [view, chat.activeConversation, closeConversation, router]);
+
   useFocusEffect(useCallback(() => {
     let active = true;
     void listContactNicknames().then((contacts) => {
@@ -153,15 +180,7 @@ function PrivateChatScreenContentComponent({
     }
   }
 
-  useEffect(() => {
-    // @ts-expect-error tabPress is available on tab screens
-    const unsubscribe = navigation.addListener('tabPress', () => {
-      closeConversation();
-    });
-    return unsubscribe;
-  }, [navigation, closeConversation]);
-
-  if (chat.activeConversation) {
+  if (view === 'conversation' && chat.activeConversation && chat.activeConversation.conversationId === initialConversationId) {
     const participantPublicId = chat.activeConversation.participantPublicId;
     return (
       <>
@@ -181,7 +200,7 @@ function PrivateChatScreenContentComponent({
           isSending={chat.isSending}
           messages={chat.messages}
           nowMs={chat.nowMs}
-          onBack={chat.closeConversation}
+          onBack={() => router.dismissTo('/(app)/(tabs)/chat')}
           onViewProfile={() => router.push(`/users/${participantPublicId}`)}
           onMessageActions={setActionMessage}
           onCallAudio={() => void callUser(participantPublicId, namesByPublicId[participantPublicId], 'audio')}
@@ -253,6 +272,33 @@ function PrivateChatScreenContentComponent({
     );
   }
 
+  if (view === 'conversation') {
+    const requested = chat.conversations.find((item) => item.conversationId === initialConversationId);
+    const timedOut = openingTimedOutId === initialConversationId;
+    const isOpening = !timedOut && !chat.conversationsError &&
+      (chat.isLoadingConversations || chat.isFetchingConversations || !!requested);
+    return (
+      <View className="flex-1 items-center justify-center bg-[#D8D8D8] px-7">
+        {isOpening ? <ActivityIndicator color="#9A9A9A" /> : null}
+        <Text className="mt-3 text-center text-sm font-bold text-g000st-black">
+          {isOpening ? 'Opening conversation…' : chat.conversationsError ?? (timedOut ? 'Could not open conversation.' : 'Conversation unavailable.')}
+        </Text>
+        {!isOpening ? (
+          <Pressable accessibilityRole="button" className="mt-4 rounded-full bg-white px-5 py-3" onPress={() => {
+            setOpeningTimedOutId(null);
+            if (requested) chat.openConversation(requested);
+            else void chat.refreshConversations();
+          }}>
+            <Text className="font-black">Try again</Text>
+          </Pressable>
+        ) : null}
+        <Pressable accessibilityRole="button" className="mt-4 rounded-full bg-white px-5 py-3" onPress={() => router.dismissTo('/(app)/(tabs)/chat')}>
+          <Text className="font-black">Back to chats</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <FeatureScreen
       rightAction={
@@ -278,7 +324,7 @@ function PrivateChatScreenContentComponent({
         namesByPublicId={namesByPublicId}
         error={chat.conversationsError}
         isLoading={chat.isLoadingConversations}
-        onOpen={chat.openConversation}
+        onOpen={(conversation) => router.push(chatConversationHref(conversation.conversationId))}
         onDelete={(conversation) => void removeConversation(conversation)}
         deletingConversationId={deletingConversationId}
         onRefresh={() => void chat.refreshConversations()}

@@ -23,6 +23,7 @@ import { useConfirmModal } from '@/providers/confirm-modal-provider';
 
 import type { ChatMessage } from '@/domain/chat/types';
 import { BlurredMessageText } from '@/features/chat/components/blurred-message-text';
+import { BurnFlameBorder } from '@/features/chat/components/burn-flame-border';
 import { MessageAttachment } from '@/features/chat/components/message-attachment';
 import { VoiceComposer } from '@/features/chat/components/voice-composer';
 import type { OutboxMessage } from '@/features/chat/hooks/use-private-chat';
@@ -118,9 +119,11 @@ function MessageBubbleComponent({
   onRetry,
   fontSize,
 }: MessageBubbleProps) {
+  const [bubbleSize, setBubbleSize] = useState<{ width: number; height: number } | null>(null);
   const textMaxWidth = maxWidth - 26;
   const failed = hasStatus(message) && message.status === 'failed';
   const pending = hasStatus(message) && message.status === 'pending';
+  const hasBurnEffect = Boolean(message.burnAfterReadSeconds && !failed);
   const canPress = failed || message.locked;
   const canShowActions = mine && !failed && !pending;
   const burnSecondsLeft = message.burnStartedAtMs
@@ -142,28 +145,35 @@ function MessageBubbleComponent({
   };
 
   const bubble = (
-    <View className={`mb-2 flex-row ${mine ? 'justify-end' : 'justify-start'}`}>
+    <View className={`${hasBurnEffect ? 'mb-4 mt-3' : 'mb-2'} flex-row ${mine ? 'justify-end' : 'justify-start'}`}>
       <Pressable
         accessibilityHint={canShowActions ? 'Hold for two seconds to edit or delete message' : message.locked ? 'Opens this message for five seconds' : undefined}
         accessibilityRole={canPress || canShowActions ? 'button' : undefined}
         accessibilityActions={canShowActions ? [{ name: 'activate', label: 'Message options' }] : undefined}
         onAccessibilityAction={canShowActions ? () => onActions(message) : undefined}
         className={`shrink px-3 py-2 ${mine
-          ? `rounded-[18px] rounded-br bg-[#79201D] ${failed ? 'border-2 border-g000st-red' : ''}`
-          : 'rounded-[18px] rounded-bl bg-[#29292B]'
+          ? `rounded-[18px] ${hasBurnEffect ? '' : 'rounded-br'} bg-[#79201D] ${failed ? 'border-2 border-g000st-red' : ''}`
+          : `rounded-[18px] ${hasBurnEffect ? '' : 'rounded-bl'} bg-[#29292B]`
           } ${pending ? 'opacity-60' : ''}`}
         style={{ maxWidth }}
+        onLayout={hasBurnEffect ? (event) => {
+          const { width, height } = event.nativeEvent.layout;
+          setBubbleSize((current) => current?.width === width && current.height === height ? current : { width, height });
+        } : undefined}
         disabled={!canPress && !canShowActions}
         onPress={handlePress}
         delayLongPress={2000}
         onLongPress={canShowActions ? () => onActions(message) : undefined}
       >
+        {hasBurnEffect && bubbleSize !== null && bubbleSize.width > 0 && bubbleSize.height > 0 ? (
+          <BurnFlameBorder width={bubbleSize.width} height={bubbleSize.height} burning={burnSecondsLeft !== null} />
+        ) : null}
         {message.locked ? (
           <Text className="shrink font-black text-white" style={{ fontSize, lineHeight: Math.round(fontSize * 1.4), maxWidth: textMaxWidth }}>
             🔒 Tap to open · burns in 5s
           </Text>
         ) : message.content ? (
-          <BlurredMessageText blurred={blurMessages} content={message.content} fontSize={fontSize} maxWidth={textMaxWidth} />
+          <BlurredMessageText blurred={blurMessages} content={message.content} mine={mine} fontSize={fontSize} maxWidth={textMaxWidth} />
         ) : null}
         {!message.locked && message.attachments?.length ? (
           <View className={message.content ? 'mt-2 gap-2' : 'gap-2'}>
@@ -260,9 +270,9 @@ function ChatThreadComponent({
   const prevIdsRef = useRef<Set<string> | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
-  const [isPeerMenuOpen, setIsPeerMenuOpen] = useState(false);
+  const [peerMenuPublicId, setPeerMenuPublicId] = useState<string | null>(null);
+  const isPeerMenuOpen = peerMenuPublicId === participantPublicId;
   const [isPeerMenuBusy, setIsPeerMenuBusy] = useState(false);
-  useEffect(() => setIsPeerMenuOpen(false), [participantPublicId]);
   const [fontSize, setFontSize] = useState(14);
   const canSend = !isParticipantDeleted && !peerPreferences?.blocked && !isSending && (draft.trim().length > 0 || attachments.length > 0);
   const { confirm } = useConfirmModal();
@@ -400,7 +410,8 @@ function ChatThreadComponent({
         </View>
 
         <Pressable className="ml-2 min-w-0 flex-1" onPress={onViewProfile} accessibilityRole="button" accessibilityLabel="View participant profile">
-          <Text className="text-[11px] font-bold text-black/45">{conversationKind === 'market' ? 'MARKET CHAT' : 'PRIVATE CHAT'}</Text>
+          {/* <Text className="text-[11px] font-bold text-black/45">{conversationKind === 'market' ? 'MARKET CHAT' : 'PRIVATE CHAT'}</Text> */}
+          <Text className="text-[11px] font-bold text-black/45">{conversationKind === 'market' ? 'MARKET CHAT' : ''}</Text>
           <Text className="font-mono text-[12px] font-black text-g000st-black" numberOfLines={1}>
             {isParticipantDeleted ? 'Deleted account' : participantDisplayName || shortId(participantPublicId)}
           </Text>
@@ -469,7 +480,7 @@ function ChatThreadComponent({
         )}
         {/* End Call Buttons */}
         {!isParticipantDeleted && (
-          <Pressable accessibilityLabel="Conversation options" accessibilityRole="button" className="h-9 w-8 items-center justify-center rounded-full" onPress={() => setIsPeerMenuOpen(true)}>
+          <Pressable accessibilityLabel="Conversation options" accessibilityRole="button" className="h-9 w-8 items-center justify-center rounded-full" onPress={() => setPeerMenuPublicId(participantPublicId)}>
             <Text className="text-2xl font-black text-g000st-black">⋮</Text>
           </Pressable>
         )}
@@ -629,8 +640,8 @@ function ChatThreadComponent({
           </View>
         </Pressable>
       </Modal>
-      <Modal animationType="fade" transparent visible={isPeerMenuOpen} onRequestClose={() => setIsPeerMenuOpen(false)}>
-        <Pressable className="flex-1 items-center justify-end bg-black/45 p-5" onPress={() => setIsPeerMenuOpen(false)}>
+      <Modal animationType="fade" transparent visible={isPeerMenuOpen} onRequestClose={() => setPeerMenuPublicId(null)}>
+        <Pressable className="flex-1 items-center justify-end bg-black/45 p-5" onPress={() => setPeerMenuPublicId(null)}>
           <View className="mb-10 w-full rounded-[24px] bg-white p-4">
             {([
               [followingPeer ? 'Unfollow' : 'Follow', onToggleFollow, followingPeer !== null],
@@ -638,7 +649,7 @@ function ChatThreadComponent({
               [peerPreferences?.allowAudioCalls === false ? 'Allow voice calls' : 'Block voice calls', () => onUpdatePeerPreferences({ allowAudioCalls: !peerPreferences?.allowAudioCalls }), !!peerPreferences],
               [peerPreferences?.allowVideoCalls === false ? 'Allow video calls' : 'Block video calls', () => onUpdatePeerPreferences({ allowVideoCalls: !peerPreferences?.allowVideoCalls }), !!peerPreferences],
             ] as const).map(([label, action, enabled]) => (
-              <Pressable key={label} className="border-b border-black/10 py-4 disabled:opacity-40" disabled={!enabled || isPeerMenuBusy} onPress={() => { setIsPeerMenuBusy(true); void action().finally(() => { setIsPeerMenuBusy(false); setIsPeerMenuOpen(false); }); }}>
+              <Pressable key={label} className="border-b border-black/10 py-4 disabled:opacity-40" disabled={!enabled || isPeerMenuBusy} onPress={() => { setIsPeerMenuBusy(true); void action().finally(() => { setIsPeerMenuBusy(false); setPeerMenuPublicId(null); }); }}>
                 <Text className="text-center font-bold text-g000st-black">{label}</Text>
               </Pressable>
             ))}

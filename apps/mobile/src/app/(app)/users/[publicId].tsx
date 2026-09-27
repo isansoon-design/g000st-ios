@@ -16,6 +16,7 @@ import type { MarketPost } from '@/domain/market/types';
 import type { SocialPost, SocialProfile } from '@/domain/social/types';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useCalling } from '@/features/calling/hooks/use-calling';
+import { chatConversationHref } from '@/features/chat/navigation';
 
 type Tab = 'social' | 'market';
 
@@ -79,7 +80,7 @@ export default function UserProfileScreen() {
     if (!publicId) return;
     try {
       const conversation = await startChatConversation(publicId);
-      router.push({ pathname: '/(app)/(tabs)/chat', params: { conversationId: conversation.id } });
+      router.push(chatConversationHref(conversation.id), { withAnchor: true });
     } catch (reason) { Toast.show({ type: 'error', text1: 'Chat', text2: reason instanceof Error ? reason.message : 'Could not open chat.' }); }
   }
 

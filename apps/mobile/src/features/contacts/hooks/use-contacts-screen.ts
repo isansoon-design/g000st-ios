@@ -9,6 +9,7 @@ import type { Contact } from '@/domain/contacts/types';
 import { G000ST_ID_LENGTH } from '@/domain/identity/constants';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useCalling } from '@/features/calling/hooks/use-calling';
+import { chatConversationHref } from '@/features/chat/navigation';
 import { useConfirmModal } from '@/providers/confirm-modal-provider';
 
 export type ContactsTab = 'all' | 'online';
@@ -170,10 +171,7 @@ export function useContactsScreen() {
     async (publicId: string) => {
       try {
         const conversation = await startChatConversation(publicId);
-        router.navigate({
-          params: { conversationId: conversation.id },
-          pathname: '/(app)/(tabs)/chat',
-        });
+        router.navigate(chatConversationHref(conversation.id), { withAnchor: true });
       } catch (error) {
         Toast.show({ text1: 'Friends', text2: errorMessage(error), type: 'error' });
       }

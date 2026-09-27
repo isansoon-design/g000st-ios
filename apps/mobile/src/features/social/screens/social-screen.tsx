@@ -57,6 +57,7 @@ import type {
   SocialVisibility,
 } from "@/domain/social/types";
 import { useAuth } from "@/features/auth/hooks/use-auth";
+import { chatConversationHref } from "@/features/chat/navigation";
 import { useConfirmModal } from "@/providers/confirm-modal-provider";
 import { avatarImageSource } from "@/services/media/avatar-image-source";
 
@@ -321,10 +322,7 @@ export function SocialScreen() {
       });
     try {
       const conversation = await startChatConversation(publicId);
-      router.navigate({
-        pathname: "/(app)/(tabs)/chat",
-        params: { conversationId: conversation.id },
-      });
+      router.navigate(chatConversationHref(conversation.id), { withAnchor: true });
     } catch (error) {
       Toast.show({
         type: "error",

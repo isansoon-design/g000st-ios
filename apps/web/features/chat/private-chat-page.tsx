@@ -139,16 +139,16 @@ function MessageAttachment({ attachment, conversationId, messageId }: MessageAtt
   }
   if (attachment.kind === "audio") {
     return (
-      <div className="w-64 rounded-[18px] bg-black/10 px-3 py-2.5">
+      <div className="w-64 rounded-[18px] bg-white/10 px-3 py-2.5">
         <div className="mb-2 flex items-center gap-1" aria-hidden="true">
           {waveform.map((height, index) => (
-            <span className="w-1 rounded-full bg-current opacity-45" key={index} style={{ height }} />
+            <span className="w-1 rounded-full bg-white/70" key={index} style={{ height }} />
           ))}
-          <span className="ml-auto text-[10px] font-black opacity-50">
+          <span className="ml-auto text-[10px] font-black text-white/90">
             {formatDuration(attachment.durationMs ?? 0)}
           </span>
         </div>
-        <audio className="h-8 w-full" controls preload="metadata" src={url} />
+        <audio className="h-8 w-full" controls preload="metadata" src={url} style={{ colorScheme: 'dark' }} />
       </div>
     );
   }
@@ -238,30 +238,30 @@ function ConversationList({
           key={conversation.conversationId}
         >
           <button className="flex min-w-0 flex-1 items-center p-3 text-left" onClick={() => onOpen(conversation)} type="button">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#9A9A9A] text-base font-black text-white">
-            g
-          </span>
-          <span className="ml-3 min-w-0 flex-1">
-            <span className="block font-mono text-[12px] font-black text-[#111]">
-              {conversation.participantStatus === "deleted"
-                ? "Deleted account"
-                : namesByPublicId[conversation.participantPublicId] || conversation.participantDisplayName || shortId(conversation.participantPublicId)}
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#9A9A9A] text-base font-black text-white">
+              g
             </span>
-            <span className="mt-1 block truncate text-xs font-semibold text-black/45">
-              {conversation.lastMessagePreview || (conversation.kind === 'market' ? 'Market conversation' : 'Private conversation')}
-              {conversation.kind === 'market' && <span className="ml-2 text-[#C62828]">Market · Listing {conversation.marketPostId?.slice(0, 8)} · 30 days</span>}
-            </span>
-          </span>
-          <span className="ml-2 flex shrink-0 flex-col items-end">
-            <span className="text-[10px] font-bold text-black/40">
-              {formatTime(conversation.updatedAtMs)}
-            </span>
-            {conversation.unreadCount > 0 ? (
-              <span className="mt-1 min-w-5 rounded-full bg-[#C62828] px-1.5 py-0.5 text-center text-[10px] font-black text-white">
-                {Math.min(conversation.unreadCount, 99)}
+            <span className="ml-3 min-w-0 flex-1">
+              <span className="block font-mono text-[12px] font-black text-[#111]">
+                {conversation.participantStatus === "deleted"
+                  ? "Deleted account"
+                  : namesByPublicId[conversation.participantPublicId] || conversation.participantDisplayName || shortId(conversation.participantPublicId)}
               </span>
-            ) : null}
-          </span>
+              <span className="mt-1 block truncate text-xs font-semibold text-black/45">
+                {conversation.lastMessagePreview || (conversation.kind === 'market' ? 'Market conversation' : 'Private conversation')}
+                {conversation.kind === 'market' && <span className="ml-2 text-[#C62828]">Market · Listing {conversation.marketPostId?.slice(0, 8)} · 30 days</span>}
+              </span>
+            </span>
+            <span className="ml-2 flex shrink-0 flex-col items-end">
+              <span className="text-[10px] font-bold text-black/40">
+                {formatTime(conversation.updatedAtMs)}
+              </span>
+              {conversation.unreadCount > 0 ? (
+                <span className="mt-1 min-w-5 rounded-full bg-[#C62828] px-1.5 py-0.5 text-center text-[10px] font-black text-white">
+                  {Math.min(conversation.unreadCount, 99)}
+                </span>
+              ) : null}
+            </span>
           </button>
           <button
             aria-label="Delete conversation"
@@ -529,7 +529,8 @@ export default function PrivateChatPage() {
               )}
             </div>
             <button className="ml-2 min-w-0 flex-1 text-left" type="button" aria-label="Edit friend's name" onClick={() => { setNickname(namesByPublicId[chat.activeConversation!.participantPublicId] ?? ""); setIsNameOpen(true); }}>
-              <p className="text-[10px] font-bold text-black/45">{activeIsMarket ? 'MARKET CHAT' : 'PRIVATE CHAT'}</p>
+              {/* <p className="text-[10px] font-bold text-black/45">{activeIsMarket ? 'MARKET CHAT' : 'PRIVATE CHAT'}</p> */}
+              <p className="text-[10px] font-bold text-black/45">{activeIsMarket ? 'MARKET CHAT' : ''}</p>
               <p className="truncate font-mono text-[12px] font-black text-[#111]">
                 {participantDeleted
                   ? "Deleted account"

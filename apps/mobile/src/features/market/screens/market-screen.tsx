@@ -20,11 +20,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import Toast from "react-native-toast-message";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 import { startMarketChatConversation } from "@/api/chat";
-import { toggleSocialCamp } from "@/api/social";
 import {
   createMarketComment,
   createMarketPost,
@@ -36,6 +35,7 @@ import {
   updateMarketPost,
   uploadMarketMedia,
 } from "@/api/market";
+import { toggleSocialCamp } from "@/api/social";
 import { FeatureScreen } from "@/components/layout/feature-screen";
 import type {
   MarketComment,
@@ -196,12 +196,12 @@ export function MarketScreen() {
     try {
       const conversation = await startMarketChatConversation(post.id);
       router.push({
-        pathname: "/(app)/(tabs)/chat",
+        pathname: "/(app)/(tabs)/chat/[conversationId]",
         params: {
           conversationId: conversation.id,
           notificationRequestId: randomUUID(),
         },
-      });
+      }, { withAnchor: true });
     } catch (error) {
       showError(error, "Could not open chat.");
     }
@@ -234,7 +234,7 @@ export function MarketScreen() {
                   <Text className="text-2xl font-light text-white">＋</Text>
                 </View>
                 <View className="min-w-0 flex-1">
-                  <Text className="text-[15px] font-black text-[#17191D]">Create a listing</Text>
+                  <Text className="text-[15px] font-black text-[#17191D]">Create a Market post</Text>
                   <Text className="mt-0.5 text-xs text-black/50">Sell something to the community</Text>
                 </View>
                 <Text className="text-xl font-bold text-[#C62828]">›</Text>
@@ -561,6 +561,7 @@ function MarketCard({
   return (
     <View className="overflow-hidden rounded-2xl border-2 border-black bg-white shadow-sm">
       <View className="flex-row items-center gap-3 p-4">
+        {/* Start Image */}
         <View className="h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-black">
           {post.author.avatarUrl ? (
             <Image
@@ -572,6 +573,8 @@ function MarketCard({
             <Text className="text-white">👻</Text>
           )}
         </View>
+        {/* End Image */}
+        {/* Start Username && date  */}
         <Pressable onPress={() => router.push(`/users/${post.ownerPublicId}` as Href)} accessibilityRole="button" className="min-w-0 flex-1">
           <Text className="font-black">{post.author.displayName}</Text>
           <Text className="text-[10px] text-black/45">
@@ -579,7 +582,9 @@ function MarketCard({
             {post.editedAtMs ? " · edited" : ""}
           </Text>
         </Pressable>
-        {post.ownedByViewer && (
+        {/* End Username && date  */}
+
+        {post.ownedByViewer ? (
           <View className="flex-row gap-2">
             <Pressable
               accessibilityLabel="Edit listing"
@@ -608,7 +613,20 @@ function MarketCard({
               <Text className="text-xs font-black text-[#C62828]">Delete</Text>
             </Pressable>
           </View>
-        )}
+        )
+          :
+          <View className="flex-row  w-24 -mx-2 ">
+            {/* Start Call Actions */}
+            {!post.ownedByViewer && post.allowCalls && (
+              <Action minW="min-w-[10px]" label="📞" onPress={onCall} />
+            )}
+            {!post.ownedByViewer && post.allowVideoCalls && (
+              <Action minW="min-w-[10px]" label="🎥" onPress={onVideoCall} />
+            )}
+          </View>
+        }
+        {/* End Call Actions */}
+
       </View>
       <Text className="px-4 pb-3 text-[15px] leading-6">{post.content}</Text>
       <View className="mx-4 mb-3 flex-row flex-wrap gap-2">
@@ -648,19 +666,14 @@ function MarketCard({
           onPress={async () => onComments()}
         />
         {!post.ownedByViewer && (
-          <Action label={post.campedByViewer ? "Following" : "+ Follow"} onPress={onFollow} />
+          <Action label={post.campedByViewer ? "✓" : " ➕"} onPress={onFollow} />
         )}
-        {!post.ownedByViewer && post.allowCalls && (
-          <Action label="☎" onPress={onCall} />
-        )}
-        {!post.ownedByViewer && post.allowVideoCalls && (
-          <Action label="Video" onPress={onVideoCall} />
-        )}
+
         {!post.ownedByViewer && <Pressable
           onPress={() => void onChat()}
-          className="mx-1 rounded-full bg-black px-5 py-3"
+          className="mx-1 px-5 py-3"
         >
-          <Text className="font-black text-white">Market Chat</Text>
+          <Text className="font-black">Chat</Text>
         </Pressable>}
       </View>
     </View>
@@ -943,15 +956,17 @@ function Action({
   label,
   active,
   onPress,
+  minW,
 }: {
   label: string;
   active?: boolean;
   onPress: () => Promise<void>;
+  minW?: string
 }) {
   return (
     <Pressable
       onPress={() => void onPress()}
-      className="min-w-[64px] flex-1 items-center rounded-xl py-3"
+      className={`${minW ? minW : " min-w-[64px]"} flex-1 items-center rounded-xl py-3`}
     >
       <Text
         className={`font-black ${active ? "text-[#C62828]" : "text-black/70"}`}

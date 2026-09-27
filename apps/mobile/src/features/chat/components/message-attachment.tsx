@@ -51,18 +51,18 @@ function RemoteAudio({ durationMs, onLongPress, uri }: Readonly<{ durationMs?: n
   };
 
   return (
-    <View className="w-64 rounded-[18px] bg-black/10 px-3 py-3">
+    <View className="w-64 rounded-[18px] bg-white/10 px-3 py-3">
       <View className="flex-row items-center">
         <Pressable accessibilityLabel={status.playing ? 'Pause voice message' : 'Play voice message'} accessibilityRole="button" className="h-10 w-10 items-center justify-center rounded-full bg-g000st-black" delayLongPress={2000} onLongPress={onLongPress} onPress={toggle}>
           <Text className="ml-px text-sm font-black text-white">{status.playing ? 'Ⅱ' : '▶'}</Text>
         </Pressable>
         <View className="ml-3 flex-1">
-          <View className="h-1.5 overflow-hidden rounded-full bg-black/10">
-            <View className="h-full rounded-full bg-g000st-red" style={{ width: `${progress * 100}%` }} />
+          <View className="h-1.5 overflow-hidden rounded-full bg-white/25">
+            <View className="h-full rounded-full bg-white" style={{ width: `${progress * 100}%` }} />
           </View>
           <View className="mt-2 flex-row items-center">
-            {waveform.slice(0, 10).map((height, index) => <View className="mr-0.5 w-0.5 rounded-full bg-black/30" key={index} style={{ height: Math.max(3, height / 2) }} />)}
-            <Text className="ml-auto font-mono text-[10px] font-black text-black/45">{formatDuration(durationMs ?? status.duration * 1_000)}</Text>
+            {waveform.slice(0, 10).map((height, index) => <View className="mr-0.5 w-0.5 rounded-full bg-white/70" key={index} style={{ height: Math.max(3, height / 2) }} />)}
+            <Text className="ml-auto font-mono text-[10px] font-black text-white/90">{formatDuration(durationMs ?? status.duration * 1_000)}</Text>
           </View>
         </View>
       </View>

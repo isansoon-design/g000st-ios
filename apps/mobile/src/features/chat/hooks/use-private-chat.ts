@@ -218,6 +218,7 @@ export function usePrivateChat(
       void queryClient.invalidateQueries({ queryKey: chatConversationsQueryKey });
     },
   });
+  const resetSendMutation = sendMutation.reset;
 
   const openMutation = useMutation({
     mutationFn: ({
@@ -369,9 +370,9 @@ export function usePrivateChat(
       });
       setDraft("");
       setOutbox([]);
-      sendMutation.reset();
+      resetSendMutation();
     },
-    [sendMutation],
+    [resetSendMutation],
   );
 
   useEffect(() => {
@@ -388,8 +389,10 @@ export function usePrivateChat(
     );
     if (!requested) return;
 
-    handledOpenRequestRef.current = openKey;
-    const timer = setTimeout(() => openConversation(requested), 0);
+    const timer = setTimeout(() => {
+      openConversation(requested);
+      handledOpenRequestRef.current = openKey;
+    }, 0);
     return () => clearTimeout(timer);
   }, [
     conversationsQuery.data,
@@ -402,8 +405,8 @@ export function usePrivateChat(
     setActiveConversation(null);
     setDraft("");
     setOutbox([]);
-    sendMutation.reset();
-  }, [sendMutation]);
+    resetSendMutation();
+  }, [resetSendMutation]);
 
   const updateDraft = useCallback((value: string) => {
     setDraft(value);
@@ -595,6 +598,7 @@ export function usePrivateChat(
     firstUnreadMessageId: activeConversation?.firstUnreadMessageId,
     hasOlderMessages: Boolean(messagesQuery.hasNextPage),
     isLoadingConversations: conversationsQuery.isLoading,
+    isFetchingConversations: conversationsQuery.isFetching,
     isLoadingMessages: messagesQuery.isLoading,
     isLoadingOlderMessages: messagesQuery.isFetchingNextPage,
     isNewChatOpen,

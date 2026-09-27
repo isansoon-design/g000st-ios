@@ -5,6 +5,7 @@ import { Text as ReactNativeText } from 'react-native';
 type BlurredMessageTextProps = Readonly<{
   blurred: boolean;
   content: string;
+  mine: boolean;
   fontSize?: number;
   maxWidth: number;
 }>;

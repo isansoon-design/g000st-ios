@@ -14,6 +14,7 @@ import {
   chatConversationsQueryKey,
   chatMessagesQueryKey,
 } from '@/features/chat/query-keys';
+import { chatConversationHref } from '@/features/chat/navigation';
 import {
   conversationIdFromNotification,
   isFocusedConversationNotification,
@@ -159,13 +160,7 @@ export function NotificationsBootstrap() {
       void queryClient.invalidateQueries({
         queryKey: chatMessagesQueryKey(conversationId),
       });
-      router.push({
-        pathname: '/(app)/(tabs)/chat',
-        params: {
-          conversationId,
-          notificationRequestId: response.notification.request.identifier,
-        },
-      });
+      router.push(chatConversationHref(conversationId, response.notification.request.identifier), { withAnchor: true });
       Notifications.clearLastNotificationResponse();
     };
 
