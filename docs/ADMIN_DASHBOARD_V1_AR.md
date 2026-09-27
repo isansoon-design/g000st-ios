@@ -33,9 +33,10 @@
 | المسار | الصلاحية | الغرض |
 | --- | --- | --- |
 | `GET /admin/analytics` | admin | ملخص المستخدمين والجغرافيا والأقسام |
-| `GET /admin/users?limit=50&cursor=...` | admin | قائمة المستخدمين مع تصفح، دون الحسابات المحذوفة وصفحات المستخدمين |
+| `GET /admin/users?limit=50&cursor=...&q=...` | admin | قائمة المستخدمين مع تصفح، وبحث اختياري بالاسم أو Public ID؛ دون الحسابات المحذوفة وصفحات المستخدمين. الاستجابة `version: 1, users, nextCursor?` |
 | `GET /admin/billing/recent` | admin | عدد حسابات الأرصدة وآخر ٣٠ رصيدًا محدثًا |
 | `GET /admin/desk` | admin | محتوى واجهة العميل وإعداداتها |
+| `GET /admin/desk/posts/:section?limit=20&cursor=...` | admin | تصفح منشورات `social` أو قوائم `market` غير المحذوفة؛ الاستجابة `version: 1, items, nextCursor?`، والمؤشر خاص بكل قسم |
 | `GET /admin/desk/users?q=...` | admin | البحث في جميع المستخدمين بالاسم أو Public ID، أول ٤٠ نتيجة |
 | `POST /admin/desk/accounts` | admin | إنشاء حساب وإرجاع Recovery ID مرة واحدة |
 | `PUT /admin/desk/config/:kind/:key` | admin | تشغيل/إيقاف صفحة أو جزء (`{enabled}`) |

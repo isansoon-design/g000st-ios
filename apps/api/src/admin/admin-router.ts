@@ -37,8 +37,13 @@ export function createAdminRouter(auth: AuthService, analytics: AdminAnalyticsSe
   router.get('/analytics', asyncRoute(async (_request, response) => { response.json(await analytics.get()); }));
   router.get('/desk', asyncRoute(async (_request, response) => { response.json(await desk.get()); }));
   router.get('/users', asyncRoute(async (request, response) => {
-    const query = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50), cursor: z.string().min(1).max(256).optional() }).parse(request.query);
-    response.json(await desk.listUsers(query.limit, query.cursor));
+    const query = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50), cursor: z.string().min(1).max(256).optional(), q: z.string().trim().min(1).max(100).optional() }).parse(request.query);
+    response.json(query.q ? await desk.listSearchedUsers(query.limit, query.q, query.cursor) : await desk.listUsers(query.limit, query.cursor));
+  }));
+  router.get('/desk/posts/:section', asyncRoute(async (request, response) => {
+    const kind = section.parse(request.params.section);
+    const query = z.object({ limit: z.coerce.number().int().min(1).max(100).default(20), cursor: z.string().min(1).max(256).optional() }).parse(request.query);
+    response.json(await desk.listPosts(kind, query.limit, query.cursor));
   }));
   router.get('/billing/recent', asyncRoute(async (_request, response) => { response.json(await desk.getRecentBillingBalances()); }));
   router.get('/desk/users', rateLimit({ legacyHeaders: false, limit: 30, standardHeaders: 'draft-8', windowMs: 60_000 }), asyncRoute(async (request, response) => {

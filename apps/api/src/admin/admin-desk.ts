@@ -31,7 +31,7 @@ export class AdminDeskService {
   private postCollection(section: Section) { return this.collection(section === 'social' ? 'social_posts' : 'market_posts'); }
 
   private encodeUserCursor(document: QueryDocumentSnapshot): string {
-    return Buffer.from(JSON.stringify({ createdAtMs: document.data().createdAtMs, id: document.id })).toString('base64url');
+    return Buffer.from(JSON.stringify({ createdAtMs: Number(document.data().createdAtMs ?? 0), id: document.id })).toString('base64url');
   }
 
   private decodeUserCursor(cursor: string): { createdAtMs: number; id: string } {
@@ -85,6 +85,63 @@ export class AdminDeskService {
     const page = visible.slice(0, limit);
     const lastVisible = page.at(-1);
     return { version: 1 as const, users: await this.hydrateUsers(page), ...(visible.length > limit && lastVisible ? { nextCursor: this.encodeUserCursor(lastVisible) } : {}) };
+  }
+
+  async listSearchedUsers(limit: number, search: string, cursor?: string) {
+    const needle = search.trim().toLowerCase();
+    const after = cursor ? this.decodeUserCursor(cursor) : undefined;
+    const [users, profiles] = await Promise.all([
+      this.collection('users').select('createdAtMs', 'ownerPublicId', 'status', 'role').get(),
+      this.collection('social_profiles').select('displayName').get(),
+    ]);
+    const names = new Map(profiles.docs.map((doc) => [doc.id, String(doc.data().displayName ?? '')]));
+    const matches = users.docs
+      .filter((doc) => !doc.data().ownerPublicId && doc.data().status !== 'deleted')
+      .filter((doc) => doc.id.toLowerCase().includes(needle) || (names.get(doc.id) ?? '').toLowerCase().includes(needle))
+      .sort((a, b) => Number(b.data().createdAtMs ?? 0) - Number(a.data().createdAtMs ?? 0) || b.id.localeCompare(a.id))
+      .filter((doc) => !after || Number(doc.data().createdAtMs ?? 0) < after.createdAtMs
+        || (Number(doc.data().createdAtMs ?? 0) === after.createdAtMs && doc.id < after.id));
+    const page = matches.slice(0, limit);
+    const last = page.at(-1);
+    return { version: 1 as const, users: await this.hydrateUsers(page), ...(matches.length > limit && last ? { nextCursor: this.encodeUserCursor(last) } : {}) };
+  }
+
+  async listPosts(section: Section, limit: number, cursor?: string) {
+    let query = this.postCollection(section).orderBy('createdAtMs', 'desc').orderBy(FieldPath.documentId(), 'desc');
+    if (cursor) {
+      try {
+        const decoded: unknown = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+        if (!decoded || typeof decoded !== 'object' || !('section' in decoded) || decoded.section !== section
+          || !('createdAtMs' in decoded) || typeof decoded.createdAtMs !== 'number' || !Number.isSafeInteger(decoded.createdAtMs)
+          || !('id' in decoded) || typeof decoded.id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(decoded.id)) throw new Error('Invalid');
+        query = query.startAfter(decoded.createdAtMs, decoded.id);
+      } catch { throw new ApiError(400, 'INVALID_CURSOR', 'Invalid posts cursor.'); }
+    }
+    const visible: QueryDocumentSnapshot[] = [];
+    let last: QueryDocumentSnapshot | undefined;
+    const batchSize = Math.max(51, limit + 1);
+    while (visible.length <= limit) {
+      const snapshot = await query.limit(batchSize).get();
+      if (snapshot.empty) break;
+      for (const document of snapshot.docs) {
+        last = document;
+        if (!document.data().deletedAtMs) visible.push(document);
+        if (visible.length > limit) break;
+      }
+      if (visible.length > limit || snapshot.size < batchSize) break;
+      query = query.startAfter(last!.data().createdAtMs, last!.id);
+    }
+    const page = visible.slice(0, limit);
+    const lastVisible = page.at(-1);
+    return {
+      version: 1 as const,
+      items: page.map((doc) => ({
+        id: doc.id, ownerPublicId: String(doc.data().ownerPublicId ?? ''), content: String(doc.data().content ?? ''),
+        city: section === 'market' ? String(doc.data().city ?? '') : undefined,
+        hidden: doc.data().hidden === true, deleted: false, createdAtMs: Number(doc.data().createdAtMs ?? 0),
+      })),
+      ...(visible.length > limit && lastVisible ? { nextCursor: Buffer.from(JSON.stringify({ section, createdAtMs: lastVisible.data().createdAtMs, id: lastVisible.id })).toString('base64url') } : {}),
+    };
   }
 
   async getRecentBillingBalances() {
@@ -159,19 +216,8 @@ export class AdminDeskService {
   }
 
   async searchUsers(query: string) {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return [];
-    const [users, profiles] = await Promise.all([
-      this.collection('users').select('createdAtMs', 'ownerPublicId', 'status', 'role').get(),
-      this.collection('social_profiles').select('displayName').get(),
-    ]);
-    const names = new Map(profiles.docs.map((doc) => [doc.id, String(doc.data().displayName ?? '')]));
-    const matched = users.docs
-      .filter((doc) => !doc.data().ownerPublicId && doc.data().status !== 'deleted')
-      .filter((doc) => doc.id.toLowerCase().includes(needle) || (names.get(doc.id) ?? '').toLowerCase().includes(needle))
-      .sort((a, b) => Number(b.data().createdAtMs ?? 0) - Number(a.data().createdAtMs ?? 0))
-      .slice(0, 40);
-    return this.hydrateUsers(matched);
+    if (!query.trim()) return [];
+    return (await this.listSearchedUsers(40, query)).users;
   }
 
   async recordIssuedAccount(publicId: string, note: string, actor: string): Promise<void> {

@@ -44,6 +44,11 @@ export type AdminUsersPageV1 = Readonly<{
   nextCursor?: string;
 }>;
 
+export type AdminPostV1 = Readonly<{
+  id: string; ownerPublicId: string; content: string; hidden: boolean; deleted: boolean; city?: string; createdAtMs: number;
+}>;
+export type AdminPostsPageV1 = Readonly<{ version: 1; items: readonly AdminPostV1[]; nextCursor?: string }>;
+
 export type AdminBillingRecentV1 = Readonly<{
   version: 1;
   accountCount: number;
@@ -67,8 +72,12 @@ export async function getAdminAnalytics(): Promise<AdminAnalyticsV1> {
   return (await axios.get<AdminAnalyticsV1>('/admin/analytics')).data;
 }
 
-export async function getAdminUsersPage(cursor?: string): Promise<AdminUsersPageV1> {
-  return (await axios.get<AdminUsersPageV1>('/admin/users', { params: { limit: 50, cursor } })).data;
+export async function getAdminUsersPage(cursor?: string, query?: string, limit = 50): Promise<AdminUsersPageV1> {
+  return (await axios.get<AdminUsersPageV1>('/admin/users', { params: { limit, cursor, q: query || undefined } })).data;
+}
+
+export async function getAdminPostsPage(section: 'social' | 'market', cursor?: string, limit = 20): Promise<AdminPostsPageV1> {
+  return (await axios.get<AdminPostsPageV1>(`/admin/desk/posts/${section}`, { params: { limit, cursor } })).data;
 }
 
 export async function getAdminBillingRecent(): Promise<AdminBillingRecentV1> {
