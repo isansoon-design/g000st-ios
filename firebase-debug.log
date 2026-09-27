@@ -1628,3 +1628,35 @@
     }
   ]
 }
+[debug] [2026-09-27T15:53:40.666Z] ----------------------------------------------------------------------
+[debug] [2026-09-27T15:53:40.668Z] Command:       /usr/local/bin/node /Users/moudy/.npm/_npx/7750544ccf494d8b/node_modules/.bin/firebase projects:list --json
+[debug] [2026-09-27T15:53:40.668Z] CLI Version:   15.31.0
+[debug] [2026-09-27T15:53:40.668Z] Platform:      darwin
+[debug] [2026-09-27T15:53:40.668Z] Node Version:  v24.14.0
+[debug] [2026-09-27T15:53:40.668Z] Detected Agent: codex_cli
+[debug] [2026-09-27T15:53:40.668Z] Time:          Sun Sep 27 2026 18:53:40 GMT+0300 (GMT+03:00)
+[debug] [2026-09-27T15:53:40.668Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-27T15:53:40.755Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-27T15:53:40.755Z] > authorizing via signed-in user (bakrisabagh@gmail.com)
+[debug] [2026-09-27T15:53:40.762Z] Checked if tokens are valid: false, expires at: 1790458417451
+[debug] [2026-09-27T15:53:40.762Z] Checked if tokens are valid: false, expires at: 1790458417451
+[debug] [2026-09-27T15:53:40.762Z] > refreshing access token with scopes: []
+[debug] [2026-09-27T15:53:40.763Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-09-27T15:53:40.763Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-09-27T15:53:41.239Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-09-27T15:53:41.240Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-09-27T15:53:41.254Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2026-09-27T15:53:42.184Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2026-09-27T15:53:42.185Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] ┌──────────────────────┬─────────────────┬────────────────┬──────────────────────┐
+│ Project Display Name │ Project ID      │ Project Number │ Resource Location ID │
+├──────────────────────┼─────────────────┼────────────────┼──────────────────────┤
+│ FriendVan            │ friendvan-c7603 │ 812124957477   │ [Not specified]      │
+├──────────────────────┼─────────────────┼────────────────┼──────────────────────┤
+│ g000st               │ g000st-9f70c    │ 206332674564   │ [Not specified]      │
+├──────────────────────┼─────────────────┼────────────────┼──────────────────────┤
+│ Gold Pro Analyzer    │ xauusd-c41d0    │ 390056297494   │ [Not specified]      │
+└──────────────────────┴─────────────────┴────────────────┴──────────────────────┘
+[info] 
+[info] 3 project(s) total.

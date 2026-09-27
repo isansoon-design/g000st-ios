@@ -69,6 +69,13 @@
           "photosPermission": "Allow g000st to select photos and videos for private chat."
         }
       ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "Allow g000st to save post images to your photo library.",
+          "granularPermissions": []
+        }
+      ],
       "expo-video",
       [
         "expo-callkit-telecom",

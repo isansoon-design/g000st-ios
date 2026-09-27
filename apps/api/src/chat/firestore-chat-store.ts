@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { FieldPath, FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore';
 
 import { encodeChatCursor } from './chat-cursor.js';
-import { CHAT_MESSAGE_RETENTION_MS } from './chat-policy.js';
+import { isLegacyTwoHourMessage } from './chat-policy.js';
 import type {
   ChatStore,
   CreateTextMessageResult,
@@ -157,6 +157,7 @@ export class FirestoreChatStore implements ChatStore {
     limit: number,
     nowMs: number,
     cursor?: ChatMessageCursor,
+    visibleAfterMs?: number,
   ): Promise<ChatMessagePage> {
     const visible: ChatMessage[] = [];
     const batchSize = Math.min(Math.max(limit * 2, 50), 200);
@@ -175,7 +176,11 @@ export class FirestoreChatStore implements ChatStore {
       for (const document of snapshot.docs) {
         const message = this.toMessage(document.id, document.data());
         scanCursor = { createdAtMs: message.createdAtMs, id: message.id };
-        if (message.expiresAtMs > nowMs) visible.push(message);
+        if (visibleAfterMs !== undefined && message.createdAtMs <= visibleAfterMs) {
+          exhausted = true;
+          break;
+        }
+        if (message.expiresAtMs === undefined || message.expiresAtMs > nowMs) visible.push(message);
         if (visible.length >= limit + 1) break;
       }
 
@@ -237,7 +242,7 @@ export class FirestoreChatStore implements ChatStore {
 
       transaction.create(messageRef, {
         ...message,
-        expiresAt: Timestamp.fromMillis(message.expiresAtMs),
+        ...(message.expiresAtMs === undefined ? {} : { expiresAt: Timestamp.fromMillis(message.expiresAtMs) }),
       });
       transaction.update(conversationRef, { updatedAtMs: message.createdAtMs });
       transaction.set(
@@ -254,7 +259,7 @@ export class FirestoreChatStore implements ChatStore {
             ? {}
             : {
                 firstUnreadCreatedAtMs: message.createdAtMs,
-                firstUnreadExpiresAtMs: message.expiresAtMs,
+                ...(message.expiresAtMs === undefined ? {} : { firstUnreadExpiresAtMs: message.expiresAtMs }),
                 firstUnreadMessageId: message.id,
               }),
           participantPublicId: message.senderPublicId,
@@ -273,7 +278,7 @@ export class FirestoreChatStore implements ChatStore {
       const messageSnapshot = await transaction.get(messageRef);
       if (!messageSnapshot.exists) return { status: 'not_found' as const };
       const message = this.toMessage(messageSnapshot.id, messageSnapshot.data());
-      if (message.expiresAtMs <= nowMs) return { status: 'not_found' as const };
+      if (message.expiresAtMs !== undefined && message.expiresAtMs <= nowMs) return { status: 'not_found' as const };
       if (message.senderPublicId !== senderPublicId) return { status: 'forbidden' as const };
       if (message.type !== 'text' || message.attachments?.length || message.burnAfterReadSeconds || message.locked) return { status: 'not_editable' as const };
       const next = { ...message, content, editedAtMs: nowMs };
@@ -292,7 +297,7 @@ export class FirestoreChatStore implements ChatStore {
       ]);
       if (!messageSnapshot.exists || !conversationSnapshot.exists) return { status: 'not_found' as const };
       const message = this.toMessage(messageSnapshot.id, messageSnapshot.data());
-      if (message.expiresAtMs <= nowMs) return { status: 'not_found' as const };
+      if (message.expiresAtMs !== undefined && message.expiresAtMs <= nowMs) return { status: 'not_found' as const };
       if (message.senderPublicId !== senderPublicId) return { status: 'forbidden' as const };
 
       const conversation = this.toConversation(conversationSnapshot.id, conversationSnapshot.data());
@@ -332,7 +337,7 @@ export class FirestoreChatStore implements ChatStore {
         const snapshot = await transaction.get(query.limit(100));
         previous = snapshot.docs
           .map((document) => this.toMessage(document.id, document.data()))
-          .find((candidate) => candidate.id !== messageId && candidate.expiresAtMs > nowMs);
+          .find((candidate) => candidate.id !== messageId && (candidate.expiresAtMs === undefined || candidate.expiresAtMs > nowMs));
         const last = snapshot.docs.at(-1);
         if (!last || snapshot.size < 100) break;
         cursor = { createdAtMs: last.get('createdAtMs') as number, id: last.id };
@@ -385,7 +390,7 @@ export class FirestoreChatStore implements ChatStore {
       if (!snapshot.exists) return { status: 'not_found' };
 
       const message = this.toMessage(snapshot.id, snapshot.data());
-      if (message.expiresAtMs <= nowMs) {
+      if (message.expiresAtMs !== undefined && message.expiresAtMs <= nowMs) {
         transaction.delete(messageRef);
         return { status: 'not_found' };
       }
@@ -396,10 +401,7 @@ export class FirestoreChatStore implements ChatStore {
         return { message: { ...message, locked: false }, status: 'opened' };
       }
 
-      const expiresAtMs = Math.min(
-        message.expiresAtMs,
-        nowMs + message.burnAfterReadSeconds * 1_000,
-      );
+      const expiresAtMs = nowMs + message.burnAfterReadSeconds * 1_000;
       const opened = { ...message, burnStartedAtMs: nowMs, expiresAtMs, locked: false };
       transaction.update(messageRef, {
         burnStartedAtMs: nowMs,
@@ -458,27 +460,31 @@ export class FirestoreChatStore implements ChatStore {
   }
 
   async purgeExpiredMessages(nowMs: number, limit: number): Promise<readonly ChatMessage[]> {
-    const [explicitlyExpired, retentionExpired] = await Promise.all([
-      this.db.collectionGroup('messages').where('expiresAtMs', '<=', nowMs).limit(limit).get(),
-      this.db
-        .collectionGroup('messages')
-        .where('createdAtMs', '<=', nowMs - CHAT_MESSAGE_RETENTION_MS)
-        .limit(limit)
-        .get(),
-    ]);
-    const expired = new Map(
-      [...explicitlyExpired.docs, ...retentionExpired.docs]
-        .slice(0, limit)
-        .map((document) => [document.ref.path, document] as const),
-    );
-    if (expired.size === 0) return [];
+    // Clear legacy two-hour deadlines before Firestore TTL can remove messages retained for web.
+    const candidates = await this.db.collectionGroup('messages')
+      .where('expiresAtMs', '<=', nowMs + 60_000)
+      .limit(limit)
+      .get();
+    if (candidates.empty) return [];
 
-    const messages = [...expired.values()].map((document) =>
-      this.toMessage(document.id, document.data()),
-    );
+    const messages: ChatMessage[] = [];
     const batch = this.db.batch();
-    for (const document of expired.values()) batch.delete(document.ref);
-    await batch.commit();
+    let hasWrites = false;
+    for (const document of candidates.docs) {
+      const data = document.data();
+      if (isLegacyTwoHourMessage(data as ChatMessage)) {
+        batch.update(document.ref, {
+          expiresAt: FieldValue.delete(),
+          expiresAtMs: FieldValue.delete(),
+        });
+        hasWrites = true;
+      } else if (typeof data.expiresAtMs === 'number' && data.expiresAtMs <= nowMs) {
+        messages.push(this.toMessage(document.id, data));
+        batch.delete(document.ref);
+        hasWrites = true;
+      }
+    }
+    if (hasWrites) await batch.commit();
     return messages;
   }
 
@@ -489,8 +495,8 @@ export class FirestoreChatStore implements ChatStore {
   ): Promise<ChatConversationMemberSummary> {
     if (
       summary.unreadCount === 0 ||
-      (summary.firstUnreadExpiresAtMs !== undefined &&
-        summary.firstUnreadExpiresAtMs > nowMs)
+      (summary.firstUnreadMessageId !== undefined &&
+        (summary.firstUnreadExpiresAtMs === undefined || summary.firstUnreadExpiresAtMs > nowMs))
     ) {
       return summary;
     }
@@ -513,7 +519,7 @@ export class FirestoreChatStore implements ChatStore {
         const message = this.toMessage(document.id, document.data());
         scanCursor = { createdAtMs: message.createdAtMs, id: message.id };
         if (
-          message.expiresAtMs > nowMs &&
+          (message.expiresAtMs === undefined || message.expiresAtMs > nowMs) &&
           message.senderPublicId === summary.participantPublicId
         ) {
           unread.push(message);
@@ -557,7 +563,7 @@ export class FirestoreChatStore implements ChatStore {
         firstUnread
           ? {
               firstUnreadCreatedAtMs: firstUnread.createdAtMs,
-              firstUnreadExpiresAtMs: firstUnread.expiresAtMs,
+              firstUnreadExpiresAtMs: firstUnread.expiresAtMs === undefined ? FieldValue.delete() : firstUnread.expiresAtMs,
               firstUnreadMessageId: firstUnread.id,
               unreadCount: unread.length,
             }
@@ -626,10 +632,7 @@ export class FirestoreChatStore implements ChatStore {
 
     return {
       ...(data as ChatMessage),
-      expiresAtMs:
-        typeof data.expiresAtMs === 'number'
-          ? data.expiresAtMs
-          : data.createdAtMs + CHAT_MESSAGE_RETENTION_MS,
+      ...(isLegacyTwoHourMessage(data as ChatMessage) ? { expiresAtMs: undefined } : {}),
       id,
       locked: false,
     };

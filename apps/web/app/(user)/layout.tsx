@@ -2,12 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { PresenceHeartbeat } from "@/features/presence/presence-heartbeat";
+import { NoticeBanner } from "@/features/admin/notice-banner";
+import axios from "@/app/api/axios";
 import { ThemeToggle } from "@/context/ThemeContext";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [experience, setExperience] = useState<{ pages: Record<string, boolean>; parts: Record<string, boolean> } | null>(null);
+  useEffect(() => {
+    void axios.get<{ pages: Record<string, boolean>; parts: Record<string, boolean> }>('/communication/experience')
+      .then(({ data }) => setExperience(data)).catch(() => undefined);
+  }, []);
+  const pageKey = pathname.startsWith('/profile') || pathname.startsWith('/users/') ? 'mypage'
+    : pathname.startsWith('/social-chat') || pathname.startsWith('/chat') ? 'whisper'
+    : pathname.startsWith('/social') ? 'centre'
+    : pathname.startsWith('/contacts') ? 'network'
+    : pathname.startsWith('/market') ? 'trading'
+    : pathname.startsWith('/mobile') ? 'mobile' : null;
+  const pageEnabled = experience?.pages.site !== false && (!pageKey || experience?.pages[pageKey] !== false);
+  const hiddenParts = Object.entries(experience?.parts ?? {}).filter(([, enabled]) => !enabled).map(([key]) => key).join(' ');
 
   const navItems = [
     { href: "/social", label: "SOCIAL", icon: "◎" },
@@ -19,7 +35,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   ];
 
   return (
-    <div className="h-[100dvh] overflow-hidden bg-[#C8CDD5] dark:bg-night-canvas">
+    <div className="admin-feature-scope h-[100dvh] overflow-hidden bg-[#C8CDD5] dark:bg-night-canvas" data-admin-hidden={hiddenParts}>
       <PresenceHeartbeat />
       <div className="mx-auto flex h-full w-full max-w-5xl flex-col bg-[#D8DCE3] dark:bg-night-canvas shadow-[0_0_55px_rgba(0,0,0,0.18)]">
         <header className="flex h-11 shrink-0 items-center justify-between border-b border-black/10 bg-[#D0D0D0] px-3 dark:border-white/15 dark:bg-night-header">
@@ -27,7 +43,8 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
           {pathname !== "/profile" && <ThemeToggle />}
         </header>
         <main className="relative min-h-0 flex-1 overflow-hidden">
-          {children}
+          <NoticeBanner />
+          {pageEnabled ? children : <div className="flex h-full items-center justify-center p-6 text-center text-sm font-bold">This page is temporarily unavailable.</div>}
         </main>
 
         {/* Bottom Navigation - exactly like original */}

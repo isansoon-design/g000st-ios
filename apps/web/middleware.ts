@@ -11,8 +11,9 @@ const protectedRoutes = [
   "/contacts",
   "/profile",
   "/mobile",
+  "/users/",
 ];
-const adminRoutes = ["/dashboard", "/users", "/settings", "/billing"];
+const adminRoutes = ["/dashboard", "/client-desk", "/analytics", "/billing"];
 
 // Routes for unauthenticated users only
 const authRoutes = ["/login", "/register"];
@@ -36,13 +37,14 @@ export function middleware(request: NextRequest) {
   const hasAuth = sessionHint?.value === "1";
 
   if (pathname === "/") {
-    return redirectTo(request, hasAuth ? "/social" : "/login");
+    return redirectTo(request, hasAuth ? (userRole?.value === 'admin' ? '/dashboard' : '/social') : '/login');
   }
 
   // Protected routes - require authentication
-  const isProtectedRoute = [...protectedRoutes, ...adminRoutes].some((route) =>
+  const isAdminRoute = pathname === "/users" || pathname === "/users/" || adminRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  const isProtectedRoute = [...protectedRoutes].some((route) =>
     pathname.startsWith(route),
-  );
+  ) || isAdminRoute;
 
   if (isProtectedRoute && !hasAuth) {
     return redirectTo(request, "/login");
@@ -50,7 +52,7 @@ export function middleware(request: NextRequest) {
 
   // Admin routes - require admin role
   if (
-    adminRoutes.some((route) => pathname.startsWith(route)) &&
+    isAdminRoute &&
     userRole?.value !== "admin"
   ) {
     return redirectTo(request, "/chat");
@@ -60,7 +62,7 @@ export function middleware(request: NextRequest) {
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
   if (isAuthRoute && hasAuth) {
-    return redirectTo(request, "/chat");
+    return redirectTo(request, userRole?.value === "admin" ? "/dashboard" : "/chat");
   }
 
   return NextResponse.next();

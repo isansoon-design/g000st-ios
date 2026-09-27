@@ -1,6 +1,8 @@
 import 'dotenv/config';
 
 import { AuthService } from './auth/auth-service.js';
+import { AdminAnalyticsService } from './admin/admin-analytics.js';
+import { AdminDeskService } from './admin/admin-desk.js';
 import { FirestoreAuthStore } from './auth/firestore-auth-store.js';
 import { createApp } from './app.js';
 import { BillingService } from './billing/billing-service.js';
@@ -37,7 +39,8 @@ async function main(): Promise<void> {
   const environment = readEnvironment();
   const firestore = await createFirestore(environment.firebaseServiceAccountPath);
   const store = new FirestoreAuthStore(firestore, environment.collectionPrefix);
-  const authService = new AuthService(store, environment.recoveryPepper);
+  const adminDesk = new AdminDeskService(firestore, environment.collectionPrefix);
+  const authService = new AuthService(store, environment.recoveryPepper, Date.now, async () => (await adminDesk.getExperienceConfig()).pages.login !== false);
   const chatStore = new FirestoreChatStore(firestore, environment.collectionPrefix);
   const notificationStore = new FirestoreNotificationStore(
     firestore,
@@ -64,6 +67,8 @@ async function main(): Promise<void> {
   );
   const presenceService = new PresenceService(
     new FirestorePresenceStore(firestore, environment.collectionPrefix),
+    Date.now,
+    environment.trustGeoHeaders,
   );
   const contactsService = new ContactsService(
     contactsStore,
@@ -129,6 +134,8 @@ async function main(): Promise<void> {
   );
   const callingRelay = new CallingRelay(authService, callingService);
   const app = createApp({
+    adminAnalytics: new AdminAnalyticsService(firestore, environment.collectionPrefix),
+    adminDesk,
     allowedOrigins: environment.allowedOrigins,
     authService,
     billing,

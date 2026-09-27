@@ -3,6 +3,7 @@
 import { Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { sessionStorage, type SavedAccount } from "@/app/api/session-storage";
+import axios from "@/app/api/axios";
 
 import { useIdGate } from "@/features/auth/use-id-gate";
 
@@ -10,8 +11,10 @@ export default function LoginPage() {
   const idGate = useIdGate();
   const [accounts, setAccounts] = useState<SavedAccount[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [loginEnabled, setLoginEnabled] = useState(true);
 
   useEffect(() => { setAccounts(sessionStorage.listSavedAccounts()); }, []);
+  useEffect(() => { void axios.get<{ pages: Record<string, boolean> }>('/communication/experience').then(({ data }) => setLoginEnabled(data.pages.login !== false)).catch(() => undefined); }, []);
 
   async function selectAccount(account: SavedAccount) {
     setSelectedId(account.publicId);
@@ -36,6 +39,7 @@ export default function LoginPage() {
         <p className="mb-[22px] text-center text-xs font-bold leading-[17px] text-[#444] dark:text-night-text">
           By using the app you are agreeing to our Terms &amp; Conditions and Privacy Policy.
         </p>
+        {!loginEnabled && <p className="mb-4 rounded-xl bg-amber-100 p-3 text-center text-xs font-bold text-amber-900">Login is temporarily closed for regular users. Administrators can still sign in.</p>}
 
         {accounts.length > 0 && (
           <div className="mb-6">
@@ -95,7 +99,7 @@ export default function LoginPage() {
       <section className="w-full max-w-[400px] pb-[20px]">
         <button
           className="mt-3 h-[50px] w-full rounded-[14px] border-2 border-[#111] dark:border-night-border bg-transparent font-black text-[#111] dark:text-night-text active:opacity-70 disabled:opacity-60"
-          disabled={isBusy}
+          disabled={isBusy || !loginEnabled}
           onClick={idGate.requestRegistration}
           type="button"
         >

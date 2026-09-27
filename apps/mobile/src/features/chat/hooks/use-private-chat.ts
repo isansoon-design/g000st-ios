@@ -38,7 +38,7 @@ import {
   focusConversationNotifications,
 } from "@/services/notifications/chat-notification-presentation";
 
-const MESSAGE_RETENTION_MS = 2 * 60 * 60 * 1_000;
+const PRIVATE_MESSAGE_VISIBILITY_MS = 2 * 60 * 60 * 1_000;
 const MARKET_MESSAGE_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000;
 
 type ActiveConversation = Readonly<{
@@ -146,8 +146,7 @@ export function usePrivateChat(
   );
 
   useEffect(() => {
-    if (!activeConversation) return;
-    const timer = setInterval(() => setClockMs(Date.now()), 1_000);
+    const timer = setInterval(() => setClockMs(Date.now()), activeConversation ? 1_000 : 30_000);
     return () => clearInterval(timer);
   }, [activeConversation]);
 
@@ -253,22 +252,45 @@ export function usePrivateChat(
     },
   });
 
+  const activeIsMarket = conversationsQuery.data?.some((conversation) =>
+    conversation.conversationId === activeConversation?.conversationId && conversation.kind === 'market') ?? false;
+
   const displayMessages = useMemo(() => {
     const unique = new Map<string, ChatMessage>();
     const pages = messagesQuery.data?.pages ?? [];
     for (const page of [...pages].reverse()) {
       for (const message of page.messages) {
-        if (message.expiresAtMs > clockMs) unique.set(message.id, message);
+        if ((activeIsMarket || message.createdAtMs + PRIVATE_MESSAGE_VISIBILITY_MS > clockMs) &&
+          (message.expiresAtMs === undefined || message.expiresAtMs > clockMs)) {
+          unique.set(message.id, message);
+        }
       }
     }
     const serverMessages = [...unique.values()];
     const outstanding = outbox.filter(
-      (item) => !serverMessages.some((message) => message.id === item.id),
+      (item) => (item.expiresAtMs ?? item.createdAtMs + PRIVATE_MESSAGE_VISIBILITY_MS) > clockMs &&
+        !serverMessages.some((message) => message.id === item.id),
     );
     return [...serverMessages, ...outstanding] as readonly (
       ChatMessage | OutboxMessage
     )[];
-  }, [clockMs, messagesQuery.data?.pages, outbox]);
+  }, [activeIsMarket, clockMs, messagesQuery.data?.pages, outbox]);
+
+  const displayConversations = useMemo(() => (conversationsQuery.data ?? []).map((conversation) => {
+    if (conversation.kind === 'market') return conversation;
+    const cutoffMs = clockMs - PRIVATE_MESSAGE_VISIBILITY_MS;
+    return {
+      ...conversation,
+      ...(conversation.lastMessageCreatedAtMs !== undefined && conversation.lastMessageCreatedAtMs <= cutoffMs
+        ? { lastMessagePreview: '' }
+        : {}),
+      ...(conversation.firstUnreadCreatedAtMs !== undefined && conversation.firstUnreadCreatedAtMs <= cutoffMs
+        ? { firstUnreadMessageId: undefined, unreadCount: 0 }
+        : {}),
+    };
+  }), [clockMs, conversationsQuery.data]);
+  const visibleFirstUnreadMessageId = displayConversations.find((conversation) =>
+    conversation.conversationId === activeConversation?.conversationId)?.firstUnreadMessageId;
 
   const activeSummary = useMemo(
     () =>
@@ -280,7 +302,7 @@ export function usePrivateChat(
   );
 
   useEffect(() => {
-    const firstUnreadMessageId = activeConversation?.firstUnreadMessageId;
+    const firstUnreadMessageId = visibleFirstUnreadMessageId;
     if (
       !firstUnreadMessageId ||
       messagesQuery.isLoading ||
@@ -292,7 +314,7 @@ export function usePrivateChat(
     }
     void messagesQuery.fetchNextPage();
   }, [
-    activeConversation?.firstUnreadMessageId,
+    visibleFirstUnreadMessageId,
     displayMessages,
     messagesQuery,
   ]);
@@ -445,12 +467,12 @@ export function usePrivateChat(
       setOutbox((current) => [
         ...current,
         {
-          ...(burnAfterRead && !isMarket ? { burnAfterReadSeconds: 5 as const } : {}),
+          ...(burnAfterRead && !isMarket ? { burnAfterReadSeconds: 60 as const } : {}),
           clientMessageId,
           content,
           conversationId: activeConversation.conversationId,
           createdAtMs: nowMs,
-          expiresAtMs: nowMs + (isMarket ? MARKET_MESSAGE_RETENTION_MS : MESSAGE_RETENTION_MS),
+          ...(isMarket ? { expiresAtMs: nowMs + MARKET_MESSAGE_RETENTION_MS } : {}),
           id: clientMessageId,
           locked: false,
           senderPublicId: activePublicId,
@@ -590,12 +612,12 @@ export function usePrivateChat(
     closeConversation,
     deleteConversation: deleteConversationMutation.mutateAsync,
     closeNewChat,
-    conversations: conversationsQuery.data ?? [],
+    conversations: displayConversations,
     conversationsError: conversationsQuery.error
       ? errorMessage(conversationsQuery.error)
       : null,
     draft,
-    firstUnreadMessageId: activeConversation?.firstUnreadMessageId,
+    firstUnreadMessageId: visibleFirstUnreadMessageId,
     hasOlderMessages: Boolean(messagesQuery.hasNextPage),
     isLoadingConversations: conversationsQuery.isLoading,
     isFetchingConversations: conversationsQuery.isFetching,

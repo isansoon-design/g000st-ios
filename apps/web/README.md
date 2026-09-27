@@ -29,6 +29,7 @@ npm run build:web
 - `app/(auth)` — authentication and recovery flows.
 - `app/(user)` — user dashboard, private chat, social feed, contacts, and profile.
 - `app/(admin)` — administration dashboard, users, reports, and settings.
+- `/dashboard` — live overview; `/users` — real account management; `/client-desk` — client-inspired operations page; `/analytics` — live metrics; `/billing` — call/SMS credit balances and ledger. The old placeholder `/settings` page was removed. See `docs/ADMIN_DASHBOARD_V1_AR.md`.
 - `lib` and `app/api` — shared client integrations and typed API access.
 - `components` — reusable UI shared across routes.
 

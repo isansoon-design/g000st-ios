@@ -144,7 +144,7 @@ function MessageBubbleComponent({
   const hasBurnEffect = Boolean(message.burnAfterReadSeconds && !failed);
   const canPress = failed || message.locked;
   const canShowActions = mine && !failed && !pending;
-  const burnSecondsLeft = message.burnStartedAtMs
+  const burnSecondsLeft = message.burnStartedAtMs && message.expiresAtMs !== undefined
     ? Math.max(0, Math.ceil((message.expiresAtMs - nowMs) / 1_000))
     : null;
   const deliveryLabel =
@@ -172,7 +172,7 @@ function MessageBubbleComponent({
           canShowActions
             ? "Hold for two seconds to edit or delete message"
             : message.locked
-              ? "Opens this message for five seconds"
+              ? `Opens this message for ${message.burnAfterReadSeconds} seconds`
               : undefined
         }
         accessibilityRole={canPress || canShowActions ? "button" : undefined}
@@ -227,7 +227,7 @@ function MessageBubbleComponent({
               maxWidth: textMaxWidth,
             }}
           >
-            🔒 Tap to open · burns in 5s
+            {`🔒 Tap to open · burns in ${message.burnAfterReadSeconds}s`}
           </Text>
         ) : message.content ? (
           <BlurredMessageText
@@ -262,7 +262,7 @@ function MessageBubbleComponent({
             {message.burnAfterReadSeconds ? (
               <Text className="text-[10px] font-black text-white">
                 {burnSecondsLeft === null
-                  ? "🔥 Burn 5s"
+                  ? `🔥 Burn ${message.burnAfterReadSeconds}s`
                   : `🔥 ${burnSecondsLeft}s`}
               </Text>
             ) : null}
@@ -365,8 +365,8 @@ function ChatThreadComponent({
         ? "Disable Burn After Read?"
         : "Enable Burn After Read?",
       message: isCurrentlyOn
-        ? "Messages will no longer burn 5 seconds after they are opened."
-        : "Messages will burn 5 seconds after they are opened. Are you sure you want to enable this?",
+        ? "Messages will no longer burn 60 seconds after they are opened."
+        : "Messages will burn 60 seconds after they are opened. Are you sure you want to enable this?",
       confirmLabel: isCurrentlyOn ? "Disable" : "Enable",
       isDangerous: !isCurrentlyOn,
     });
@@ -542,7 +542,7 @@ function ChatThreadComponent({
             className="text-[11px] font-bold"
             style={{ color: colors.muted }}
           >
-            {conversationKind === "market" ? "MARKET CHAT" : ""}
+            {conversationKind === "market" ? "Trading CHAT" : ""}
           </Text>
           <Text
             className="font-mono text-[12px] font-black"
@@ -846,9 +846,10 @@ function ChatThreadComponent({
               className="pt-0.5 text-center text-[10px] font-bold leading-3 my-0.5"
               style={{ color: colors.muted }}
             >
-              messages will be burned in{" "}
-              {conversationKind === "market" ? "30 days" : "2 hours"}{" "}
-              automatically... screenshot NOT available
+              {conversationKind === "market"
+                ? "Market messages are removed after 30 days."
+                : "Regular messages disappear from this phone after 2 hours and remain available on the web."}{" "}
+              screenshot NOT available
             </Text>
           </View>
         )}

@@ -49,14 +49,14 @@ export const chatMessageSchema = z.object({
     )
     .max(3)
     .optional(),
-  burnAfterReadSeconds: z.literal(5).optional(),
+  burnAfterReadSeconds: z.union([z.literal(5), z.literal(60)]).optional(),
   burnStartedAtMs: z.number().int().positive().optional(),
   clientMessageId: z.string().uuid(),
   content: z.string().max(4_000),
   conversationId: conversationIdSchema,
   createdAtMs: z.number().int().positive(),
   editedAtMs: z.number().int().positive().optional(),
-  expiresAtMs: z.number().int().positive(),
+  expiresAtMs: z.number().int().positive().optional(),
   id: z.string().uuid(),
   locked: z.boolean(),
   readAtMs: z.number().int().positive().optional(),

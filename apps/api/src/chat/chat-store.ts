@@ -53,6 +53,7 @@ export interface ChatStore {
     limit: number,
     nowMs: number,
     cursor?: ChatMessageCursor,
+    visibleAfterMs?: number,
   ): Promise<ChatMessagePage>;
   markRead(conversationId: string, publicId: string, readAtMs: number): Promise<ChatReadState>;
   openBurnMessage(

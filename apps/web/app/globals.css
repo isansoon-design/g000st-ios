@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+.admin-feature-scope[data-admin-hidden~="mypage.cover"] [data-admin-part="mypage.cover"],
+.admin-feature-scope[data-admin-hidden~="mypage.avatar"] [data-admin-part="mypage.avatar"],
+.admin-feature-scope[data-admin-hidden~="mypage.id"] [data-admin-part="mypage.id"],
+.admin-feature-scope[data-admin-hidden~="mypage.profile"] [data-admin-part="mypage.profile"],
+.admin-feature-scope[data-admin-hidden~="mypage.showname"] [data-admin-part="mypage.showname"],
+.admin-feature-scope[data-admin-hidden~="centre.composer"] [data-admin-part="centre.composer"],
+.admin-feature-scope[data-admin-hidden~="centre.feed"] [data-admin-part="centre.feed"],
+.admin-feature-scope[data-admin-hidden~="centre.whisper"] [data-admin-part="centre.whisper"],
+.admin-feature-scope[data-admin-hidden~="network.search"] [data-admin-part="network.search"],
+.admin-feature-scope[data-admin-hidden~="network.list"] [data-admin-part="network.list"],
+.admin-feature-scope[data-admin-hidden~="whisper.chat"] [data-admin-part="whisper.chat"],
+.admin-feature-scope[data-admin-hidden~="whisper.call"] [data-admin-part="whisper.call"],
+.admin-feature-scope[data-admin-hidden~="trading.list"] [data-admin-part="trading.list"],
+.admin-feature-scope[data-admin-hidden~="trading.sell"] [data-admin-part="trading.sell"],
+.admin-feature-scope[data-admin-hidden~="mobile.dial"] [data-admin-part="mobile.dial"],
+.admin-feature-scope[data-admin-hidden~="mobile.sms"] [data-admin-part="mobile.sms"],
+.admin-feature-scope[data-admin-hidden~="mobile.buy"] [data-admin-part="mobile.buy"] {
+  display: none !important;
+}
+
 :root {
   color-scheme: light;
   --app-canvas: #D8D8D8;

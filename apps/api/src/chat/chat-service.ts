@@ -5,7 +5,7 @@ import { ApiError } from '../http/api-error.js';
 import { decodeChatCursor } from './chat-cursor.js';
 import {
   CHAT_BURN_AFTER_READ_SECONDS,
-  CHAT_MESSAGE_RETENTION_MS,
+  CHAT_PRIVATE_MESSAGE_MOBILE_VISIBILITY_MS,
   MARKET_CHAT_MESSAGE_RETENTION_MS,
 } from './chat-policy.js';
 import type { MarketStore } from '../market/market-store.js';
@@ -76,23 +76,25 @@ export class ChatService {
   async listConversations(
     publicId: string,
     limit: number,
+    view: 'web' | 'mobile' = 'web',
   ): Promise<readonly ChatConversationSummary[]> {
-    const summaries = await this.store.listConversations(publicId, limit, this.now());
+    const nowMs = this.now();
+    const summaries = await this.store.listConversations(publicId, limit, nowMs);
     return await Promise.all(
       summaries.map(async (summary) => {
-        const retentionMs = summary.kind === 'market'
-          ? MARKET_CHAT_MESSAGE_RETENTION_MS
-          : CHAT_MESSAGE_RETENTION_MS;
-        const lastMessagePreview = summary.lastMessageCreatedAtMs !== undefined &&
-          summary.lastMessageCreatedAtMs + retentionMs <= this.now()
+        const visibleSummary = view === 'mobile' && summary.kind === 'private'
+          ? await this.forMobileSummary(summary, nowMs)
+          : summary;
+        const lastMessagePreview = summary.kind === 'market' && summary.lastMessageCreatedAtMs !== undefined &&
+          summary.lastMessageCreatedAtMs + MARKET_CHAT_MESSAGE_RETENTION_MS <= nowMs
           ? ''
-          : summary.lastMessagePreview;
+          : visibleSummary.lastMessagePreview;
         const active = await this.authStore.isUserActive(summary.participantPublicId);
         const participantDisplayName = active
           ? await this.identityProvider?.getPublicDisplayName(summary.participantPublicId)
           : undefined;
         return {
-          ...summary,
+          ...visibleSummary,
           lastMessagePreview,
           ...(participantDisplayName ? { participantDisplayName } : {}),
           participantStatus: active ? ('active' as const) : ('deleted' as const),
@@ -111,15 +113,20 @@ export class ChatService {
     conversationId: string,
     limit: number,
     cursorValue?: string,
+    view: 'web' | 'mobile' = 'web',
   ): Promise<ChatMessagePage> {
     const conversation = await this.requireParticipant(publicId, conversationId);
     const participantPublicId = conversation.participants.find((id) => id !== publicId)!;
+    const nowMs = this.now();
     const [page, participantSummary] = await Promise.all([
       this.store.listMessages(
         conversationId,
         limit,
-        this.now(),
+        nowMs,
         decodeChatCursor(cursorValue),
+        view === 'mobile' && conversation.kind === 'private'
+          ? nowMs - CHAT_PRIVATE_MESSAGE_MOBILE_VISIBILITY_MS
+          : undefined,
       ),
       this.store.findConversationMember(participantPublicId, conversationId),
     ]);
@@ -193,9 +200,9 @@ export class ChatService {
       content,
       conversationId,
       createdAtMs: nowMs,
-      expiresAtMs: nowMs + (conversation.kind === 'market'
-        ? MARKET_CHAT_MESSAGE_RETENTION_MS
-        : CHAT_MESSAGE_RETENTION_MS),
+      ...(conversation.kind === 'market'
+        ? { expiresAtMs: nowMs + MARKET_CHAT_MESSAGE_RETENTION_MS }
+        : {}),
       id: clientMessageId,
       locked: false,
       senderPublicId: publicId,
@@ -212,7 +219,7 @@ export class ChatService {
     ) {
       throw new ApiError(409, 'MESSAGE_ID_CONFLICT', 'This message retry does not match the original.');
     }
-    if (stored.expiresAtMs <= nowMs) {
+    if (stored.expiresAtMs !== undefined && stored.expiresAtMs <= nowMs) {
       throw new ApiError(410, 'MESSAGE_EXPIRED', 'This message has expired.');
     }
 
@@ -269,7 +276,7 @@ export class ChatService {
   ) {
     await this.requireParticipant(publicId, conversationId);
     const message = await this.store.findMessage(conversationId, messageId);
-    if (!message || message.expiresAtMs <= this.now()) {
+    if (!message || (message.expiresAtMs !== undefined && message.expiresAtMs <= this.now())) {
       throw new ApiError(404, 'MESSAGE_NOT_FOUND', 'Message not found or already expired.');
     }
     const attachment = message.attachments?.find((item) => item.id === attachmentId);
@@ -329,6 +336,53 @@ export class ChatService {
       ? { ...message, content: '', locked: true }
       : { ...message, locked: false };
     return readAtMs === undefined ? visible : { ...visible, readAtMs };
+  }
+
+  private async forMobileSummary(
+    summary: ChatConversationMemberSummary,
+    nowMs: number,
+  ): Promise<ChatConversationMemberSummary> {
+    const cutoffMs = nowMs - CHAT_PRIVATE_MESSAGE_MOBILE_VISIBILITY_MS;
+    const lastMessagePreview = summary.lastMessageCreatedAtMs !== undefined &&
+      summary.lastMessageCreatedAtMs <= cutoffMs ? '' : summary.lastMessagePreview;
+    if (summary.unreadCount === 0 ||
+      (summary.firstUnreadCreatedAtMs !== undefined && summary.firstUnreadCreatedAtMs > cutoffMs)) {
+      return { ...summary, lastMessagePreview };
+    }
+    if (summary.lastMessageCreatedAtMs === undefined || summary.lastMessageCreatedAtMs <= cutoffMs) {
+      return {
+        ...summary,
+        firstUnreadCreatedAtMs: undefined,
+        firstUnreadExpiresAtMs: undefined,
+        firstUnreadMessageId: undefined,
+        lastMessagePreview,
+        unreadCount: 0,
+      };
+    }
+
+    let cursor: string | undefined;
+    let unreadCount = 0;
+    let firstUnread: ChatMessage | undefined;
+    do {
+      const page = await this.store.listMessages(summary.conversationId, 100, nowMs, decodeChatCursor(cursor), cutoffMs);
+      const unread = page.messages.filter((message) =>
+        message.senderPublicId === summary.participantPublicId &&
+        (summary.lastReadAtMs === undefined || summary.lastReadMessageId === undefined ||
+          message.createdAtMs > summary.lastReadAtMs ||
+          (message.createdAtMs === summary.lastReadAtMs && message.id > summary.lastReadMessageId)));
+      unreadCount += unread.length;
+      if (unread.length) firstUnread = unread[0];
+      cursor = page.nextCursor;
+    } while (cursor);
+
+    return {
+      ...summary,
+      firstUnreadCreatedAtMs: firstUnread?.createdAtMs,
+      firstUnreadExpiresAtMs: firstUnread?.expiresAtMs,
+      firstUnreadMessageId: firstUnread?.id,
+      lastMessagePreview,
+      unreadCount,
+    };
   }
 
   private async requireParticipant(

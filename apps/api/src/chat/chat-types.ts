@@ -31,14 +31,14 @@ export type ChatConversationSummary = ChatConversationMemberSummary &
 
 export type ChatMessage = Readonly<{
   attachments?: readonly ChatAttachment[];
-  burnAfterReadSeconds?: 5;
+  burnAfterReadSeconds?: 5 | 60;
   burnStartedAtMs?: number;
   clientMessageId: string;
   content: string;
   conversationId: string;
   createdAtMs: number;
   editedAtMs?: number;
-  expiresAtMs: number;
+  expiresAtMs?: number;
   id: string;
   locked: boolean;
   readAtMs?: number;

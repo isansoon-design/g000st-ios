@@ -6,10 +6,16 @@ export class PresenceService {
   constructor(
     private readonly store: PresenceStore,
     private readonly now: () => number = Date.now,
+    private readonly trustGeoHeaders = false,
   ) {}
 
-  heartbeat(publicId: string): Promise<void> {
-    return this.store.setLastActive(publicId, this.now());
+  heartbeat(publicId: string, headers?: Readonly<{ country?: string; city?: string }>): Promise<void> {
+    const country = headers?.country?.trim().toUpperCase();
+    const rawCity = headers?.city?.trim();
+    const geo = this.trustGeoHeaders && country && /^[A-Z]{2}$/.test(country)
+      ? { country, ...(rawCity && rawCity.length <= 100 && !/[\u0000-\u001F<>]/.test(rawCity) ? { city: rawCity } : {}) }
+      : undefined;
+    return this.store.setLastActive(publicId, this.now(), geo);
   }
 
   async isOnlineMany(publicIds: readonly string[]): Promise<ReadonlyMap<string, boolean>> {

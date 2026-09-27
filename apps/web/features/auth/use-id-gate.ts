@@ -90,7 +90,7 @@ export function useIdGate() {
           throw error;
         }
         try { sessionStorage.updateSavedProfile(await getSocialProfile(result.user.publicId)); } catch { /* Profile is optional during sign in. */ }
-        window.location.replace("/social");
+        window.location.replace(result.user.role === 'admin' ? '/dashboard' : '/social');
       } catch (error) {
         toast.error(toApiError(error).message);
       } finally {

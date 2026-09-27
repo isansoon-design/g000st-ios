@@ -264,6 +264,7 @@ export default function ProfilePage() {
             <>
               {isPage && <p className="mb-3 text-center text-xs font-bold text-black/55 dark:text-night-muted">You are interacting as this page. Its owner is not shown publicly.</p>}
               <button
+                data-admin-part="mypage.cover"
                 aria-label={profile?.coverUrl ? "Change cover photo" : "Add cover photo"}
                 className="relative mb-4 h-44 w-full overflow-hidden rounded-[22px] bg-[#171d29] text-left transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C62828] disabled:opacity-60"
                 disabled={uploadingCover || uploadingPhoto}
@@ -297,6 +298,7 @@ export default function ProfilePage() {
               <input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" disabled={uploadingCover || uploadingPhoto} onChange={(event) => { void onCoverChange(event); }} />
               {/* Photo */}
               <button
+                data-admin-part="mypage.avatar"
                 aria-label="Change profile photo"
                 disabled={uploadingPhoto || uploadingCover}
                 onClick={() => photoInputRef.current?.click()}
@@ -327,7 +329,7 @@ export default function ProfilePage() {
                     placeholder="Add your name"
                     value={fields.displayName}
                   />
-                  <div className="flex shrink-0 flex-col items-center">
+                  <div data-admin-part="mypage.showname" className="flex shrink-0 flex-col items-center">
                     <span className="mb-1 text-[10px] font-black text-black/55 dark:text-night-muted">Show name</span>
                     <button
                       aria-checked={isPage || fields.showDisplayName}
@@ -348,7 +350,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Public ID */}
-              <div className={`mb-3 w-full ${cardClass}`}>
+              <div data-admin-part="mypage.id" className={`mb-3 w-full ${cardClass}`}>
                 <div className={labelClass}>Your Public ID</div>
                 <div className="mb-3 break-all font-mono text-[13px] font-black leading-[19px] text-[#C62828]">
                   {publicId}
@@ -369,7 +371,7 @@ export default function ProfilePage() {
 
 
               {/* Optional profile */}
-              <div className={`mb-3 w-full ${cardClass}`}>
+              <div data-admin-part="mypage.profile" className={`mb-3 w-full ${cardClass}`}>
                 <div className={labelClass}>{isPage ? 'Page description' : 'Optional profile'}</div>
 
                 {!isPage && <>

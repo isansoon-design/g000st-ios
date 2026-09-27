@@ -1,5 +1,10 @@
 # g000st Mobile API Contract — Draft v1
 
+Admin dashboard extension: [`ADMIN_DASHBOARD_V1_AR.md`](ADMIN_DASHBOARD_V1_AR.md) defines
+`/api/v1/admin/*` metrics and operations plus `/api/v1/communication/*`. Admin operations
+require an access token whose current account role is `admin`; the public experience config
+endpoint does not grant any write access.
+
 This is the mobile contract for extending the existing backend. It is not a proposal to
 replace or rebuild that backend. Endpoint names can be mapped to existing server naming
 before implementation, but the security semantics below must remain the same.

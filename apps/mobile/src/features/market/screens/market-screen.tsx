@@ -38,6 +38,7 @@ import {
 } from "@/api/market";
 import { toggleSocialCamp } from "@/api/social";
 import { FeatureScreen } from "@/components/layout/feature-screen";
+import { PostImage } from "@/components/media/post-image";
 import type {
   MarketComment,
   MarketPost,
@@ -325,7 +326,7 @@ export function MarketScreen() {
             active={view === "mine"}
             onPress={() => setView("mine")}
           />
-          <ViewButton label="Market Chats" active={false} onPress={() => router.push({ pathname: '/(app)/(tabs)/chat', params: { kind: 'market' } })} />
+          <ViewButton label="Trading Chats" active={false} onPress={() => router.push({ pathname: '/(app)/(tabs)/chat', params: { kind: 'market' } })} />
         </View>
       </View>
       <Modal
@@ -683,14 +684,11 @@ function MarketCard({
         item.kind === "video" ? (
           <MarketVideo key={item.id} uri={item.url} />
         ) : (
-          <Image
+          <PostImage
             key={item.id}
-            source={{ uri: item.url }}
-            style={{
-              width: "100%",
-              height: post.media?.length === 2 ? 224 : 320,
-            }}
-            contentFit="cover"
+            uri={item.url}
+            contentType={item.contentType}
+            height={post.media?.length === 2 ? 224 : 320}
           />
         ),
       )}

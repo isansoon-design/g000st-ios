@@ -48,6 +48,7 @@ import {
   uploadSocialMedia,
 } from "@/api/social";
 import { FeatureScreen } from "@/components/layout/feature-screen";
+import { PostImage } from "@/components/media/post-image";
 import type {
   SocialAlert,
   SocialComment,
@@ -797,7 +798,7 @@ function SuggestedPeople({
               </View>
               <Text
                 numberOfLines={1}
-                className="mt-2 w-full text-center text-sm font-bold"
+                className="mt-2 w-full text-center text-sm font-bold text-black dark:text-night-muted"
               >
                 {person.displayName}
               </Text>
@@ -949,14 +950,11 @@ function PostCard({
         item.kind === "video" ? (
           <SocialVideo key={item.id} uri={item.url} />
         ) : (
-          <Image
+          <PostImage
             key={item.id}
-            source={{ uri: item.url }}
-            contentFit="cover"
-            style={{
-              width: "100%",
-              height: post.media?.length === 2 ? 224 : 320,
-            }}
+            uri={item.url}
+            contentType={item.contentType}
+            height={post.media?.length === 2 ? 224 : 320}
           />
         ),
       )}
@@ -1008,14 +1006,11 @@ function SharedPostPreview({
           item.kind === "video" ? (
             <SocialVideo key={item.id} uri={item.url} />
           ) : (
-            <Image
+            <PostImage
               key={item.id}
-              source={{ uri: item.url }}
-              contentFit="cover"
-              style={{
-                width: "100%",
-                height: sharedPost.media?.length === 2 ? 180 : 260,
-              }}
+              uri={item.url}
+              contentType={item.contentType}
+              height={sharedPost.media?.length === 2 ? 180 : 260}
             />
           ),
         )}

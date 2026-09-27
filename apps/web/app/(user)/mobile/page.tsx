@@ -290,7 +290,7 @@ export default function MobilePage() {
 
       {/* KEYPAD TAB */}
       {tab === "keypad" && (
-        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div data-admin-part="mobile.dial" style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div style={{ textAlign: "center", fontSize: 30, fontWeight: 800, letterSpacing: "0.04em", color: "var(--app-text)", minHeight: 44, padding: "10px 16px 4px" }}>
             {dialDisplay === "g000st" ? <Brand /> : dialDisplay}
           </div>
@@ -354,7 +354,7 @@ export default function MobilePage() {
 
       {/* SMS TAB */}
       {tab === "sms" && (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "12px 16px 16px", overflowY: "auto" }}>
+        <div data-admin-part="mobile.sms" style={{ flex: 1, display: "flex", flexDirection: "column", padding: "12px 16px 16px", overflowY: "auto" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ fontWeight: 900, fontSize: 22 }}>SMS</div>
             <button style={{
@@ -409,7 +409,7 @@ export default function MobilePage() {
 
       {/* PLANS TAB */}
       {tab === "plans" && (
-        <div style={{ flex: 1, overflowY: "auto", padding: "8px 16px 24px", background: "var(--tone-bg-f3f3f3)" }}>
+        <div data-admin-part="mobile.buy" style={{ flex: 1, overflowY: "auto", padding: "8px 16px 24px", background: "var(--tone-bg-f3f3f3)" }}>
           <div style={{ textAlign: "center", fontWeight: 800, fontSize: 11, letterSpacing: "0.12em", color: "var(--tone-fg-c62828)", margin: "6px 0 14px" }}>
             NO TRACE · PRIVATE · NO RECORDING
           </div>

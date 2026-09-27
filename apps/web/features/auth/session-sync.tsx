@@ -10,7 +10,7 @@ export function SessionSync() {
     const checkSession = () => {
       const nextUserId = sessionStorage.get()?.user.publicId ?? null;
       if (nextUserId !== currentUserId) {
-        window.location.replace(nextUserId ? "/social" : "/login");
+        window.location.replace(nextUserId ? (sessionStorage.get()?.user.role === 'admin' ? '/dashboard' : '/social') : '/login');
       }
     };
     const onStorage = (event: StorageEvent) => {

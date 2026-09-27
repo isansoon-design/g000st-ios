@@ -43,6 +43,7 @@ import {
   type SocialVisibility,
 } from "@/app/api/social";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
+import { PostImage } from "@/components/media/PostImage";
 import { startChatConversation } from "@/features/chat/api";
 
 type View = "home" | "mine" | "alerts";
@@ -277,7 +278,7 @@ export default function SocialPage() {
       </header>
       <main ref={feedScrollRef} className="min-h-0 flex-1 overflow-y-auto">
         {view !== "alerts" && (
-          <div className="border-b border-black/10 dark:border-night-border bg-white/80 dark:bg-night-surface p-4">
+          <div data-admin-part="centre.composer" className="border-b border-black/10 dark:border-night-border bg-white/80 dark:bg-night-surface p-4">
             <textarea
               className="min-h-24 w-full resize-none rounded-2xl border border-black/15 dark:border-night-border bg-white dark:bg-night-surface p-3 outline-none"
               value={draft}
@@ -356,7 +357,7 @@ export default function SocialPage() {
         {view === "alerts" ? (
           <Alerts alerts={alerts} />
         ) : (
-          <div className="mx-auto max-w-2xl space-y-3 p-3">
+          <div data-admin-part="centre.feed" className="mx-auto max-w-2xl space-y-3 p-3">
             {view === "mine" && profile && (
               <ProfileEditor
                 profile={profile}
@@ -544,10 +545,9 @@ export default function SocialPage() {
                           className="max-h-[32rem] w-full bg-black object-contain"
                         />
                       ) : (
-                        <img
+                        <PostImage
                           key={item.id}
                           src={item.url}
-                          alt=""
                           className="max-h-[32rem] h-full w-full object-cover"
                         />
                       ),
@@ -630,6 +630,7 @@ export default function SocialPage() {
                   </button>
                   {post.ownerPublicId && !post.ownedByViewer && (
                     <button
+                      data-admin-part="centre.whisper"
                       className="flex-1 rounded-xl py-3 font-black"
                       onClick={() => void openChat(post.ownerPublicId)}
                     >
@@ -787,10 +788,9 @@ function SharedPostPreview({
                 className="max-h-80 w-full bg-black object-contain"
               />
             ) : (
-              <img
+              <PostImage
                 key={item.id}
                 src={item.url}
-                alt=""
                 className="max-h-80 w-full object-cover"
               />
             ),

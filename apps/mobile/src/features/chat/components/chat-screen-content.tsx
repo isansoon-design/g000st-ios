@@ -78,7 +78,7 @@ function ChatScreenContentComponent() {
             </Pressable>
           </View>
           <Text className="pt-0.5 text-center text-[10px] font-bold leading-3 text-black/40 dark:text-night-muted">
-            messages will be burned in 2 hours automatically... screenshot NOT available
+            Regular messages disappear from this phone after 2 hours and remain available on the web. screenshot NOT available
           </Text>
         </View>
       </KeyboardAwareScroll>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import { adjustAdminBalance, getAdminBalance, getAdminLedger } from "@/app/api/admin-billing";
+import { getAdminBillingRecent, type AdminBillingRecentV1 } from "@/app/api/admin-desk";
 import { toApiError } from "@/app/api/api-error";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
 import type { Balance, LedgerEvent } from "@/features/mobile/types";
@@ -41,6 +42,14 @@ export default function AdminBillingPage() {
   const [adjustSms, setAdjustSms] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
   const [adjusting, setAdjusting] = useState(false);
+  const [overview, setOverview] = useState<AdminBillingRecentV1 | null>(null);
+  const [overviewError, setOverviewError] = useState("");
+
+  const refreshOverview = useCallback(async () => {
+    try { setOverview(await getAdminBillingRecent()); setOverviewError(""); }
+    catch (error) { setOverviewError(toApiError(error).message); }
+  }, []);
+  useEffect(() => { void refreshOverview(); }, [refreshOverview]);
 
   const load = useCallback(async (publicId: string) => {
     setLoading(true);
@@ -121,22 +130,28 @@ export default function AdminBillingPage() {
       setAdjustSms("");
       setAdjustReason("");
       await load(lookedUpPublicId);
+      await refreshOverview();
       toast.success("Balance adjusted.");
     } catch (error) {
       toast.error(toApiError(error).message);
     } finally {
       setAdjusting(false);
     }
-  }, [adjustMinutes, adjustReason, adjustSms, confirm, load, lookedUpPublicId]);
+  }, [adjustMinutes, adjustReason, adjustSms, confirm, load, lookedUpPublicId, refreshOverview]);
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-night-canvas overflow-auto">
       <div className="bg-white dark:bg-night-surface border-b border-gray-200 dark:border-night-border px-6 py-4 sticky top-0 z-10">
-        <h2 className="text-lg font-semibold">Billing</h2>
-        <p className="text-sm text-gray-600 dark:text-night-muted">Look up a user&apos;s call/SMS credit balance and ledger by Public ID.</p>
+        <h2 className="text-lg font-semibold">Call &amp; SMS credits</h2>
+        <p className="text-sm text-gray-600 dark:text-night-muted">Real prepaid balances and ledger for external calls and SMS. In-app calls remain free.</p>
       </div>
 
       <div className="p-6 max-w-3xl w-full space-y-6">
+        <section className="rounded-lg border border-gray-200 bg-white p-5 dark:border-night-border dark:bg-night-surface">
+          <div className="flex items-center justify-between gap-3"><div><h3 className="text-lg font-bold">Recent balances</h3><p className="text-xs text-gray-500 dark:text-night-muted">Accounts with recorded credit activity: {overview?.accountCount ?? "—"}</p></div><button onClick={() => void refreshOverview()} className="rounded-lg border px-3 py-2 text-xs font-bold dark:border-night-border">Refresh</button></div>
+          {overviewError && <p role="alert" className="mt-3 text-sm text-red-600">{overviewError}</p>}
+          {overview?.balances.length ? <div className="mt-4 space-y-2">{overview.balances.map((item) => <button key={item.publicId} onClick={() => { setPublicIdInput(item.publicId); void load(item.publicId); }} className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-200 p-3 text-left hover:bg-gray-50 dark:border-night-border dark:hover:bg-white/10"><code className="max-w-[210px] truncate text-xs" title={item.publicId}>{item.publicId}</code><span className="text-xs">{formatSeconds(item.voiceSecondsRemaining)} · {item.smsRemaining} SMS</span><span className="text-xs text-gray-500">{new Date(item.updatedAtMs).toLocaleString()}</span></button>)}</div> : overview && <p className="mt-4 text-sm text-gray-500">No credit activity recorded yet. You can still look up an account below.</p>}
+        </section>
         <div className="flex gap-2">
           <input
             type="text"

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SupportContactForm } from "@/features/admin/support-contact-form";
 
 export const metadata: Metadata = {
   title: "Support | g000st",
@@ -42,6 +43,7 @@ export default function SupportPage() {
           <p className="text-sm text-gray-500 dark:text-night-muted mt-8">
             We aim to respond to all inquiries within 24-48 hours.
           </p>
+          <SupportContactForm />
         </div>
       </div>
     </div>

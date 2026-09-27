@@ -2,6 +2,9 @@ import { RTCView } from '@livekit/react-native-webrtc';
 import { Image } from 'expo-image';
 import { memo, useEffect, useState } from 'react';
 import { ImageBackground, Modal, Pressable, Text, View } from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { clamp, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { CallUiState } from '@/features/calling/call-manager';
 
@@ -14,6 +17,74 @@ type CallOverlayProps = Readonly<{
   onToggleCamera: () => void;
   peerProfile: Readonly<{ displayName?: string; avatarUrl?: string }> | null;
 }>;
+
+type ViewportSize = Readonly<{ width: number; height: number }>;
+
+const PREVIEW_WIDTH = 112;
+const PREVIEW_HEIGHT = 160;
+
+function DraggableLocalPreview({ streamURL, viewport }: Readonly<{ streamURL: string; viewport: ViewportSize }>) {
+  const insets = useSafeAreaInsets();
+  const availableX = Math.max(0, viewport.width - PREVIEW_WIDTH);
+  const availableY = Math.max(0, viewport.height - PREVIEW_HEIGHT);
+  const minX = Math.min(Math.max(12, insets.left + 8), availableX);
+  const maxX = Math.max(minX, availableX - Math.max(12, insets.right + 8));
+  const minY = Math.min(Math.max(12, insets.top + 8), availableY);
+  const bottomClearance = Math.max(insets.bottom + 96, Math.min(180, Math.max(96, viewport.height * 0.2)));
+  const maxY = Math.max(minY, availableY - bottomClearance);
+
+  const x = useSharedValue(clamp(availableX - 20, minX, maxX));
+  const y = useSharedValue(clamp(availableY - 180, minY, maxY));
+  const dragStartX = useSharedValue(0);
+  const dragStartY = useSharedValue(0);
+
+  useEffect(() => {
+    x.set((current) => clamp(current, minX, maxX));
+    y.set((current) => clamp(current, minY, maxY));
+  }, [maxX, maxY, minX, minY, x, y]);
+
+  const pan = Gesture.Pan()
+    .minDistance(2)
+    .onStart(() => {
+      dragStartX.set(x.get());
+      dragStartY.set(y.get());
+    })
+    .onUpdate((event) => {
+      x.set(clamp(dragStartX.get() + event.translationX, minX, maxX));
+      y.set(clamp(dragStartY.get() + event.translationY, minY, maxY));
+    });
+
+  const positionStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.get() }, { translateY: y.get() }],
+  }));
+
+  return (
+    <GestureDetector gesture={pan}>
+      <Animated.View
+        accessibilityLabel="Move camera preview"
+        collapsable={false}
+        pointerEvents="box-only"
+        style={[
+          {
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: PREVIEW_WIDTH,
+            height: PREVIEW_HEIGHT,
+            zIndex: 20,
+            elevation: 20,
+            backgroundColor: '#000000',
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.3)',
+          },
+          positionStyle,
+        ]}
+      >
+        <RTCView mirror objectFit="cover" pointerEvents="none" streamURL={streamURL} style={{ flex: 1 }} zOrder={2} />
+      </Animated.View>
+    </GestureDetector>
+  );
+}
 
 function shortId(publicId: string): string {
   return publicId.slice(0, 8);
@@ -82,6 +153,7 @@ function CallOverlayComponent({
   onToggleCamera,
   peerProfile,
 }: CallOverlayProps) {
+  const [viewport, setViewport] = useState<ViewportSize>({ width: 0, height: 0 });
   if (state.phase === 'idle') return null;
 
   const displayName = peerProfile?.displayName || state.peerDisplayName;
@@ -90,7 +162,15 @@ function CallOverlayComponent({
 
   return (
     <Modal animationType="fade" transparent visible>
-      <View className="flex-1 overflow-hidden bg-[#090909]">
+      <GestureHandlerRootView
+        style={{ flex: 1, overflow: 'hidden', backgroundColor: '#090909' }}
+        onLayout={(event) => {
+          const { width, height } = event.nativeEvent.layout;
+          setViewport((current) =>
+            current.width === width && current.height === height ? current : { width, height },
+          );
+        }}
+      >
         {avatarUrl && !hasRemoteVideo ? (
           <ImageBackground
             blurRadius={28}
@@ -167,26 +247,10 @@ function CallOverlayComponent({
         {(state.phase === 'in-call' || state.phase === 'ringing-outgoing') &&
         state.media === 'video' &&
         (state.phase !== 'in-call' || state.isCameraOn) &&
-        state.localStreamUrl ? (
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              right: 20,
-              bottom: 180,
-              width: 112,
-              height: 160,
-              zIndex: 20,
-              elevation: 20,
-              backgroundColor: '#000000',
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.3)',
-            }}
-          >
-            <RTCView mirror objectFit="cover" streamURL={state.localStreamUrl} style={{ flex: 1 }} zOrder={2} />
-          </View>
+        state.localStreamUrl && viewport.width > 0 && viewport.height > 0 ? (
+          <DraggableLocalPreview streamURL={state.localStreamUrl} viewport={viewport} />
         ) : null}
-      </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }

@@ -5,8 +5,8 @@ import type { PresenceStore } from './presence-store.js';
 export class FirestorePresenceStore implements PresenceStore {
   constructor(private readonly db: Firestore, private readonly prefix: string) {}
 
-  async setLastActive(publicId: string, nowMs: number): Promise<void> {
-    await this.presence().doc(publicId).set({ lastActiveAtMs: nowMs }, { merge: true });
+  async setLastActive(publicId: string, nowMs: number, geo?: Readonly<{ country: string; city?: string }>): Promise<void> {
+    await this.presence().doc(publicId).set({ lastActiveAtMs: nowMs, ...(geo ? { ...geo, geoRecordedAtMs: nowMs } : {}) }, { merge: true });
   }
 
   async getLastActiveMany(publicIds: readonly string[]): Promise<ReadonlyMap<string, number>> {

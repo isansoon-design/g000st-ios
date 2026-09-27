@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { CreditCard, Users, Settings, LogOut, Menu } from "lucide-react";
+import { CreditCard, Users, Settings, LogOut, Menu, BarChart3, PanelsTopLeft } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/context/ThemeContext";
+import { logout } from "@/app/api/auth";
 
 export default function AdminLayout({
   children,
@@ -33,7 +34,7 @@ export default function AdminLayout({
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <button className="p-2 hover:bg-gray-100 rounded-lg dark:hover:bg-white/10" aria-label="Log out">
+          <button className="p-2 hover:bg-gray-100 rounded-lg dark:hover:bg-white/10" aria-label="Log out" onClick={() => { logout(); window.location.replace('/login'); }}>
             <LogOut className="w-5 h-5" />
           </button>
         </div>
@@ -62,6 +63,12 @@ export default function AdminLayout({
               <Users className="w-5 h-5" />
               <span>Users</span>
             </Link>
+            <Link href="/client-desk" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 rounded-lg px-4 py-2 text-gray-700 hover:bg-gray-100 dark:text-night-muted dark:hover:bg-white/10">
+              <PanelsTopLeft className="h-5 w-5" /><span>Client desk</span>
+            </Link>
+            <Link href="/analytics" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 rounded-lg px-4 py-2 text-gray-700 hover:bg-gray-100 dark:text-night-muted dark:hover:bg-white/10">
+              <BarChart3 className="h-5 w-5" /><span>Analytics</span>
+            </Link>
             <Link
               href="/billing"
               onClick={() => setIsSidebarOpen(false)}
@@ -69,14 +76,6 @@ export default function AdminLayout({
             >
               <CreditCard className="w-5 h-5" />
               <span>Billing</span>
-            </Link>
-            <Link
-              href="/settings"
-              onClick={() => setIsSidebarOpen(false)}
-              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-night-muted"
-            >
-              <Settings className="w-5 h-5" />
-              <span>Settings</span>
             </Link>
           </div>
         </nav>

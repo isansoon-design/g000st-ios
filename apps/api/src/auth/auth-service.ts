@@ -28,9 +28,13 @@ export class AuthService {
     private readonly store: AuthStore,
     private readonly recoveryPepper: string,
     private readonly now: () => number = Date.now,
+    private readonly isLoginEnabled: () => Promise<boolean> = async () => true,
   ) {}
 
-  async register(requestedPublicId?: string): Promise<RegisterAccountResult> {
+  async register(requestedPublicId?: string, allowWhenClosed = false): Promise<RegisterAccountResult> {
+    if (!allowWhenClosed && !(await this.isLoginEnabled())) {
+      throw new ApiError(503, 'LOGIN_UNAVAILABLE', 'Registration is temporarily unavailable.');
+    }
     if (requestedPublicId !== undefined && !isValidG000stId(requestedPublicId)) {
       throw new ApiError(
         400,
@@ -88,9 +92,12 @@ export class AuthService {
       throw new ApiError(403, 'ACCOUNT_UNAVAILABLE', 'This account is unavailable.');
     }
 
+    const role = await this.store.getAccountRole(credential.publicId);
+    if (role !== 'admin' && !(await this.isLoginEnabled())) {
+      throw new ApiError(503, 'LOGIN_UNAVAILABLE', 'Login is temporarily unavailable.');
+    }
     const issued = this.issueSession();
     await this.store.createSession(credential.publicId, issued.material, this.now());
-    const role = await this.store.getAccountRole(credential.publicId);
 
     return {
       session: issued.tokens,

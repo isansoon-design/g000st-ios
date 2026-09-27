@@ -22,7 +22,10 @@ export function createPresenceRouter(authService: AuthService, service: Presence
   }));
 
   router.post('/heartbeat', limiter(40), asyncRoute(async (request, response) => {
-    await service.heartbeat(request.authenticatedPublicId);
+    await service.heartbeat(request.authenticatedPublicId, {
+      country: request.header('x-geo-country') ?? undefined,
+      city: request.header('x-geo-city') ?? undefined,
+    });
     response.status(204).send();
   }));
 

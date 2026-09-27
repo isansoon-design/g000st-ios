@@ -1,5 +1,5 @@
-import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 
 import type {
   AccountReservation,
@@ -10,16 +10,18 @@ import type {
   ReserveAccountResult,
   RotateRefreshResult,
   SessionMaterial,
-} from '../src/auth/auth-store.js';
-import { encodeChatCursor } from '../src/chat/chat-cursor.js';
-import { CHAT_MESSAGE_RETENTION_MS, MARKET_CHAT_MESSAGE_RETENTION_MS } from '../src/chat/chat-policy.js';
-import type { MarketPost } from '../src/market/market-types.js';
-import { ChatService } from '../src/chat/chat-service.js';
+} from "../src/auth/auth-store.js";
+import { encodeChatCursor } from "../src/chat/chat-cursor.js";
+import {
+  CHAT_PRIVATE_MESSAGE_MOBILE_VISIBILITY_MS,
+  MARKET_CHAT_MESSAGE_RETENTION_MS,
+} from "../src/chat/chat-policy.js";
+import { ChatService } from "../src/chat/chat-service.js";
 import type {
   ChatStore,
   CreateTextMessageResult,
   OpenBurnMessageResult,
-} from '../src/chat/chat-store.js';
+} from "../src/chat/chat-store.js";
 import type {
   ChatConversation,
   ChatConversationMemberSummary,
@@ -27,13 +29,14 @@ import type {
   ChatMessageCursor,
   ChatMessagePage,
   ChatReadState,
-} from '../src/chat/chat-types.js';
-import { ApiError } from '../src/http/api-error.js';
-import type { MediaService } from '../src/media/media-service.js';
+} from "../src/chat/chat-types.js";
+import { ApiError } from "../src/http/api-error.js";
+import type { MarketPost } from "../src/market/market-types.js";
+import type { MediaService } from "../src/media/media-service.js";
 
-const USER_A = 'A'.repeat(50);
-const USER_B = 'B'.repeat(50);
-const USER_C = 'C'.repeat(50);
+const USER_A = "A".repeat(50);
+const USER_B = "B".repeat(50);
+const USER_C = "C".repeat(50);
 const NOW = 1_789_560_000_000;
 
 class ActiveUsersStore implements AuthStore {
@@ -47,8 +50,10 @@ class ActiveUsersStore implements AuthStore {
     return this.activeUsers.has(publicId);
   }
 
-  async createAccount(_reservation: AccountReservation): Promise<ReserveAccountResult> {
-    throw new Error('Not used by ChatService tests.');
+  async createAccount(
+    _reservation: AccountReservation,
+  ): Promise<ReserveAccountResult> {
+    throw new Error("Not used by ChatService tests.");
   }
 
   async createSession(
@@ -56,7 +61,7 @@ class ActiveUsersStore implements AuthStore {
     _material: SessionMaterial,
     _createdAtMs: number,
   ): Promise<void> {
-    throw new Error('Not used by ChatService tests.');
+    throw new Error("Not used by ChatService tests.");
   }
 
   async deleteAccount(publicId: string): Promise<void> {
@@ -67,15 +72,17 @@ class ActiveUsersStore implements AuthStore {
     _accessHash: string,
     _nowMs: number,
   ): Promise<ActiveAccount | null> {
-    throw new Error('Not used by ChatService tests.');
+    throw new Error("Not used by ChatService tests.");
   }
 
-  async findRecoveryCredential(_lookupHash: string): Promise<RecoveryCredentialRecord | null> {
-    throw new Error('Not used by ChatService tests.');
+  async findRecoveryCredential(
+    _lookupHash: string,
+  ): Promise<RecoveryCredentialRecord | null> {
+    throw new Error("Not used by ChatService tests.");
   }
 
   async getAccountRole(_publicId: string): Promise<AccountRole> {
-    throw new Error('Not used by ChatService tests.');
+    throw new Error("Not used by ChatService tests.");
   }
 
   async rotateRefresh(
@@ -83,13 +90,16 @@ class ActiveUsersStore implements AuthStore {
     _next: SessionMaterial,
     _rotatedAtMs: number,
   ): Promise<RotateRefreshResult> {
-    throw new Error('Not used by ChatService tests.');
+    throw new Error("Not used by ChatService tests.");
   }
 }
 
 class MemoryChatStore implements ChatStore {
   readonly conversations = new Map<string, ChatConversation>();
-  readonly members = new Map<string, ChatConversationMemberSummary & { hiddenAtMs?: number }>();
+  readonly members = new Map<
+    string,
+    ChatConversationMemberSummary & { hiddenAtMs?: number }
+  >();
   readonly messages = new Map<string, ChatMessage[]>();
   readonly readBy = new Map<string, number>();
 
@@ -99,8 +109,13 @@ class MemoryChatStore implements ChatStore {
     nowMs: number,
     marketPostId?: string,
   ): Promise<ChatConversation> {
-    const participants = [firstPublicId, secondPublicId].sort() as [string, string];
-    const id = marketPostId ? `market--${marketPostId}--${participants.join('--')}` : participants.join('--');
+    const participants = [firstPublicId, secondPublicId].sort() as [
+      string,
+      string,
+    ];
+    const id = marketPostId
+      ? `market--${marketPostId}--${participants.join("--")}`
+      : participants.join("--");
     const existing = this.conversations.get(id);
     if (existing) {
       const member = this.members.get(`${firstPublicId}:${id}`);
@@ -111,15 +126,24 @@ class MemoryChatStore implements ChatStore {
       return existing;
     }
 
-    const conversation = { createdAtMs: nowMs, id, kind: marketPostId ? 'market' as const : 'private' as const, ...(marketPostId ? { marketPostId } : {}), participants, updatedAtMs: nowMs } as const;
+    const conversation = {
+      createdAtMs: nowMs,
+      id,
+      kind: marketPostId ? ("market" as const) : ("private" as const),
+      ...(marketPostId ? { marketPostId } : {}),
+      participants,
+      updatedAtMs: nowMs,
+    } as const;
     this.conversations.set(id, conversation);
     for (const publicId of participants) {
       this.members.set(`${publicId}:${id}`, {
         conversationId: id,
         kind: conversation.kind,
         ...(marketPostId ? { marketPostId } : {}),
-        lastMessagePreview: '',
-        participantPublicId: participants.find((candidate) => candidate !== publicId)!,
+        lastMessagePreview: "",
+        participantPublicId: participants.find(
+          (candidate) => candidate !== publicId,
+        )!,
         unreadCount: 0,
         updatedAtMs: nowMs,
       });
@@ -127,7 +151,9 @@ class MemoryChatStore implements ChatStore {
     return conversation;
   }
 
-  async findConversation(conversationId: string): Promise<ChatConversation | null> {
+  async findConversation(
+    conversationId: string,
+  ): Promise<ChatConversation | null> {
     return this.conversations.get(conversationId) ?? null;
   }
 
@@ -138,10 +164,14 @@ class MemoryChatStore implements ChatStore {
     return this.members.get(`${publicId}:${conversationId}`) ?? null;
   }
 
-  async hideConversation(conversationId: string, publicId: string, nowMs: number): Promise<void> {
+  async hideConversation(
+    conversationId: string,
+    publicId: string,
+    nowMs: number,
+  ): Promise<void> {
     const key = `${publicId}:${conversationId}`;
     const summary = this.members.get(key);
-    if (!summary) throw new Error('Conversation membership disappeared.');
+    if (!summary) throw new Error("Conversation membership disappeared.");
     this.members.set(key, {
       ...summary,
       hiddenAtMs: nowMs,
@@ -155,50 +185,101 @@ class MemoryChatStore implements ChatStore {
     });
   }
 
-  async findMessage(conversationId: string, messageId: string): Promise<ChatMessage | null> {
-    return (this.messages.get(conversationId) ?? []).find((message) => message.id === messageId) ?? null;
+  async findMessage(
+    conversationId: string,
+    messageId: string,
+  ): Promise<ChatMessage | null> {
+    return (
+      (this.messages.get(conversationId) ?? []).find(
+        (message) => message.id === messageId,
+      ) ?? null
+    );
   }
 
-  async editMessage(conversationId: string, messageId: string, senderPublicId: string, content: string, nowMs: number) {
+  async editMessage(
+    conversationId: string,
+    messageId: string,
+    senderPublicId: string,
+    content: string,
+    nowMs: number,
+  ) {
     const messages = this.messages.get(conversationId) ?? [];
     const index = messages.findIndex((message) => message.id === messageId);
     const message = messages[index];
-    if (!message || message.expiresAtMs <= nowMs) return { status: 'not_found' as const };
-    if (message.senderPublicId !== senderPublicId) return { status: 'forbidden' as const };
-    if (message.burnAfterReadSeconds || message.attachments?.length || message.type !== 'text') return { status: 'not_editable' as const };
+    if (
+      !message ||
+      (message.expiresAtMs !== undefined && message.expiresAtMs <= nowMs)
+    )
+      return { status: "not_found" as const };
+    if (message.senderPublicId !== senderPublicId)
+      return { status: "forbidden" as const };
+    if (
+      message.burnAfterReadSeconds ||
+      message.attachments?.length ||
+      message.type !== "text"
+    )
+      return { status: "not_editable" as const };
     const updated = { ...message, content, editedAtMs: nowMs };
     messages[index] = updated;
-    return { status: 'updated' as const, message: updated };
+    return { status: "updated" as const, message: updated };
   }
 
-  async deleteMessage(conversationId: string, messageId: string, senderPublicId: string, nowMs: number) {
+  async deleteMessage(
+    conversationId: string,
+    messageId: string,
+    senderPublicId: string,
+    nowMs: number,
+  ) {
     const messages = this.messages.get(conversationId) ?? [];
     const message = messages.find((candidate) => candidate.id === messageId);
-    if (!message || message.expiresAtMs <= nowMs) return { status: 'not_found' as const };
-    if (message.senderPublicId !== senderPublicId) return { status: 'forbidden' as const };
-    const remaining = messages.filter((candidate) => candidate.id !== messageId);
+    if (
+      !message ||
+      (message.expiresAtMs !== undefined && message.expiresAtMs <= nowMs)
+    )
+      return { status: "not_found" as const };
+    if (message.senderPublicId !== senderPublicId)
+      return { status: "forbidden" as const };
+    const remaining = messages.filter(
+      (candidate) => candidate.id !== messageId,
+    );
     this.messages.set(conversationId, remaining);
-    const previous = remaining.filter((candidate) => candidate.expiresAtMs > nowMs).at(-1);
-    for (const publicId of this.conversations.get(conversationId)!.participants) {
+    const previous = remaining
+      .filter(
+        (candidate) =>
+          candidate.expiresAtMs === undefined || candidate.expiresAtMs > nowMs,
+      )
+      .at(-1);
+    for (const publicId of this.conversations.get(conversationId)!
+      .participants) {
       const key = `${publicId}:${conversationId}`;
       const summary = this.members.get(key)!;
-      const wasUnread = publicId !== senderPublicId && summary.unreadCount > 0 &&
-        (summary.lastReadAtMs === undefined || summary.lastReadMessageId === undefined ||
+      const wasUnread =
+        publicId !== senderPublicId &&
+        summary.unreadCount > 0 &&
+        (summary.lastReadAtMs === undefined ||
+          summary.lastReadMessageId === undefined ||
           message.createdAtMs > summary.lastReadAtMs ||
-          (message.createdAtMs === summary.lastReadAtMs && message.id > summary.lastReadMessageId));
+          (message.createdAtMs === summary.lastReadAtMs &&
+            message.id > summary.lastReadMessageId));
       this.members.set(key, {
         ...summary,
-        ...(wasUnread ? { unreadCount: summary.unreadCount - 1, firstUnreadExpiresAtMs: 0 } : {}),
-        ...(summary.lastMessageId === messageId ? {
-          lastMessageId: previous?.id,
-          lastMessageCreatedAtMs: previous?.createdAtMs,
-          lastMessagePreview: previous ? 'Message' : '',
-          lastMessageSenderId: previous?.senderPublicId,
-          updatedAtMs: previous?.createdAtMs ?? this.conversations.get(conversationId)!.createdAtMs,
-        } : {}),
+        ...(wasUnread
+          ? { unreadCount: summary.unreadCount - 1, firstUnreadExpiresAtMs: 0 }
+          : {}),
+        ...(summary.lastMessageId === messageId
+          ? {
+              lastMessageId: previous?.id,
+              lastMessageCreatedAtMs: previous?.createdAtMs,
+              lastMessagePreview: previous ? "Message" : "",
+              lastMessageSenderId: previous?.senderPublicId,
+              updatedAtMs:
+                previous?.createdAtMs ??
+                this.conversations.get(conversationId)!.createdAtMs,
+            }
+          : {}),
       });
     }
-    return { status: 'deleted' as const, message };
+    return { status: "deleted" as const, message };
   }
 
   async listConversations(
@@ -207,14 +288,18 @@ class MemoryChatStore implements ChatStore {
     nowMs: number,
   ): Promise<readonly ChatConversationMemberSummary[]> {
     return [...this.members.entries()]
-      .filter(([key, summary]) => key.startsWith(`${publicId}:`) && summary.hiddenAtMs === undefined)
+      .filter(
+        ([key, summary]) =>
+          key.startsWith(`${publicId}:`) && summary.hiddenAtMs === undefined,
+      )
       .map(([key, summary]) => {
         if (summary.unreadCount === 0) return summary;
 
         const unread = (this.messages.get(summary.conversationId) ?? [])
           .filter(
             (message) =>
-              message.expiresAtMs > nowMs &&
+              (message.expiresAtMs === undefined ||
+                message.expiresAtMs > nowMs) &&
               message.senderPublicId === summary.participantPublicId &&
               (summary.lastReadAtMs === undefined ||
                 summary.lastReadMessageId === undefined ||
@@ -224,7 +309,8 @@ class MemoryChatStore implements ChatStore {
           )
           .sort(
             (left, right) =>
-              left.createdAtMs - right.createdAtMs || left.id.localeCompare(right.id),
+              left.createdAtMs - right.createdAtMs ||
+              left.id.localeCompare(right.id),
           );
         const firstUnread = unread[0];
         const {
@@ -255,30 +341,45 @@ class MemoryChatStore implements ChatStore {
     limit: number,
     nowMs: number,
     cursor?: ChatMessageCursor,
+    visibleAfterMs?: number,
   ): Promise<ChatMessagePage> {
     const descending = (this.messages.get(conversationId) ?? [])
-      .filter((message) => message.expiresAtMs > nowMs)
+      .filter(
+        (message) =>
+          (visibleAfterMs === undefined ||
+            message.createdAtMs > visibleAfterMs) &&
+          (message.expiresAtMs === undefined || message.expiresAtMs > nowMs),
+      )
       .sort(
         (left, right) =>
-          right.createdAtMs - left.createdAtMs || right.id.localeCompare(left.id),
+          right.createdAtMs - left.createdAtMs ||
+          right.id.localeCompare(left.id),
       )
       .filter(
         (message) =>
           cursor === undefined ||
           message.createdAtMs < cursor.createdAtMs ||
-          (message.createdAtMs === cursor.createdAtMs && message.id < cursor.id),
+          (message.createdAtMs === cursor.createdAtMs &&
+            message.id < cursor.id),
       );
     const page = descending.slice(0, limit);
     const oldest = page.at(-1);
     return {
       messages: page.reverse(),
       ...(descending.length > limit && oldest
-        ? { nextCursor: encodeChatCursor({ createdAtMs: oldest.createdAtMs, id: oldest.id }) }
+        ? {
+            nextCursor: encodeChatCursor({
+              createdAtMs: oldest.createdAtMs,
+              id: oldest.id,
+            }),
+          }
         : {}),
     };
   }
 
-  async createTextMessage(message: ChatMessage): Promise<CreateTextMessageResult> {
+  async createTextMessage(
+    message: ChatMessage,
+  ): Promise<CreateTextMessageResult> {
     const messages = this.messages.get(message.conversationId) ?? [];
     const existing = messages.find((candidate) => candidate.id === message.id);
     if (existing) return { created: false, message: existing };
@@ -292,7 +393,9 @@ class MemoryChatStore implements ChatStore {
     const common = {
       lastMessageCreatedAtMs: message.createdAtMs,
       lastMessageId: message.id,
-      lastMessagePreview: message.burnAfterReadSeconds ? 'Burn message' : 'Message',
+      lastMessagePreview: message.burnAfterReadSeconds
+        ? "Burn message"
+        : "Message",
       lastMessageSenderId: message.senderPublicId,
       updatedAtMs: message.createdAtMs,
     };
@@ -310,7 +413,11 @@ class MemoryChatStore implements ChatStore {
       unreadCount: recipient.unreadCount + 1,
     });
     const senderKey = `${message.senderPublicId}:${message.conversationId}`;
-    this.members.set(senderKey, { ...this.members.get(senderKey)!, ...common, hiddenAtMs: undefined });
+    this.members.set(senderKey, {
+      ...this.members.get(senderKey)!,
+      ...common,
+      hiddenAtMs: undefined,
+    });
     messages.push(message);
     this.messages.set(message.conversationId, messages);
     return { created: true, message };
@@ -325,20 +432,25 @@ class MemoryChatStore implements ChatStore {
     const message = this.messages
       .get(conversationId)
       ?.find((candidate) => candidate.id === messageId);
-    if (!message || message.expiresAtMs <= nowMs) return { status: 'not_found' };
+    if (
+      !message ||
+      (message.expiresAtMs !== undefined && message.expiresAtMs <= nowMs)
+    )
+      return { status: "not_found" };
     if (!message.burnAfterReadSeconds || message.senderPublicId === publicId) {
-      return { status: 'not_burnable' };
+      return { status: "not_burnable" };
     }
-    if (message.burnStartedAtMs !== undefined) return { message, status: 'opened' };
+    if (message.burnStartedAtMs !== undefined)
+      return { message, status: "opened" };
 
     const opened = {
       ...message,
       burnStartedAtMs: nowMs,
-      expiresAtMs: Math.min(message.expiresAtMs, nowMs + message.burnAfterReadSeconds * 1_000),
+      expiresAtMs: nowMs + message.burnAfterReadSeconds * 1_000,
     };
     const messages = this.messages.get(conversationId)!;
     messages[messages.indexOf(message)] = opened;
-    return { message: opened, status: 'opened' };
+    return { message: opened, status: "opened" };
   }
 
   async markRead(
@@ -372,11 +484,19 @@ class MemoryChatStore implements ChatStore {
     return state;
   }
 
-  async purgeExpiredMessages(nowMs: number, limit: number): Promise<readonly ChatMessage[]> {
+  async purgeExpiredMessages(
+    nowMs: number,
+    limit: number,
+  ): Promise<readonly ChatMessage[]> {
     const deleted: ChatMessage[] = [];
     for (const [conversationId, messages] of this.messages) {
       const remaining = messages.filter((message) => {
-        if (deleted.length >= limit || message.expiresAtMs > nowMs) return true;
+        if (
+          deleted.length >= limit ||
+          message.expiresAtMs === undefined ||
+          message.expiresAtMs > nowMs
+        )
+          return true;
         deleted.push(message);
         return false;
       });
@@ -387,19 +507,39 @@ class MemoryChatStore implements ChatStore {
 }
 
 function expectApiError(code: string) {
-  return (error: unknown): boolean => error instanceof ApiError && error.code === code;
+  return (error: unknown): boolean =>
+    error instanceof ApiError && error.code === code;
 }
 
-function createFixture(mediaService?: MediaService, permissions?: { canMessage(senderPublicId: string, recipientPublicId: string): Promise<boolean> }) {
+function createFixture(
+  mediaService?: MediaService,
+  permissions?: {
+    canMessage(
+      senderPublicId: string,
+      recipientPublicId: string,
+    ): Promise<boolean>;
+  },
+) {
   let nowMs = NOW;
   const chatStore = new MemoryChatStore();
   const authStore = new ActiveUsersStore(new Set([USER_A, USER_B, USER_C]));
-  const notifications: Array<{ conversationId: string; recipientPublicId: string }> = [];
-  const service = new ChatService(chatStore, authStore, () => nowMs, {
-    async notifyNewMessage(input) {
-      notifications.push(input);
+  const notifications: Array<{
+    conversationId: string;
+    recipientPublicId: string;
+  }> = [];
+  const service = new ChatService(
+    chatStore,
+    authStore,
+    () => nowMs,
+    {
+      async notifyNewMessage(input) {
+        notifications.push(input);
+      },
     },
-  }, mediaService, undefined, permissions);
+    mediaService,
+    undefined,
+    permissions,
+  );
   return {
     advance: (milliseconds: number) => {
       nowMs += milliseconds;
@@ -411,6 +551,7 @@ function createFixture(mediaService?: MediaService, permissions?: { canMessage(s
   };
 }
 
+const randomMessageId = "018f6f5d-58e4-7a30-8df8-5f237c0666bc";
 describe('ChatService', () => {
   it('separates Market chats by listing and retains their messages for 30 days', async () => {
     const fixture = createFixture();
@@ -437,12 +578,16 @@ describe('ChatService', () => {
     assert.equal(first.marketPostId, firstPostId);
     assert.equal((await service.sendTextMessage(USER_A, first.id, { content: 'Interested' })).expiresAtMs, NOW + MARKET_CHAT_MESSAGE_RETENTION_MS);
     assert.equal((await service.sendTextMessage(USER_A, first.id, { content: 'Still interested', burnAfterRead: true })).burnAfterReadSeconds, undefined);
-    assert.equal((await service.sendTextMessage(USER_A, privateChat.id, { content: 'Hello' })).expiresAtMs, NOW + CHAT_MESSAGE_RETENTION_MS);
+    assert.equal((await service.sendTextMessage(USER_A, privateChat.id, { content: 'Hello' })).expiresAtMs, undefined);
     assert.equal((await service.listConversations(USER_B, 10)).find((item) => item.conversationId === first.id)?.kind, 'market');
-    nowMs += CHAT_MESSAGE_RETENTION_MS;
+    nowMs += CHAT_PRIVATE_MESSAGE_MOBILE_VISIBILITY_MS;
     const summaries = await service.listConversations(USER_B, 10);
-    assert.equal(summaries.find((item) => item.conversationId === privateChat.id)?.lastMessagePreview, '');
+    assert.equal(summaries.find((item) => item.conversationId === privateChat.id)?.lastMessagePreview, 'Message');
     assert.equal(summaries.find((item) => item.conversationId === first.id)?.lastMessagePreview, 'Message');
+    assert.equal((await service.listMessages(USER_B, first.id, 50, undefined, 'mobile')).messages.length, 2);
+    nowMs = NOW + MARKET_CHAT_MESSAGE_RETENTION_MS + 1;
+    assert.equal((await service.listMessages(USER_B, first.id, 50)).messages.length, 0);
+    assert.equal((await service.listMessages(USER_B, privateChat.id, 50)).messages.length, 1);
     await assert.rejects(service.startMarketConversation(USER_A, '33333333-3333-4333-8333-333333333333'), expectApiError('MARKET_POST_NOT_FOUND'));
     await assert.rejects(service.startMarketConversation(USER_B, firstPostId), expectApiError('INVALID_PARTICIPANT'));
   });
@@ -465,8 +610,8 @@ describe('ChatService', () => {
     assert.equal(edited.content, 'Changed');
     assert.equal(edited.editedAtMs, NOW);
     assert.equal((await service.listMessages(USER_B, conversation.id, 50)).messages[0]?.content, 'Changed');
-    advance(CHAT_MESSAGE_RETENTION_MS);
-    await assert.rejects(() => service.editMessage(USER_A, conversation.id, sent.id, 'Too late'), expectApiError('MESSAGE_NOT_FOUND'));
+    advance(CHAT_PRIVATE_MESSAGE_MOBILE_VISIBILITY_MS);
+    assert.equal((await service.editMessage(USER_A, conversation.id, sent.id, 'Still here')).content, 'Still here');
   });
 
   it('does not edit burn messages', async () => {
@@ -565,8 +710,8 @@ describe('ChatService', () => {
     );
   });
 
-  it('stores messages for two hours and deduplicates matching retries', async () => {
-    const { chatStore, notifications, service } = createFixture();
+  it('retains private messages and deduplicates matching retries', async () => {
+    const { advance, chatStore, notifications, service } = createFixture();
     const conversation = await service.startConversation(USER_A, USER_B);
     const clientMessageId = '018f6f5d-58e4-7a30-8df8-5f237c0666bb';
 
@@ -580,9 +725,12 @@ describe('ChatService', () => {
     });
 
     assert.equal(first.content, 'Hello privately');
-    assert.equal(first.expiresAtMs, NOW + CHAT_MESSAGE_RETENTION_MS);
+    assert.equal(first.expiresAtMs, undefined);
     assert.equal(retried.id, first.id);
     assert.equal(chatStore.messages.get(conversation.id)?.length, 1);
+    advance(CHAT_PRIVATE_MESSAGE_MOBILE_VISIBILITY_MS + 1);
+    assert.equal((await service.listMessages(USER_B, conversation.id, 50)).messages[0]?.content, 'Hello privately');
+    assert.equal((await chatStore.purgeExpiredMessages(NOW + CHAT_PRIVATE_MESSAGE_MOBILE_VISIBILITY_MS + 1, 100)).length, 0);
     assert.deepEqual(notifications, [
       { conversationId: conversation.id, recipientPublicId: USER_B },
     ]);
@@ -660,28 +808,31 @@ describe('ChatService', () => {
     );
   });
 
-  it('hides a burn message until its recipient opens it and removes it after five seconds', async () => {
+  it('hides a burn message until its recipient opens it and removes it after one minute', async () => {
     const { advance, chatStore, service } = createFixture();
     const conversation = await service.startConversation(USER_A, USER_B);
     const sent = await service.sendTextMessage(USER_A, conversation.id, {
       burnAfterRead: true,
-      content: 'Secret for five seconds',
+      content: 'Secret for one minute',
     });
 
     const senderPage = await service.listMessages(USER_A, conversation.id, 50);
     const recipientPage = await service.listMessages(USER_B, conversation.id, 50);
-    assert.equal(senderPage.messages[0]?.content, 'Secret for five seconds');
+    assert.equal(senderPage.messages[0]?.content, 'Secret for one minute');
     assert.equal(recipientPage.messages[0]?.content, '');
     assert.equal(recipientPage.messages[0]?.locked, true);
 
     const opened = await service.openBurnMessage(USER_B, conversation.id, sent.id);
-    assert.equal(opened.content, 'Secret for five seconds');
-    assert.equal(opened.expiresAtMs, NOW + 5_000);
+    assert.equal(opened.content, 'Secret for one minute');
+    assert.equal(opened.burnAfterReadSeconds, 60);
+    assert.equal(opened.expiresAtMs, NOW + 60_000);
 
-    advance(5_001);
+    advance(59_999);
+    assert.equal((await service.listMessages(USER_B, conversation.id, 50)).messages.length, 1);
+    advance(2);
     const expiredPage = await service.listMessages(USER_B, conversation.id, 50);
     assert.equal(expiredPage.messages.length, 0);
-    assert.equal((await chatStore.purgeExpiredMessages(NOW + 5_001, 100)).length, 1);
+    assert.equal((await chatStore.purgeExpiredMessages(NOW + 60_001, 100)).length, 1);
     assert.equal(chatStore.messages.get(conversation.id)?.length, 0);
   });
 
@@ -715,17 +866,16 @@ describe('ChatService', () => {
   it('repairs the unread count and anchor after older unread messages expire', async () => {
     const { advance, service } = createFixture();
     const conversation = await service.startConversation(USER_A, USER_B);
-    await service.sendTextMessage(USER_A, conversation.id, { content: 'Expires first' });
+    const expiring = await service.sendTextMessage(USER_A, conversation.id, { content: 'Expires first', burnAfterRead: true });
+    await service.openBurnMessage(USER_B, conversation.id, expiring.id);
     advance(1_000);
     const remaining = await service.sendTextMessage(USER_A, conversation.id, {
       content: 'Still retained',
     });
-    advance(CHAT_MESSAGE_RETENTION_MS - 500);
+    advance(59_500);
 
     const summary = (await service.listConversations(USER_B, 30))[0];
     assert.equal(summary?.unreadCount, 1);
     assert.equal(summary?.firstUnreadMessageId, remaining.id);
   });
 });
-
-const randomMessageId = '018f6f5d-58e4-7a30-8df8-5f237c0666bc';

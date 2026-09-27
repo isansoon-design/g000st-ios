@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { FieldPath, FieldValue, type DocumentData, type Firestore } from 'firebase-admin/firestore';
+import { FieldPath, FieldValue, type DocumentData, type Firestore, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 import type { MediaService } from '../media/media-service.js';
 import { encodeSocialCursor, type SocialCursor } from './social-cursor.js';
@@ -62,13 +62,24 @@ export class FirestoreSocialStore implements SocialStore {
     if (ownerId) query = query.where('ownerPublicId', '==', ownerId);
     if (ownerId && ownerId !== viewerId) query = query.where('visibility', '==', 'public');
     if (cursor) query = query.startAfter(cursor.createdAtMs, cursor.id);
-    const snapshot = await query.limit(limit + 1).get();
-    const documents = snapshot.docs.slice(0, limit);
+    const visible: QueryDocumentSnapshot<DocumentData>[] = [];
+    let first = await query.limit(Math.max(limit + 1, 30)).get();
+    while (true) {
+      for (const document of first.docs) {
+        if (document.data().hidden !== true && !document.data().deletedAtMs) visible.push(document);
+        if (visible.length > limit) break;
+      }
+      if (visible.length > limit || first.empty || first.size < Math.max(limit + 1, 30)) break;
+      const last = first.docs.at(-1);
+      if (!last) break;
+      first = await query.startAfter(last).limit(Math.max(limit + 1, 30)).get();
+    }
+    const documents = visible.slice(0, limit);
     const items = await Promise.all(documents.map((document) => this.toPost(viewerId, document.id, document.data() as StoredPost)));
     const last = documents.at(-1);
     return {
       items,
-      ...(snapshot.size > limit && last
+      ...(visible.length > limit && last
         ? { nextCursor: encodeSocialCursor({ createdAtMs: (last.data() as StoredPost).createdAtMs, id: last.id }) }
         : {}),
     };
@@ -76,7 +87,8 @@ export class FirestoreSocialStore implements SocialStore {
 
   async findPost(viewerId: string, postId: string): Promise<SocialPost | null> {
     const snapshot = await this.posts().doc(postId).get();
-    return snapshot.exists ? this.toPost(viewerId, snapshot.id, snapshot.data() as StoredPost) : null;
+    return snapshot.exists && snapshot.data()?.hidden !== true && !snapshot.data()?.deletedAtMs
+      ? this.toPost(viewerId, snapshot.id, snapshot.data() as StoredPost) : null;
   }
 
   async createPost(ownerId: string, id: string, input: Omit<CreateSocialPostInput, 'media'> & { media?: readonly SocialMedia[] }, nowMs: number): Promise<SocialPost> {

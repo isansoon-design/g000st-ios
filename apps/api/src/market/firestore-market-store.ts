@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { FieldPath, FieldValue, type DocumentData, type Firestore } from 'firebase-admin/firestore';
+import { FieldPath, FieldValue, type DocumentData, type Firestore, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 import type { MediaService } from '../media/media-service.js';
 import { encodeSocialCursor, type SocialCursor } from '../social/social-cursor.js';
@@ -22,9 +22,22 @@ export class FirestoreMarketStore implements MarketStore {
     let documents;
     let hasMore: boolean;
     try {
-      const snapshot = await query.limit(limit + 1).get();
-      documents = snapshot.docs.slice(0, limit);
-      hasMore = snapshot.size > limit;
+      const visible: QueryDocumentSnapshot<DocumentData>[] = [];
+      const batchSize = Math.max(limit + 1, 30);
+      let scan = query;
+      while (visible.length <= limit) {
+        const snapshot = await scan.limit(batchSize).get();
+        for (const document of snapshot.docs) {
+          if (document.data().hidden !== true && !document.data().deletedAtMs) visible.push(document);
+          if (visible.length > limit) break;
+        }
+        if (visible.length > limit || snapshot.empty || snapshot.size < batchSize) break;
+        const last = snapshot.docs.at(-1);
+        if (!last) break;
+        scan = scan.startAfter(last);
+      }
+      documents = visible.slice(0, limit);
+      hasMore = visible.length > limit;
     } catch (error) {
       if (!ownerId || !isMissingFirestoreIndex(error)) throw error;
       // Keep "My Listings" available while a newly declared composite index is still
@@ -34,6 +47,7 @@ export class FirestoreMarketStore implements MarketStore {
       const snapshot = await this.posts().where('ownerPublicId', '==', ownerId).get();
       const ordered = [...snapshot.docs]
         .sort((left, right) => comparePostDocuments(right, left))
+        .filter((document) => document.data().hidden !== true && !document.data().deletedAtMs)
         .filter((document) => !cursor || isAfterCursor(document.id, document.data() as StoredPost, cursor));
       documents = ordered.slice(0, limit);
       hasMore = ordered.length > limit;
@@ -45,7 +59,8 @@ export class FirestoreMarketStore implements MarketStore {
 
   async findPost(viewerId: string, postId: string) {
     const snapshot = await this.posts().doc(postId).get();
-    return snapshot.exists ? this.toPost(viewerId, snapshot.id, snapshot.data() as StoredPost) : null;
+    return snapshot.exists && snapshot.data()?.hidden !== true && !snapshot.data()?.deletedAtMs
+      ? this.toPost(viewerId, snapshot.id, snapshot.data() as StoredPost) : null;
   }
 
   async createReport(reporterId: string, input: CreateMarketReportInput, nowMs: number): Promise<void> {

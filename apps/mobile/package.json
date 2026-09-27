@@ -24,6 +24,7 @@
     "expo-image": "~56.0.13",
     "expo-image-picker": "~56.0.25",
     "expo-linking": "~56.0.18",
+    "expo-media-library": "~56.0.11",
     "expo-notifications": "~56.0.25",
     "expo-router": "~56.2.21",
     "expo-screen-capture": "^57.0.3",
@@ -52,6 +53,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@types/node": "^26.6.3",
     "@types/react": "~19.2.2",
     "babel-preset-expo": "~56.0.0",
     "eslint": "^9.39.5",

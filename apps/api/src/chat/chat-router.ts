@@ -37,10 +37,12 @@ const createMessageBody = z
 const editMessageBody = z.object({ content: z.string().trim().min(1).max(4_000) }).strict();
 const listConversationsQuery = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(30),
+  view: z.enum(['web', 'mobile']).default('web'),
 });
 const listMessagesQuery = z.object({
   cursor: z.string().min(1).max(256).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
+  view: z.enum(['web', 'mobile']).default('web'),
 });
 
 function bearerToken(request: Request): string {
@@ -72,11 +74,12 @@ export function createChatRouter(authService: AuthService, chatService: ChatServ
   router.get(
     '/conversations',
     asyncRoute(async (request, response) => {
-      const { limit } = listConversationsQuery.parse(request.query);
+      const { limit, view } = listConversationsQuery.parse(request.query);
       response.status(200).json({
         conversations: await chatService.listConversations(
           request.authenticatedPublicId,
           limit,
+          view,
         ),
       });
     }),
@@ -111,9 +114,9 @@ export function createChatRouter(authService: AuthService, chatService: ChatServ
     '/conversations/:conversationId/messages',
     asyncRoute(async (request, response) => {
       const id = conversationId.parse(request.params.conversationId);
-      const { cursor, limit } = listMessagesQuery.parse(request.query);
+      const { cursor, limit, view } = listMessagesQuery.parse(request.query);
       response.status(200).json(
-        await chatService.listMessages(request.authenticatedPublicId, id, limit, cursor),
+        await chatService.listMessages(request.authenticatedPublicId, id, limit, cursor, view),
       );
     }),
   );

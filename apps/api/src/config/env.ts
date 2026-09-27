@@ -6,6 +6,7 @@ const envSchema = z.object({
   CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
   EXPO_PUSH_ACCESS_TOKEN: z.string().min(1).optional(),
   FIREBASE_SERVICE_ACCOUNT_PATH: z.string().min(1),
+  TRUST_GEO_HEADERS: z.enum(['true', 'false']).default('false'),
   HOST: z.string().default('127.0.0.1'),
   MEDIA_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
   MEDIA_S3_BUCKET: z.string().min(3).optional(),
@@ -53,6 +54,7 @@ export type ApiEnvironment = Readonly<{
   collectionPrefix: string;
   expoPushAccessToken?: string;
   firebaseServiceAccountPath: string;
+  trustGeoHeaders: boolean;
   host: string;
   media?: Readonly<{
     accessKeyId: string;
@@ -180,6 +182,7 @@ export function readEnvironment(source: NodeJS.ProcessEnv = process.env): ApiEnv
       ? { expoPushAccessToken: result.data.EXPO_PUSH_ACCESS_TOKEN }
       : {}),
     firebaseServiceAccountPath: result.data.FIREBASE_SERVICE_ACCOUNT_PATH,
+    trustGeoHeaders: result.data.TRUST_GEO_HEADERS === 'true',
     host: result.data.HOST,
     ...(hasCompleteMediaConfig
       ? {

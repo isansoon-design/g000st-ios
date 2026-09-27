@@ -12,10 +12,10 @@ export default function MainTabsLayout() {
       }}
     >
       <Tabs.Screen name="social" options={{ title: 'SOCIAL' }} />
-      <Tabs.Screen name="trading" options={{ title: 'TRADING' }} />
       <Tabs.Screen name="chat" options={{ title: 'CHAT' }} />
       <Tabs.Screen name="contacts" options={{ title: 'FRIENDS' }} />
       <Tabs.Screen name="identity" options={{ title: 'PROFILE' }} />
+      <Tabs.Screen name="trading" options={{ title: 'TRADING' }} />
       <Tabs.Screen name="mobile" options={{ title: 'MOBILE' }} />
     </Tabs>
   );

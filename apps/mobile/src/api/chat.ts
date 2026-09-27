@@ -14,7 +14,7 @@ const attachmentDownloadSchema = z.object({
 });
 
 export async function listChatConversations() {
-  const response = await axiosInstance.get('/chat/conversations');
+  const response = await axiosInstance.get('/chat/conversations', { params: { view: 'mobile' } });
   return parseApiPayload(chatConversationListSchema, response.data).conversations;
 }
 
@@ -30,7 +30,7 @@ export async function startMarketChatConversation(postId: string) {
 
 export async function listChatMessages(conversationId: string, cursor?: string) {
   const response = await axiosInstance.get(`/chat/conversations/${conversationId}/messages`, {
-    params: { cursor, limit: 50 },
+    params: { cursor, limit: 50, view: 'mobile' },
   });
   return parseApiPayload(chatMessagePageSchema, response.data);
 }

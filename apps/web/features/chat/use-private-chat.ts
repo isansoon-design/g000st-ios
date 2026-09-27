@@ -222,7 +222,7 @@ export function usePrivateChat(initialConversationId?: string) {
   }, [activeConversation?.participantPublicId, activeConversation?.participantStatus]);
 
   const visibleMessages = useMemo(
-    () => messages.filter((message) => message.expiresAtMs > clockMs),
+    () => messages.filter((message) => message.expiresAtMs === undefined || message.expiresAtMs > clockMs),
     [clockMs, messages],
   );
 

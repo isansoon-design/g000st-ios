@@ -9,9 +9,11 @@ generic (`Message` or `Burn message`) rather than message plaintext.
 
 ## List conversations
 
-`GET /conversations?limit=30`
+`GET /conversations?limit=30&view=web`
 
-`limit` is optional (`1..50`). Successful response (`200`):
+`limit` is optional (`1..50`). `view` is `web` by default or `mobile`; the mobile view
+excludes private messages older than two hours from previews and unread counts. Successful
+response (`200`):
 
 ```json
 {
@@ -27,7 +29,6 @@ generic (`Message` or `Burn message`) rather than message plaintext.
       "lastMessageSenderId": "50-character-public-id",
       "firstUnreadMessageId": "message-uuid",
       "firstUnreadCreatedAtMs": 1789478400000,
-      "firstUnreadExpiresAtMs": 1789485600000,
       "unreadCount": 1,
       "updatedAtMs": 1789478400000
     }
@@ -54,12 +55,13 @@ or an inactive account is rejected.
 
 ## List messages
 
-`GET /conversations/:conversationId/messages?limit=50&cursor=<opaque-cursor>`
+`GET /conversations/:conversationId/messages?limit=50&cursor=<opaque-cursor>&view=web`
 
 `limit` is optional (`1..100`). `cursor` is the opaque `nextCursor` returned by the previous
 response; clients must not construct it. The cursor contains both message time and ID, so messages
-with equal timestamps are paginated without duplication or loss. Messages are returned in
-chronological order.
+with equal timestamps are paginated without duplication or loss. `view=mobile` excludes private
+messages older than two hours and keeps Market messages on their 30-day schedule. Messages are
+returned in chronological order.
 
 ```json
 {
@@ -72,7 +74,6 @@ chronological order.
       "type": "text",
       "content": "Hello",
       "createdAtMs": 1789478400000,
-      "expiresAtMs": 1789485600000,
       "readAtMs": 1789478410000,
       "locked": false
     }
@@ -81,8 +82,10 @@ chronological order.
 }
 ```
 
-`nextCursor` is omitted when no older retained page exists. Messages older than two hours are never
-returned and are physically purged by the server worker.
+`nextCursor` is omitted when no older retained page exists. Private messages without
+`expiresAtMs` remain available on the web. The mobile app hides private messages two hours after
+`createdAtMs`; this does not delete them from the server. Market messages have a 30-day
+`expiresAtMs`. An opened burn message gets an `expiresAtMs` 60 seconds after it is opened.
 
 For messages sent by the current user, `readAtMs` is present once the other participant has marked
 the message range as read. It is omitted for unread and incoming messages.
@@ -140,8 +143,8 @@ The sender still sees their own content.
 `POST /conversations/:conversationId/messages/:messageId/open`
 
 Only the recipient can open it. The response contains the plaintext message and starts its fixed
-five-second lifetime. After that deadline it is excluded immediately and physically removed by the
-expiration worker.
+60-second lifetime. Until opened, it remains available on the web. After the deadline it is excluded
+immediately and physically removed by the expiration worker.
 
 ## Mark a conversation as read
 
@@ -162,8 +165,8 @@ use the same Firestore document, so a message committed after the read transacti
 
 The conversation summary exposes `firstUnreadMessageId`; mobile and web load older pages as needed,
 scroll to that message, show an `Unread` divider, and then mark the conversation as read. If older
-unread messages expire first, the server repairs both the unread count and anchor to the first
-retained unread message.
+unread burn or Market messages expire first, the server repairs both the unread count and anchor to
+the first retained unread message.
 
 ## Push devices
 

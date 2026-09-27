@@ -29,6 +29,8 @@ class MemoryAuthStore implements AuthStore {
 
   constructor(private readonly forcedCreateResults: ReserveAccountResult[] = []) {}
 
+  setRole(publicId: string, role: AccountRole): void { this.users.set(publicId, role); }
+
   async createAccount(reservation: AccountReservation): Promise<ReserveAccountResult> {
     const forcedResult = this.forcedCreateResults.shift();
     if (forcedResult) return forcedResult;
@@ -152,6 +154,17 @@ function expectApiError(code: string) {
 }
 
 describe('AuthService', () => {
+  it('keeps administrator recovery available when ordinary login is closed', async () => {
+    const store = new MemoryAuthStore();
+    const service = new AuthService(store, PEPPER, () => NOW, async () => false);
+    await assert.rejects(() => service.register(), expectApiError('LOGIN_UNAVAILABLE'));
+    const issued = await service.register(undefined, true);
+    await assert.rejects(() => service.restore(issued.recoveryId), expectApiError('LOGIN_UNAVAILABLE'));
+    store.setRole(issued.user.publicId, 'admin');
+    const restored = await service.restore(issued.recoveryId);
+    assert.equal(restored.user.role, 'admin');
+  });
+
   it('creates separate 50-character Public and Recovery IDs', async () => {
     const service = new AuthService(new MemoryAuthStore(), PEPPER, () => NOW);
     const result = await service.register();

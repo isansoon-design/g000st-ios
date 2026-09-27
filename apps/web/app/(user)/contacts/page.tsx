@@ -177,7 +177,7 @@ export default function ContactsPage() {
           onClick={() => { setAddValue(""); setAddError(null); setIsAddOpen(true); }}>+ Follow</button>
       </div>
 
-      <div style={{ padding: "10px 14px 0" }}>
+      <div data-admin-part="network.search" style={{ padding: "10px 14px 0" }}>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -206,7 +206,7 @@ export default function ContactsPage() {
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "10px 10px 20px" }}>
+      <div data-admin-part="network.list" style={{ flex: 1, overflowY: "auto", padding: "10px 10px 20px" }}>
         {loading ? (
           <p style={{ textAlign: "center", fontSize: 13, fontWeight: 600, color: "var(--app-faint-text)", marginTop: 40 }}>
             Loading…
