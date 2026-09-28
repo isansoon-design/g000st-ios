@@ -34,6 +34,7 @@ import type { SocialPost, SocialProfile } from "@/domain/social/types";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useCalling } from "@/features/calling/hooks/use-calling";
 import { chatConversationHref } from "@/features/chat/navigation";
+import { ProfilePostComposer } from "@/features/social/components/profile-post-composer";
 import { AppThemeSwitch } from "@/components/navigation/app-theme-switch";
 
 type Tab = "social" | "market";
@@ -470,6 +471,7 @@ export default function UserProfileScreen() {
                 </Pressable>
               </View>
               <View className="mx-3 mt-4 gap-3">
+                {tab === "social" && own && publicId && <ProfilePostComposer key={publicId} publicId={publicId} isPage={profile.isPage} pageNamed={!!profile.displayName?.trim()} onPublished={(post) => setSocial((items) => [post, ...items])} />}
                 {(tab === "social" ? social : market).length === 0 && (
                   <Text className="rounded-3xl bg-white dark:bg-night-surface p-12 text-center text-sm text-black/45 dark:text-night-muted">
                     {tab === "social"

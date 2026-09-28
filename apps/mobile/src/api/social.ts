@@ -44,6 +44,7 @@ export async function createSocialPost(
   visibility: SocialVisibility,
   media?: PendingSocialMedia[],
   sharedPostId?: string,
+  actingPublicId?: string,
 ) {
   const response = await axiosInstance.post("/social/posts", {
     clientPostId,
@@ -51,7 +52,7 @@ export async function createSocialPost(
     visibility,
     ...(media?.length ? { media } : {}),
     ...(sharedPostId ? { sharedPostId } : {}),
-  });
+  }, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined });
   return parseApiPayload(socialPostResultSchema, response.data).post;
 }
 export async function uploadSocialMedia(
@@ -62,13 +63,14 @@ export async function uploadSocialMedia(
     fileName: string;
     uri: string;
   }>,
+  actingPublicId?: string,
 ) {
   const response = await axiosInstance.post("/social/uploads", {
     byteSize: input.byteSize,
     clientPostId: input.clientPostId,
     contentType: input.contentType,
     fileName: input.fileName,
-  });
+  }, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined });
   const upload = parseApiPayload(socialUploadSchema, response.data).upload;
   const result = await new File(input.uri).upload(upload.uploadUrl, {
     headers: { ...upload.headers },
