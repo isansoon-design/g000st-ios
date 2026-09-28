@@ -11,6 +11,7 @@ import { getSocialProfile, listSocialPosts, toggleSocialCamp, updateSocialProfil
 import { sessionStorage } from "@/app/api/session-storage";
 import { startChatConversation } from "@/features/chat/api";
 import { useCalling } from "@/features/calling/use-calling";
+import { PageContactLinks } from "@/features/profile/page-contact-links";
 import { ProfilePostComposer } from "@/features/profile/profile-post-composer";
 
 type Tab = "social" | "market";
@@ -221,17 +222,7 @@ export default function PublicUserPage() {
             <button onClick={() => void callUser(publicId, "audio")} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#17191d] px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"><Phone size={18} /> Voice</button>
             <button onClick={() => void callUser(publicId, "video")} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#17191d] px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"><Video size={18} /> Video</button>
           </div>}
-          {!editing && profile.isPage && (profile.whatsappNumber || profile.landlineNumber || profile.contactEmail || profile.facebookUrl || profile.instagramUrl || profile.tiktokUrl || profile.linkedinUrl) && <div className="mt-5 border-t border-black/10 pt-4 dark:border-night-border">
-            {profile.whatsappNumber && <a href={`https://wa.me/${profile.whatsappNumber.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="mb-3 flex items-center justify-between rounded-2xl bg-[#d8f8e6] px-5 py-3 text-[#126c3d] transition hover:bg-[#bdf0d1] dark:bg-[#173d2b] dark:text-[#8de5b3]"><span><span className="block text-sm font-black">✆ Chat on WhatsApp</span><span className="block text-[11px] font-semibold opacity-70">Open a direct conversation</span></span><span className="text-xl font-black">↗</span></a>}
-            {profile.landlineNumber && <a aria-label={`Call landline ${profile.landlineNumber}`} href={`tel:${profile.landlineNumber}`} className="mb-3 flex items-center justify-between rounded-2xl border border-[#b7cbe5] bg-[#eef4fc] px-5 py-3 text-[#233e63] transition hover:border-[#7396bf] hover:bg-[#e1edfb] dark:border-[#405a7a] dark:bg-[#202e42] dark:text-[#d3e3f6]"><span><span className="block text-[10px] font-black uppercase tracking-widest text-[#587398] dark:text-[#9cb9da]">Landline · Tap to call</span><span className="mt-1 block font-mono text-base font-black" dir="ltr">{profile.landlineNumber}</span></span><span className="grid h-10 w-10 place-items-center rounded-full bg-[#2d4669] text-white dark:bg-[#6288b6]"><Phone size={19} /></span></a>}
-            <div className="flex flex-wrap gap-2">{([
-              ['Email', profile.contactEmail ? `mailto:${profile.contactEmail}` : undefined],
-              ['Facebook', profile.facebookUrl],
-              ['Instagram', profile.instagramUrl],
-              ['TikTok', profile.tiktokUrl],
-              ['LinkedIn', profile.linkedinUrl],
-            ] as const).filter((item) => !!item[1]).map(([label, url]) => <a key={label} href={url} target="_blank" rel="noopener noreferrer" className="rounded-full border border-black/10 bg-[#f0f1f4] px-4 py-2 text-xs font-black transition hover:bg-[#e0e7ef] dark:border-night-border dark:bg-night-raised">{label} ↗</a>)}</div>
-          </div>}
+          {!editing && profile.isPage && <PageContactLinks profile={profile} />}
         </section>
 
         <div className="mx-3 mt-5 rounded-2xl bg-white/85 dark:bg-night-surface p-1.5 shadow-sm sm:mx-5" role="tablist" aria-label="Profile posts">

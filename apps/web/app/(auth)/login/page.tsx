@@ -1,9 +1,9 @@
 "use client";
 
+import axios from "@/app/api/axios";
+import { sessionStorage, type SavedAccount } from "@/app/api/session-storage";
 import { Copy } from "lucide-react";
 import { useEffect, useState } from "react";
-import { sessionStorage, type SavedAccount } from "@/app/api/session-storage";
-import axios from "@/app/api/axios";
 
 import { useIdGate } from "@/features/auth/use-id-gate";
 
@@ -98,7 +98,7 @@ export default function LoginPage() {
 
       <section className="w-full max-w-[400px] pb-[20px]">
         <button
-          className="mt-3 h-[50px] w-full rounded-[14px] border-2 border-[#111] dark:border-night-border bg-transparent font-black text-[#111] dark:text-night-text active:opacity-70 disabled:opacity-60"
+          className="mt-3 h-[50px] w-full rounded-[14px] border-2 border-[#111] dark:border-night-border bg-black font-black text-white dark:text-night-text active:opacity-70 disabled:opacity-60"
           disabled={isBusy || !loginEnabled}
           onClick={idGate.requestRegistration}
           type="button"
@@ -121,7 +121,7 @@ export default function LoginPage() {
 
             {idGate.registrationModalStage === "confirm" ? (
               <>
-                <h2 id="registration-modal-title" className="text-center text-lg font-black text-[#111] dark:text-night-text">
+                <h2 id="registration-modal-title" className=" mb-6 text-center text-lg font-black text-[#111] dark:text-night-text">
                   Create a new account
                 </h2>
 

@@ -6,7 +6,6 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Linking,
   Pressable,
   ScrollView,
   Switch,
@@ -34,6 +33,7 @@ import type { SocialPost, SocialProfile } from "@/domain/social/types";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useCalling } from "@/features/calling/hooks/use-calling";
 import { chatConversationHref } from "@/features/chat/navigation";
+import { PageContactLinks } from "@/features/identity/components/page-contact-links";
 import { ProfilePostComposer } from "@/features/social/components/profile-post-composer";
 import { AppThemeSwitch } from "@/components/navigation/app-theme-switch";
 
@@ -429,19 +429,7 @@ export default function UserProfileScreen() {
                     </View>
                   </View>
                 )}
-                {!editing && profile.isPage && (profile.whatsappNumber || profile.landlineNumber || profile.contactEmail || profile.facebookUrl || profile.instagramUrl || profile.tiktokUrl || profile.linkedinUrl) && <View className="mt-5 border-t border-black/10 pt-4 dark:border-night-border">
-                  {profile.whatsappNumber && <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`https://wa.me/${profile.whatsappNumber!.replace(/\D/g, '')}`)} className="mb-3 flex-row items-center justify-between rounded-2xl bg-[#d8f8e6] px-4 py-3 dark:bg-[#173d2b]"><View><Text className="text-sm font-black text-[#126c3d] dark:text-[#8de5b3]">✆  Chat on WhatsApp</Text><Text className="mt-0.5 text-[11px] text-[#126c3d]/70 dark:text-[#8de5b3]">Open a direct conversation</Text></View><Text className="text-xl font-black text-[#126c3d] dark:text-[#8de5b3]">↗</Text></Pressable>}
-                  {profile.landlineNumber && <Pressable accessibilityRole="link" accessibilityLabel={`Call landline ${profile.landlineNumber}`} onPress={() => void Linking.openURL(`tel:${profile.landlineNumber}`)} className="mb-3 flex-row items-center justify-between rounded-2xl border border-[#b7cbe5] bg-[#eef4fc] px-4 py-3 dark:border-[#405a7a] dark:bg-[#202e42]"><View className="min-w-0 flex-1"><Text className="text-[10px] font-black uppercase tracking-[1px] text-[#587398] dark:text-[#9cb9da]">☎ LANDLINE · TAP TO CALL</Text><Text selectable className="mt-1 text-base font-black text-[#233e63] dark:text-[#d3e3f6]">{profile.landlineNumber}</Text></View><View className="ml-3 h-10 w-10 items-center justify-center rounded-full bg-[#2d4669] dark:bg-[#6288b6]"><Text className="text-lg font-black text-white">☎</Text></View></Pressable>}
-                  <View className="flex-row flex-wrap gap-2">
-                    {([
-                      ['Email', profile.contactEmail ? `mailto:${profile.contactEmail}` : undefined],
-                      ['Facebook', profile.facebookUrl],
-                      ['Instagram', profile.instagramUrl],
-                      ['TikTok', profile.tiktokUrl],
-                      ['LinkedIn', profile.linkedinUrl],
-                    ] as const).filter((item) => !!item[1]).map(([label, url]) => <Pressable key={label} accessibilityRole="link" onPress={() => { if (url) void Linking.openURL(url); }} className="rounded-full border border-black/10 bg-[#f0f1f4] px-4 py-2 dark:border-night-border dark:bg-night-raised"><Text className="text-xs font-black text-[#17191d] dark:text-night-text">{label} ↗</Text></Pressable>)}
-                  </View>
-                </View>}
+                {!editing && profile.isPage && <PageContactLinks profile={profile} />}
               </Animated.View>
 
               <View className="mx-3 mt-5 flex-row rounded-2xl bg-white dark:bg-night-surface p-1.5">
