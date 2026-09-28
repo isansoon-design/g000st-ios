@@ -269,7 +269,7 @@ export default function ProfilePage() {
         </div>
         <div className="mx-auto grid w-full max-w-5xl items-start gap-5 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
           <aside className="min-w-0 lg:sticky lg:top-0">
-            <BeaconSwitcher selectedDisplayName={isPage ? fields.displayName : undefined} />
+            <BeaconSwitcher />
           </aside>
           <div className="flex min-w-0 w-full flex-col items-center rounded-[24px] border border-white/75 dark:border-white/20 bg-white/35 dark:bg-night-surface p-3 shadow-[0_10px_30px_rgba(24,30,44,.08)] sm:p-5">
           {loading ? (

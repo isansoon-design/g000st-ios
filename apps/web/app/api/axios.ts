@@ -76,8 +76,8 @@ axiosInstance.interceptors.request.use((config) => {
   if (token) config.headers.set("Authorization", `Bearer ${token}`);
   else config.headers.delete("Authorization");
   const actor = sessionStorage.getActingPublicId();
-  if (token && actor && !config.url?.startsWith('/auth/')) config.headers.set('X-Acting-Public-Id', actor);
-  else config.headers.delete('X-Acting-Public-Id');
+  if (!token || config.url?.startsWith('/auth/')) config.headers.delete('X-Acting-Public-Id');
+  else if (!config.headers.has('X-Acting-Public-Id') && actor) config.headers.set('X-Acting-Public-Id', actor);
 
   return config;
 });

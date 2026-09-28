@@ -103,8 +103,8 @@ export class SocialService {
     return { day, items };
   }
 
-  async listPosts(viewerId: string, limit: number, cursor?: string, ownerId?: string) {
-    const page = await this.store.listPosts(viewerId, limit, decodeSocialCursor(cursor), ownerId);
+  async listPosts(viewerId: string, limit: number, cursor?: string, ownerId?: string, publicOnly = false) {
+    const page = await this.store.listPosts(viewerId, limit, decodeSocialCursor(cursor), ownerId, publicOnly);
     return { ...page, items: await Promise.all(page.items.map((post) => this.withMediaUrls(post, viewerId))) };
   }
 

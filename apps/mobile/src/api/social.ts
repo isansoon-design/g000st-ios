@@ -17,9 +17,9 @@ import {
     type SocialVisibility,
 } from "@/domain/social/types";
 
-export async function listSocialPosts(ownerId?: string, cursor?: string) {
+export async function listSocialPosts(ownerId?: string, cursor?: string, publicOnly = false) {
   const response = await axiosInstance.get("/social/posts", {
-    params: { cursor, limit: 10, ownerId },
+    params: { cursor, limit: 10, ownerId, ...(publicOnly ? { publicOnly: 'true' } : {}) },
   });
   return parseApiPayload(socialPostPageSchema, response.data);
 }
@@ -137,8 +137,8 @@ export async function markSocialAlertsRead() {
 export async function reportSocialPost(postId: string) {
   await axiosInstance.post("/social/reports", { postId, reason: "other" });
 }
-export async function getSocialProfile(publicId: string) {
-  const response = await axiosInstance.get(`/social/profiles/${publicId}`);
+export async function getSocialProfile(publicId: string, actingPublicId?: string) {
+  const response = await axiosInstance.get(`/social/profiles/${publicId}`, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined });
   return parseApiPayload(socialProfileResultSchema, response.data).profile;
 }
 const pendingAvatarMediaSchema = z.object({
@@ -163,12 +163,13 @@ export async function uploadAvatarMedia(
     fileName: string;
     uri: string;
   }>,
+  actingPublicId?: string,
 ) {
   const response = await axiosInstance.post("/social/avatar-uploads", {
     byteSize: input.byteSize,
     contentType: input.contentType,
     fileName: input.fileName,
-  });
+  }, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined });
   const upload = parseApiPayload(avatarUploadSchema, response.data).upload;
   const result = await new File(input.uri).upload(upload.uploadUrl, {
     headers: { ...upload.headers },
@@ -179,8 +180,8 @@ export async function uploadAvatarMedia(
     throw new Error(`Photo upload failed (${result.status}): ${result.body}`);
   return upload.media;
 }
-export async function uploadCoverMedia(input: Readonly<{ byteSize: number; contentType: string; fileName: string; uri: string }>) {
-  const response = await axiosInstance.post('/social/cover-uploads', { byteSize: input.byteSize, contentType: input.contentType, fileName: input.fileName });
+export async function uploadCoverMedia(input: Readonly<{ byteSize: number; contentType: string; fileName: string; uri: string }>, actingPublicId?: string) {
+  const response = await axiosInstance.post('/social/cover-uploads', { byteSize: input.byteSize, contentType: input.contentType, fileName: input.fileName }, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined });
   const upload = parseApiPayload(avatarUploadSchema, response.data).upload;
   const result = await new File(input.uri).upload(upload.uploadUrl, { headers: { ...upload.headers }, httpMethod: 'PUT', uploadType: UploadType.BINARY_CONTENT });
   if (result.status < 200 || result.status >= 300) throw new Error(`Cover upload failed (${result.status}).`);
@@ -193,7 +194,8 @@ export async function updateSocialProfile(
       "displayName" | "showDisplayName" | "country" | "age" | "sex" | "hobby" | "bio" | "whatsappNumber" | "landlineNumber" | "contactEmail" | "facebookUrl" | "instagramUrl" | "tiktokUrl" | "linkedinUrl"
     >
   > & { avatarMedia?: PendingAvatarMedia; coverMedia?: PendingAvatarMedia },
+  actingPublicId?: string,
 ) {
-  const response = await axiosInstance.put("/social/profile", profile);
+  const response = await axiosInstance.put("/social/profile", profile, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined });
   return parseApiPayload(socialProfileResultSchema, response.data).profile;
 }

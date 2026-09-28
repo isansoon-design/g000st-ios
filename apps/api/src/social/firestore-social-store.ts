@@ -57,10 +57,10 @@ export class FirestoreSocialStore implements SocialStore {
     });
   }
 
-  async listPosts(viewerId: string, limit: number, cursor?: SocialCursor, ownerId?: string): Promise<SocialPage<SocialPost>> {
+  async listPosts(viewerId: string, limit: number, cursor?: SocialCursor, ownerId?: string, publicOnly = false): Promise<SocialPage<SocialPost>> {
     let query = this.posts().orderBy('createdAtMs', 'desc').orderBy(FieldPath.documentId(), 'desc');
     if (ownerId) query = query.where('ownerPublicId', '==', ownerId);
-    if (ownerId && ownerId !== viewerId) query = query.where('visibility', '==', 'public');
+    if (ownerId && (ownerId !== viewerId || publicOnly)) query = query.where('visibility', '==', 'public');
     if (cursor) query = query.startAfter(cursor.createdAtMs, cursor.id);
     const visible: QueryDocumentSnapshot<DocumentData>[] = [];
     let first = await query.limit(Math.max(limit + 1, 30)).get();

@@ -31,4 +31,13 @@ describe('Public profile social posts', () => {
     await store.listPosts('owner', 10, undefined, 'owner');
     assert.deepEqual(filters, [['ownerPublicId', '==', 'owner']]);
   });
+
+  it('shows only public posts in the owner\'s visitor preview', async () => {
+    const { filters, store } = queryStore();
+    await store.listPosts('owner', 10, undefined, 'owner', true);
+    assert.deepEqual(filters, [
+      ['ownerPublicId', '==', 'owner'],
+      ['visibility', '==', 'public'],
+    ]);
+  });
 });

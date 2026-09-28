@@ -90,8 +90,8 @@ axiosInstance.interceptors.request.use(async (config) => {
   if (token) {
     setHeader(config, "Authorization", `Bearer ${token}`);
     const actor = getActingPublicId();
-    if (actor && !config.url?.startsWith('/auth/') && !config.headers.has('X-Acting-Public-Id')) setHeader(config, 'X-Acting-Public-Id', actor);
-    else config.headers.delete('X-Acting-Public-Id');
+    if (config.url?.startsWith('/auth/')) config.headers.delete('X-Acting-Public-Id');
+    else if (actor && !config.headers.has('X-Acting-Public-Id')) setHeader(config, 'X-Acting-Public-Id', actor);
   } else {
     config.headers.delete('Authorization');
     config.headers.delete('X-Acting-Public-Id');

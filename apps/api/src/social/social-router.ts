@@ -51,8 +51,8 @@ export function createSocialRouter(authService: AuthService, service: SocialServ
   }));
 
   router.get('/posts', asyncRoute(async (request, response) => {
-    const query = cursorQuery.extend({ ownerId: publicId.optional() }).parse(request.query);
-    response.json(await service.listPosts(request.authenticatedPublicId, query.limit, query.cursor, query.ownerId));
+    const query = cursorQuery.extend({ ownerId: publicId.optional(), publicOnly: z.enum(['true', 'false']).optional() }).parse(request.query);
+    response.json(await service.listPosts(request.authenticatedPublicId, query.limit, query.cursor, query.ownerId, query.publicOnly === 'true'));
   }));
   router.get('/suggestions', limiter(30), asyncRoute(async (request, response) => {
     response.json(await service.listSuggestions(request.authenticatedPublicId));

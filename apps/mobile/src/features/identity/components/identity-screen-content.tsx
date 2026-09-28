@@ -162,9 +162,7 @@ function IdentityScreenContentComponent({
         bottomOffset={20}
       >
         {/* <AppearanceCard /> */}
-        <BeaconSwitcher
-          selectedDisplayName={isPage ? fields.displayName : undefined}
-        />
+        <BeaconSwitcher />
         {isPage && (
           <View className="mb-3 w-full">
             <Text className="text-[10px] font-black uppercase tracking-[2px] text-g000st-red">
