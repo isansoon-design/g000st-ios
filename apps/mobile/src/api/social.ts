@@ -23,6 +23,10 @@ export async function listSocialPosts(ownerId?: string, cursor?: string, publicO
   });
   return parseApiPayload(socialPostPageSchema, response.data);
 }
+export async function getSocialPost(postId: string) {
+  const response = await axiosInstance.get(`/social/posts/${postId}`);
+  return parseApiPayload(socialPostResultSchema, response.data).post;
+}
 const pendingSocialMediaSchema = z.object({
   byteSize: z.number().int().positive(),
   contentType: z.string(),
@@ -45,14 +49,22 @@ export async function createSocialPost(
   media?: PendingSocialMedia[],
   sharedPostId?: string,
   actingPublicId?: string,
+  shareToSocial = true,
 ) {
   const response = await axiosInstance.post("/social/posts", {
     clientPostId,
     content,
     visibility,
+    ...(shareToSocial ? {} : { shareToSocial }),
     ...(media?.length ? { media } : {}),
     ...(sharedPostId ? { sharedPostId } : {}),
   }, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined });
+  return parseApiPayload(socialPostResultSchema, response.data).post;
+}
+export async function shareSocialPostToSocial(postId: string, actingPublicId?: string) {
+  const response = await axiosInstance.post(`/social/posts/${postId}/share-to-social`, undefined, {
+    headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined,
+  });
   return parseApiPayload(socialPostResultSchema, response.data).post;
 }
 export async function uploadSocialMedia(

@@ -29,6 +29,7 @@ import {
   type SocialPost,
   type SocialProfile,
 } from "@/app/api/social";
+import { PostContentLink } from "@/components/posts/PostContentLink";
 import { useCalling } from "@/features/calling/use-calling";
 import { startChatConversation } from "@/features/chat/api";
 import { PageContactLinks } from "@/features/profile/page-contact-links";
@@ -331,7 +332,7 @@ export default function PublicUserPage() {
   const posts = tab === "social" ? social : market;
   return (
     <main className="h-full overflow-y-auto bg-[#e6e8eb] dark:bg-night-canvas text-[#17191d] dark:text-night-text">
-      <div className="mx-auto max-w-3xl pb-12">
+      <div className="mx-auto max-w-5xl pb-12">
         <div className="relative h-56 overflow-hidden bg-[#141923] sm:h-72">
           {profile?.coverUrl && (
             <img
@@ -352,7 +353,7 @@ export default function PublicUserPage() {
             <ArrowLeft size={19} />
           </button>
           {own && editing && (
-            <label className="absolute bottom-4 right-4 cursor-pointer rounded-full bg-white/90 dark:bg-night-surface px-4 py-2 text-xs font-black shadow-lg transition hover:bg-white">
+            <label className="absolute bottom-12 right-4 cursor-pointer rounded-full bg-white/90 dark:bg-night-surface px-4 py-2 text-xs font-black shadow-lg transition hover:bg-white">
               {uploadingCover ? "Uploading…" : "✦ Change cover"}
               <input
                 type="file"
@@ -425,13 +426,14 @@ export default function PublicUserPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (editing) void endEdit();
+                        if (profile.isPage) router.push(`/beacons/${publicId}/edit`);
+                        else if (editing) void endEdit();
                         else void beginEdit();
                       }}
                       className="inline-flex items-center gap-2 rounded-full border border-black/15 dark:border-night-border px-4 py-2 text-xs font-black transition hover:bg-black hover:text-white"
                     >
                       <Pencil size={14} />
-                      {editing ? "Cancel editing" : "Edit profile"}
+                      {editing ? "Cancel editing" : profile.isPage ? "Edit beacon" : "Edit profile"}
                     </button>
                   )}
                 </div>
@@ -613,7 +615,7 @@ export default function PublicUserPage() {
               </section>
 
               <div
-                className="mx-3 mt-5 rounded-2xl bg-white/85 dark:bg-night-surface p-1.5 shadow-sm sm:mx-5"
+                className="mx-3 mt-5 max-w-3xl rounded-2xl bg-white/85 dark:bg-night-surface p-1.5 shadow-sm sm:mx-5 lg:mx-auto"
                 role="tablist"
                 aria-label="Profile posts"
               >
@@ -631,7 +633,7 @@ export default function PublicUserPage() {
               </div>
               <div
                 key={tab}
-                className="profile-reveal mx-3 mt-4 space-y-4 sm:mx-5"
+                className="profile-reveal mx-3 mt-4 max-w-3xl space-y-4 sm:mx-5 lg:mx-auto"
               >
                 {tab === "social" && own && (
                   <ProfilePostComposer
@@ -676,16 +678,12 @@ export default function PublicUserPage() {
                           </p>
                         </div>
                       </div>
-                      <p className="whitespace-pre-wrap px-4 pb-4 text-sm leading-6">
-                        {post.content}
-                      </p>
+                      {!!post.content && <PostContentLink content={post.content} href={`/posts/social/${post.id}`} className="px-4 pb-4 text-sm leading-6" />}
                       {post.sharedPost && (
                         <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/10 dark:border-night-border bg-[#f7f7f8] dark:bg-night-surface text-sm">
                           <div className="p-4">
                             <b>{post.sharedPost.author.displayName}</b>
-                            <p className="mt-1 whitespace-pre-wrap">
-                              {post.sharedPost.content}
-                            </p>
+                            <PostContentLink content={post.sharedPost.content} href={`/posts/social/${post.sharedPost.id}`} className="mt-1" />
                           </div>
                           <PostMedia media={post.sharedPost.media} />
                         </div>
@@ -721,9 +719,7 @@ export default function PublicUserPage() {
                           </p>
                         </div>
                       </div>
-                      <p className="whitespace-pre-wrap px-4 pb-3 text-sm leading-6">
-                        {post.content}
-                      </p>
+                      <PostContentLink content={post.content} href={`/posts/market/${post.id}`} className="px-4 pb-3 text-sm leading-6" />
                       <div className="flex flex-wrap gap-2 px-4 pb-4 text-xs font-black">
                         <span className="rounded-full bg-[#c62828] px-3 py-1.5 text-white">
                           {post.price.toLocaleString()} {post.currency}

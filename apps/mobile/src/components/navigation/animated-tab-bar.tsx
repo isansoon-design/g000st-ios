@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { TabIcon, type TabIconName } from '@/components/navigation/tab-icon';
+import { useTabBarScroll } from '@/components/navigation/tab-bar-scroll';
 import { useAppTheme } from '@/theme/app-theme';
 
 const ACTIVE_COLOR = '#9A9A9A';
@@ -65,27 +66,30 @@ export default function AnimatedTabBar({
   state,
   descriptors,
   navigation,
-  insets,
 }: BottomTabBarProps) {
   const { colors, isDark } = useAppTheme();
+  const scroll = useTabBarScroll();
+  const barOffset = scroll?.offset;
   const [barWidth, setBarWidth] = useState(Dimensions.get('window').width);
   const indicatorX = useSharedValue(0);
   const indicatorOpacity = useSharedValue(0);
   const indicatorReady = useRef(false);
 
-  const slotCount = state.routes.length;
+  const visibleRoutes = state.routes.filter((route) => route.name !== 'trading');
+  const slotCount = visibleRoutes.length;
 
   /** Center of each tab slot */
   const slotCenterX = (index: number) => (barWidth / slotCount) * (index + 0.5);
 
   useEffect(() => {
-    const activeIndex = state.index;
-    const center = slotCenterX(activeIndex);
+    scroll?.setVisible();
+    const activeIndex = visibleRoutes.findIndex((route) => route.key === state.routes[state.index]?.key);
+    const center = slotCenterX(Math.max(0, activeIndex));
 
     indicatorX.value = indicatorReady.current
       ? withSpring(center, { damping: 16, stiffness: 160 })
       : center;
-    indicatorOpacity.value = withTiming(1, { duration: 200 });
+    indicatorOpacity.value = withTiming(activeIndex < 0 ? 0 : 1, { duration: 200 });
     indicatorReady.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.index, barWidth]);
@@ -94,19 +98,25 @@ export default function AnimatedTabBar({
     opacity: indicatorOpacity.value,
     transform: [{ translateX: indicatorX.value - INDICATOR_WIDTH / 2 }],
   }));
+  const barStyle = useAnimatedStyle(() => ({
+    marginBottom: -(barOffset?.value ?? 0),
+  }));
 
   return (
-    <View
-      style={[styles.container, { paddingBottom: insets.bottom, backgroundColor: isDark ? colors.tabBar : '#FFFFFF', borderTopColor: isDark ? colors.border : '#BBBBBB' }]}
-      onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+    <Animated.View
+      style={[styles.container, barStyle, { backgroundColor: isDark ? colors.tabBar : '#FFFFFF', borderTopColor: isDark ? colors.border : '#BBBBBB' }]}
+      onLayout={(e) => {
+        setBarWidth(e.nativeEvent.layout.width);
+        scroll?.setBarHeight(e.nativeEvent.layout.height);
+      }}
     >
       {/* Animated indicator at the top of the tab bar */}
       <Animated.View style={[styles.indicator, indicatorStyle, { backgroundColor: isDark ? '#C1282D' : ACTIVE_COLOR }]} />
 
       <View style={styles.row}>
-        {state.routes.map((route: any, index: any) => {
+        {visibleRoutes.map((route, index) => {
           const { options } = descriptors[route.key];
-          const focused = state.index === index;
+          const focused = state.routes[state.index]?.key === route.key;
           const label =
             typeof options.title === 'string'
               ? options.title
@@ -145,7 +155,7 @@ export default function AnimatedTabBar({
           );
         })}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

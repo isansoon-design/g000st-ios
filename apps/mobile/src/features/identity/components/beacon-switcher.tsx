@@ -1,9 +1,9 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Toast from "react-native-toast-message";
 
-import { createBeaconPage, listBeaconPages, type BeaconPage } from "@/api/auth";
+import { listBeaconPages, type BeaconPage } from "@/api/auth";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 
 export function BeaconSwitcher() {
@@ -12,7 +12,6 @@ export function BeaconSwitcher() {
   const personalSelected =
     !!user && (activePublicId ?? user.publicId) === user.publicId;
   const [pages, setPages] = useState<BeaconPage[]>([]);
-  const [creating, setCreating] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -43,29 +42,6 @@ export function BeaconSwitcher() {
       text2: displayName,
     });
     router.replace("/(app)/(tabs)/social");
-  };
-
-  const create = async () => {
-    if (creating) return;
-    setCreating(true);
-    try {
-      const page = await createBeaconPage();
-      setPages((items) => [...items, page]);
-      router.push(`/users/${page.publicId}`);
-      Toast.show({
-        type: "success",
-        text1: "Beacon created",
-        text2: "Open Edit profile to add its details.",
-      });
-    } catch (error) {
-      Toast.show({
-        type: "error",
-        text1: "Could not create page",
-        text2: error instanceof Error ? error.message : "Try again.",
-      });
-    } finally {
-      setCreating(false);
-    }
   };
 
   return (
@@ -159,17 +135,10 @@ export function BeaconSwitcher() {
       })}
       <Pressable
         accessibilityRole="button"
-        disabled={creating}
-        onPress={() => void create()}
+        onPress={() => router.push('/beacons/new')}
         className="mt-1 rounded-xl bg-g000st-red px-4 py-3 disabled:opacity-60"
       >
-        {creating ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <Text className="text-center text-sm font-black text-white">
-            BUILD YOUR BEACON
-          </Text>
-        )}
+        <Text className="text-center text-sm font-black text-white">BUILD YOUR BEACON</Text>
       </Pressable>
     </View>
   );

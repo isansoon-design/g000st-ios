@@ -13,6 +13,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { FeatureScreen } from "@/components/layout/feature-screen";
 import { AppThemeSwitch } from "@/components/navigation/app-theme-switch";
+import { useTabBarScroll } from "@/components/navigation/tab-bar-scroll";
 import { BeaconSwitcher } from "@/features/identity/components/beacon-switcher";
 import type { IdentityProfileFields } from "@/features/identity/hooks/use-identity-screen";
 import { avatarImageSource } from "@/services/media/avatar-image-source";
@@ -117,6 +118,7 @@ function IdentityScreenContentComponent({
   uploadingPhoto,
 }: IdentityScreenContentProps) {
   const router = useRouter();
+  const tabScroll = useTabBarScroll();
   const { isDark } = useAppTheme();
   if (loading) {
     return (
@@ -158,6 +160,8 @@ function IdentityScreenContentComponent({
       <KeyboardAwareScrollView
         className="flex-1"
         contentContainerClassName="items-center p-4"
+        onScroll={tabScroll?.onScroll}
+        scrollEventThrottle={16}
         keyboardShouldPersistTaps="handled"
         bottomOffset={20}
       >
@@ -255,7 +259,7 @@ function IdentityScreenContentComponent({
             {uploadingPhoto
               ? "Uploading photo…"
               : avatarUrl
-                ? "Change photo"
+                ? "Change pssshoto"
                 : "Add photo"}
           </Text>
         </Pressable>

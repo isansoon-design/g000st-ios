@@ -4,7 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter, type Href } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { cssInterop } from "nativewind";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   AppState,
@@ -25,11 +25,8 @@ import Toast from "react-native-toast-message";
 
 import { startMarketChatConversation } from "@/api/chat";
 import {
-  createMarketComment,
   createMarketPost,
-  deleteMarketComment,
   deleteMarketPost,
-  listMarketComments,
   listMarketPosts,
   reportMarketPost,
   toggleMarketLike,
@@ -38,9 +35,10 @@ import {
 } from "@/api/market";
 import { toggleSocialCamp } from "@/api/social";
 import { FeatureScreen } from "@/components/layout/feature-screen";
+import { useTabBarScroll } from "@/components/navigation/tab-bar-scroll";
 import { PostImage } from "@/components/media/post-image";
+import { PostContentText } from "@/components/posts/post-content-text";
 import type {
-  MarketComment,
   MarketPost,
   MarketPostFields,
 } from "@/domain/market/types";
@@ -62,6 +60,7 @@ const EMPTY_FIELDS: MarketPostFields = {
 };
 
 export function MarketScreen() {
+  const tabScroll = useTabBarScroll();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activePublicId } = useAuth();
@@ -77,7 +76,6 @@ export function MarketScreen() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string>();
-  const [commentsPost, setCommentsPost] = useState<MarketPost>();
   const [editingPost, setEditingPost] = useState<MarketPost>();
   const loadingMoreRef = useRef(false);
   const userPublicId = activePublicId ?? undefined;
@@ -226,6 +224,8 @@ export function MarketScreen() {
         {!loading && (
           <FlatList
             data={posts}
+            onScroll={tabScroll?.onScroll}
+            scrollEventThrottle={16}
             keyExtractor={(item) => item.id}
             contentContainerClassName="gap-3 p-3"
             onEndReached={() => void loadMore()}
@@ -278,7 +278,7 @@ export function MarketScreen() {
                     ),
                   );
                 }}
-                onComments={() => setCommentsPost(item)}
+                onComments={() => router.push(`/posts/market/${item.id}` as Href)}
                 onFollow={async () => {
                   try {
                     const result = await toggleSocialCamp(item.ownerPublicId);
@@ -391,24 +391,6 @@ export function MarketScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-      {commentsPost && (
-        <CommentsModal
-          post={commentsPost}
-          onClose={() => setCommentsPost(undefined)}
-          onCountChange={(postId, delta) =>
-            setPosts((current) =>
-              current.map((post) =>
-                post.id === postId
-                  ? {
-                    ...post,
-                    commentCount: Math.max(0, post.commentCount + delta),
-                  }
-                  : post,
-              ),
-            )
-          }
-        />
-      )}
       {editingPost && (
         <EditMarketModal
           post={editingPost}
@@ -668,7 +650,11 @@ function MarketCard({
         {/* End Call Actions */}
 
       </View>
-      <Text className="px-4 pb-3 text-[15px] leading-6 text-g000st-black dark:text-night-text">{post.content}</Text>
+      <PostContentText
+        content={post.content}
+        onOpen={() => router.push(`/posts/market/${post.id}` as Href)}
+        className="px-4 pb-3 text-[15px] leading-6 text-g000st-black dark:text-night-text"
+      />
       <View className="mx-4 mb-3 flex-row flex-wrap gap-2">
         <Badge
           text={
@@ -715,129 +701,6 @@ function MarketCard({
       </View>
 
     </View>
-  );
-}
-
-function CommentsModal({
-  post,
-  onClose,
-  onCountChange,
-}: {
-  post: MarketPost;
-  onClose: () => void;
-  onCountChange: (postId: string, delta: number) => void;
-}) {
-  const [comments, setComments] = useState<MarketComment[]>([]);
-  const [cursor, setCursor] = useState<string>();
-  const [value, setValue] = useState("");
-  const [loading, setLoading] = useState(false);
-  useEffect(() => {
-    void Promise.resolve().then(async () => {
-      setLoading(true);
-      try {
-        const page = await listMarketComments(post.id);
-        setComments(page.items);
-        setCursor(page.nextCursor);
-      } catch (error) {
-        showError(error, "Could not load comments.");
-      } finally {
-        setLoading(false);
-      }
-    });
-  }, [post.id]);
-  async function send() {
-    const content = value.trim();
-    if (!content) return;
-    try {
-      const comment = await createMarketComment(post.id, content);
-      setComments((current) => [...current, comment]);
-      setValue("");
-      onCountChange(post.id, 1);
-    } catch (error) {
-      showError(error, "Could not add comment.");
-    }
-  }
-  return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1 justify-end bg-black/50"
-      >
-        <View className="h-[75%] pb-16 rounded-t-[28px] bg-white dark:bg-night-surface p-4">
-          <View className="mb-3 flex-row items-center justify-between">
-            <Text className="text-lg font-black text-g000st-black dark:text-night-text">Comments</Text>
-            <Pressable onPress={onClose}>
-              <Text className="text-2xl text-g000st-black dark:text-night-text">×</Text>
-            </Pressable>
-          </View>
-          {loading ? (
-            <ActivityIndicator className="flex-1" />
-          ) : (
-            <FlatList
-              data={comments}
-              keyExtractor={(item) => item.id}
-              contentContainerClassName="gap-3 py-2"
-              onEndReached={async () => {
-                if (!cursor || loading) return;
-                setLoading(true);
-                try {
-                  const page = await listMarketComments(post.id, cursor);
-                  setComments((current) => [...current, ...page.items]);
-                  setCursor(page.nextCursor);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              renderItem={({ item }) => (
-                <View className="flex-row gap-2 rounded-xl bg-black/[.04] dark:bg-white/10 p-3">
-                  <Text className="min-w-0 flex-1 text-g000st-black dark:text-night-text">
-                    <Text className="font-black">
-                      {item.author.displayName}{" "}
-                    </Text>
-                    {item.content}
-                  </Text>
-                  {item.ownedByViewer && (
-                    <Pressable
-                      onPress={async () => {
-                        await deleteMarketComment(post.id, item.id);
-                        setComments((current) =>
-                          current.filter((comment) => comment.id !== item.id),
-                        );
-                        onCountChange(post.id, -1);
-                      }}
-                    >
-                      <Text className="text-xs font-black text-[#C62828]">
-                        Delete
-                      </Text>
-                    </Pressable>
-                  )}
-                </View>
-              )}
-              ListEmptyComponent={
-                <Text className="py-16 text-center text-black/40 dark:text-night-muted">
-                  No comments yet.
-                </Text>
-              }
-            />
-          )}
-          <View className="flex-row gap-2 border-t border-black/10 dark:border-night-border pt-3  ">
-            <TextInput
-              value={value}
-              onChangeText={setValue}
-              placeholder="Write a comment…"
-              maxLength={1000}
-              className="min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 py-2 text-g000st-black dark:text-night-text"
-            />
-            <Pressable
-              onPress={() => void send()}
-              className="rounded-xl bg-black px-4 py-3"
-            >
-              <Text className="text-white">➤</Text>
-            </Pressable>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
   );
 }
 

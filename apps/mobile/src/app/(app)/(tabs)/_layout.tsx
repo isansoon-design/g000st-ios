@@ -1,10 +1,11 @@
 import { Tabs } from 'expo-router';
 
 import AnimatedTabBar from '@/components/navigation/animated-tab-bar';
+import { TabBarScrollProvider } from '@/components/navigation/tab-bar-scroll';
 
 export default function MainTabsLayout() {
   return (
-    <Tabs
+    <TabBarScrollProvider><Tabs
       tabBar={(props) => <AnimatedTabBar {...props} />}
       screenOptions={{
         headerShown: false,
@@ -15,8 +16,8 @@ export default function MainTabsLayout() {
       <Tabs.Screen name="chat" options={{ title: 'CHAT' }} />
       <Tabs.Screen name="contacts" options={{ title: 'FRIENDS' }} />
       <Tabs.Screen name="identity" options={{ title: 'PROFILE' }} />
-      <Tabs.Screen name="trading" options={{ title: 'TRADING' }} />
+      <Tabs.Screen name="trading" options={{ href: null }} />
       <Tabs.Screen name="mobile" options={{ title: 'MOBILE' }} />
-    </Tabs>
+    </Tabs></TabBarScrollProvider>
   );
 }

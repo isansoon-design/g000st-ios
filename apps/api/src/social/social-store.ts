@@ -16,6 +16,7 @@ export interface SocialStore {
   listPosts(viewerId: string, limit: number, cursor?: SocialCursor, ownerId?: string, publicOnly?: boolean): Promise<SocialPage<SocialPost>>;
   findPost(viewerId: string, postId: string): Promise<SocialPost | null>;
   createPost(ownerId: string, postId: string, input: Omit<CreateSocialPostInput, 'media'> & { media?: readonly SocialMedia[] }, nowMs: number): Promise<SocialPost>;
+  shareToSocial(viewerId: string, postId: string, nowMs: number): Promise<SocialPost | null>;
   updatePost(viewerId: string, postId: string, content: string, nowMs: number): Promise<SocialPost | null>;
   deletePost(viewerId: string, postId: string): Promise<boolean>;
   toggleLike(viewerId: string, postId: string, nowMs: number): Promise<{ liked: boolean; likeCount: number } | null>;

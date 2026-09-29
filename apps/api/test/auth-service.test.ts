@@ -286,4 +286,14 @@ describe('AuthService', () => {
     await service.deleteAccount(owner.session.accessToken);
     await assert.rejects(() => service.getActor(owner.session.accessToken, page.publicId), expectApiError('SESSION_EXPIRED'));
   });
+
+  it('stores a beacon name and bio when the page is created', async () => {
+    const service = new AuthService(new MemoryAuthStore(), PEPPER, () => NOW);
+    const owner = await service.register();
+    const page = await service.createPage(owner.session.accessToken, { displayName: '  My Beacon  ', bio: '  Hello  ' });
+
+    assert.equal(page.displayName, 'My Beacon');
+    assert.equal(page.bio, 'Hello');
+    assert.deepEqual(await service.listPages(owner.session.accessToken), [page]);
+  });
 });

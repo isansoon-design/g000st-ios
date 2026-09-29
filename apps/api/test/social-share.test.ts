@@ -17,7 +17,7 @@ function fixture() {
   const posts = new Map<string, SocialPost>();
   const original: SocialPost = {
     id: originalId, ownerPublicId: ownerId, author: { publicId: ownerId, displayName: 'Owner' },
-    content: 'Original content', visibility: 'anonymous', createdAtMs: 1, updatedAtMs: 1,
+    content: 'Original content', visibility: 'anonymous', sharedToSocial: true, createdAtMs: 1, updatedAtMs: 1,
     likeCount: 0, commentCount: 0, likedByViewer: false, campedByViewer: false, ownedByViewer: false,
   };
   posts.set(originalId, original);
@@ -27,8 +27,8 @@ function fixture() {
   const store = {
     async findPost(viewer: string, id: string) { const post = posts.get(id); return post ? project(post, viewer) : null; },
     async listPosts(viewer: string) { return { items: [...posts.values()].map((post) => project(post, viewer)) }; },
-    async createPost(owner: string, id: string, input: { content: string; visibility: 'anonymous' | 'public'; sharedPostId?: string }, nowMs: number) {
-      const post: SocialPost = { ...input, id, ownerPublicId: owner, author: { publicId: owner, displayName: 'Sharer' }, createdAtMs: nowMs, updatedAtMs: nowMs, likeCount: 0, commentCount: 0, likedByViewer: false, campedByViewer: false, ownedByViewer: true };
+    async createPost(owner: string, id: string, input: { content: string; visibility: 'anonymous' | 'public'; sharedToSocial?: boolean; sharedPostId?: string }, nowMs: number) {
+      const post: SocialPost = { ...input, sharedToSocial: input.sharedToSocial !== false, id, ownerPublicId: owner, author: { publicId: owner, displayName: 'Sharer' }, createdAtMs: nowMs, updatedAtMs: nowMs, likeCount: 0, commentCount: 0, likedByViewer: false, campedByViewer: false, ownedByViewer: true };
       posts.set(id, post);
       return post;
     },

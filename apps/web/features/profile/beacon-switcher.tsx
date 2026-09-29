@@ -5,11 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-import {
-  createBeaconPage,
-  listBeaconPages,
-  type BeaconPage,
-} from "@/app/api/auth";
+import { listBeaconPages, type BeaconPage } from "@/app/api/auth";
 import { sessionStorage } from "@/app/api/session-storage";
 
 export function BeaconSwitcher() {
@@ -19,7 +15,6 @@ export function BeaconSwitcher() {
   const activeId = sessionStorage.getActingPublicId();
   const personalSelected = !!ownerId && activeId === ownerId;
   const [pages, setPages] = useState<BeaconPage[]>([]);
-  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -54,21 +49,6 @@ export function BeaconSwitcher() {
     if (activeId !== publicId) sessionStorage.setActingPublicId(publicId);
     toast.success(`You are now interacting as ${displayName}`);
     router.push("/social");
-  };
-
-  const create = async () => {
-    if (creating) return;
-    setCreating(true);
-    try {
-      const page = await createBeaconPage();
-      toast.success("Page created. Open Edit profile to add its details.");
-      router.push(`/users/${page.publicId}`);
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not create page.",
-      );
-      setCreating(false);
-    }
   };
 
   if (!mounted) return null;
@@ -149,11 +129,10 @@ export function BeaconSwitcher() {
       })}
       <button
         type="button"
-        disabled={creating}
-        onClick={() => void create()}
-        className="mt-1 w-full rounded-xl bg-[#C62828] px-4 py-3 text-sm font-black text-white disabled:opacity-50"
+        onClick={() => router.push('/beacons/new')}
+        className="mt-1 w-full rounded-xl bg-[#C62828] px-4 py-3 text-sm font-black text-white"
       >
-        {creating ? "Creating…" : "BUILD YOUR BEACON"}
+        BUILD YOUR BEACON
       </button>
     </section>
   );

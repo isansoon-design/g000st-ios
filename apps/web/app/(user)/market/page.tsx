@@ -6,7 +6,6 @@ import {
   MessageCircle,
   Package,
   Phone,
-  Send,
   ShoppingBag,
   X,
 } from "lucide-react";
@@ -15,23 +14,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import {
-  createMarketComment,
   createMarketPost,
-  deleteMarketComment,
   deleteMarketPost,
-  listMarketComments,
   listMarketPosts,
   reportMarketPost,
   toggleMarketLike,
   updateMarketPost,
   uploadMarketMedia,
-  type MarketComment,
   type MarketPost,
   type MarketPostFields,
 } from "@/app/api/market";
 import { sessionStorage } from "@/app/api/session-storage";
 import { toggleSocialCamp } from "@/app/api/social";
 import { PostImage } from "@/components/media/PostImage";
+import { PostContentLink } from "@/components/posts/PostContentLink";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { useCalling } from "@/features/calling/use-calling";
 import { startMarketChatConversation } from "@/features/chat/api";
@@ -55,9 +51,9 @@ export default function MarketPage() {
   const [fields, setFields] = useState(EMPTY_FIELDS);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [nextCursor, setNextCursor] = useState<string>();
   const [loadingMore, setLoadingMore] = useState(false);
-  const [commentsPost, setCommentsPost] = useState<MarketPost>();
   const [editingPost, setEditingPost] = useState<MarketPost>();
   const feedRef = useRef<HTMLElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -128,6 +124,7 @@ export default function MarketPage() {
       setPosts((current) => [post, ...current]);
       setFields(EMPTY_FIELDS);
       setMediaFiles([]);
+      setIsComposerOpen(false);
       toast.success("Listing published");
     } catch (error) {
       showError(error, "Could not publish listing.");
@@ -155,14 +152,19 @@ export default function MarketPage() {
       </header>
       <main ref={feedRef} className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-3 p-3">
-          <div data-admin-part="trading.sell"><Composer
-            fields={fields}
-            mediaFiles={mediaFiles}
-            busy={busy}
-            onChange={setFields}
-            onFiles={setMediaFiles}
-            onPublish={() => void publish()}
-          /></div>
+          <button
+            type="button"
+            aria-label="Create a Market listing"
+            onClick={() => setIsComposerOpen(true)}
+            className="mb-1 flex w-full items-center gap-3 rounded-2xl border border-black/10 bg-white p-4 text-left shadow-sm dark:border-night-border dark:bg-night-surface"
+          >
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#c62828] text-2xl font-light text-white">＋</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-black text-[#17191d] dark:text-night-text">Create a Market post</span>
+              <span className="mt-0.5 block text-xs text-black/50 dark:text-night-muted">Sell something to the community</span>
+            </span>
+            <span aria-hidden="true" className="text-xl font-bold text-[#c62828]">›</span>
+          </button>
           {posts.length === 0 && (
             <div className="py-16 text-center font-bold text-black/40 dark:text-night-muted">
               No listings yet.
@@ -246,9 +248,7 @@ export default function MarketPage() {
                   </button>
                 )}
               </div>
-              <p className="whitespace-pre-wrap px-4 pb-3 text-[15px] leading-6">
-                {post.content}
-              </p>
+              <PostContentLink content={post.content} href={`/posts/market/${post.id}`} className="px-4 pb-3 text-[15px] leading-6" />
               <div className="mx-4 mb-3 flex flex-wrap gap-2">
                 <Badge>
                   <b>
@@ -312,7 +312,7 @@ export default function MarketPage() {
                   {post.likeCount}
                 </button>
                 <button
-                  onClick={() => setCommentsPost(post)}
+                  onClick={() => router.push(`/posts/market/${post.id}`)}
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3 font-black"
                 >
                   <MessageCircle size={18} />
@@ -393,22 +393,40 @@ export default function MarketPage() {
           onClick={() => router.push("/chat?kind=market")}
         />
       </nav>
-      <CommentsModal
-        post={commentsPost}
-        onClose={() => setCommentsPost(undefined)}
-        onCountChange={(postId, delta) =>
-          setPosts((current) =>
-            current.map((item) =>
-              item.id === postId
-                ? {
-                  ...item,
-                  commentCount: Math.max(0, item.commentCount + delta),
-                }
-                : item,
-            ),
-          )
-        }
-      />
+      {isComposerOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="New listing"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-5"
+        >
+          <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-[28px] bg-[#f7f7f8] pt-5 dark:bg-night-surface sm:rounded-[28px]">
+            <div className="flex items-center justify-between px-5 pb-4">
+              <div>
+                <h2 className="text-xl font-black">New listing</h2>
+                <p className="mt-1 text-xs text-black/50 dark:text-night-muted">Add the details buyers need</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close new listing"
+                disabled={busy}
+                onClick={() => setIsComposerOpen(false)}
+                className="grid h-10 w-10 place-items-center rounded-full bg-white text-xl disabled:opacity-40 dark:bg-night-raised"
+              >×</button>
+            </div>
+            <div data-admin-part="trading.sell" className="overflow-y-auto px-5 pb-5">
+              <Composer
+                fields={fields}
+                mediaFiles={mediaFiles}
+                busy={busy}
+                onChange={setFields}
+                onFiles={setMediaFiles}
+                onPublish={() => void publish()}
+              />
+            </div>
+          </div>
+        </div>
+      )}
       <EditModal
         post={editingPost}
         onClose={() => setEditingPost(undefined)}
@@ -523,132 +541,6 @@ function Composer({
         </button>
       </div>
     </section>
-  );
-}
-
-function CommentsModal({
-  post,
-  onClose,
-  onCountChange,
-}: {
-  post?: MarketPost;
-  onClose: () => void;
-  onCountChange: (postId: string, delta: number) => void;
-}) {
-  const [comments, setComments] = useState<MarketComment[]>([]);
-  const [cursor, setCursor] = useState<string>();
-  const [value, setValue] = useState("");
-  const [loading, setLoading] = useState(false);
-  useEffect(() => {
-    if (!post) return;
-    setLoading(true);
-    setComments([]);
-    void listMarketComments(post.id)
-      .then((page) => {
-        setComments(page.items);
-        setCursor(page.nextCursor);
-      })
-      .catch((error) => showError(error, "Could not load comments."))
-      .finally(() => setLoading(false));
-  }, [post]);
-  if (!post) return null;
-  async function send() {
-    const content = value.trim();
-    if (!content) return;
-    try {
-      const item = await createMarketComment(post!.id, content);
-      setComments((current) => [...current, item]);
-      setValue("");
-      onCountChange(post!.id, 1);
-    } catch (error) {
-      showError(error, "Could not add comment.");
-    }
-  }
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-5"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="flex h-[75dvh] w-full max-w-xl flex-col rounded-t-[28px] bg-white dark:bg-night-surface p-4 shadow-2xl sm:rounded-[28px]">
-        <div className="flex items-center justify-between border-b pb-3">
-          <h2 className="text-lg font-black">Comments</h2>
-          <button aria-label="Close" onClick={onClose}>
-            <X />
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-3">
-          {comments.map((item) => (
-            <div
-              key={item.id}
-              className="flex gap-2 rounded-xl bg-black/[.04] dark:bg-white/10 p-3"
-            >
-              <p className="min-w-0 flex-1 text-sm">
-                <b>{item.author.displayName}</b> {item.content}
-              </p>
-              {item.ownedByViewer && (
-                <button
-                  onClick={async () => {
-                    await deleteMarketComment(post!.id, item.id);
-                    setComments((current) =>
-                      current.filter((comment) => comment.id !== item.id),
-                    );
-                    onCountChange(post!.id, -1);
-                  }}
-                  className="text-xs font-black text-[#c62828]"
-                >
-                  Delete
-                </button>
-              )}
-            </div>
-          ))}
-          {!loading && !comments.length && (
-            <div className="py-16 text-center text-black/40 dark:text-night-muted">
-              No comments yet.
-            </div>
-          )}
-          {cursor && (
-            <button
-              disabled={loading}
-              onClick={async () => {
-                setLoading(true);
-                try {
-                  const page = await listMarketComments(post!.id, cursor);
-                  setComments((current) => [...current, ...page.items]);
-                  setCursor(page.nextCursor);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              className="w-full py-3 text-sm font-black"
-            >
-              {loading ? "Loading…" : "Load more"}
-            </button>
-          )}
-        </div>
-        <form
-          className="flex gap-2 border-t pt-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void send();
-          }}
-        >
-          <input
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            placeholder="Write a comment…"
-            maxLength={1000}
-            className="min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
-          />
-          <button
-            aria-label="Send"
-            className="rounded-xl bg-black px-4 text-white"
-          >
-            <Send size={18} />
-          </button>
-        </form>
-      </div>
-    </div>
   );
 }
 

@@ -33,7 +33,7 @@ export function ProfilePostComposer({ publicId, isPage, pageNamed, onPublished }
     setMediaFiles(files);
   }
 
-  async function publish() {
+  async function publish(shareToSocial: boolean) {
     const content = draft.trim();
     if (!content || posting || (isPage && !pageNamed)) return;
     setPosting(true);
@@ -42,11 +42,11 @@ export function ProfilePostComposer({ publicId, isPage, pageNamed, onPublished }
       const media = mediaFiles.length
         ? await Promise.all(mediaFiles.map((file) => uploadSocialMedia(clientPostId, file, publicId)))
         : undefined;
-      const post = await createSocialPost(clientPostId, content, isPage ? 'public' : visibility, media, undefined, publicId);
+      const post = await createSocialPost(clientPostId, content, isPage ? 'public' : visibility, media, undefined, publicId, shareToSocial);
       if (post.visibility === 'public') onPublished(post);
       setDraft('');
       setMediaFiles([]);
-      toast.success(post.visibility === 'public' ? 'Posted to this profile.' : 'Posted anonymously to Social. It will not appear on this public profile.');
+      toast.success(post.visibility === 'public' ? (shareToSocial ? 'Posted here and on g000st Social.' : 'Posted to this profile.') : 'Posted anonymously to Social. It will not appear on this public profile.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not post.');
     } finally {
@@ -69,7 +69,8 @@ export function ProfilePostComposer({ publicId, isPage, pageNamed, onPublished }
     <div className="mt-3 flex flex-wrap items-center gap-2">
       <label className="cursor-pointer rounded-xl border border-black/10 px-3 py-2 text-xs font-bold dark:border-night-border">📎 {mediaFiles.length ? `${mediaFiles.length} selected` : 'Media'}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" multiple className="hidden" onChange={(event) => { selectMedia([...(event.target.files ?? [])]); event.target.value = ''; }} /></label>
       <label className="flex min-w-0 flex-1 items-center gap-2 text-xs font-bold"><input type="checkbox" checked={isPage || visibility === 'public'} disabled={isPage} onChange={(event) => setVisibility(event.target.checked ? 'public' : 'anonymous')} />{isPage ? 'Page name is always shown' : 'Show my identity'}</label>
-      <button type="button" disabled={!draft.trim() || posting || (isPage && !pageNamed)} onClick={() => void publish()} className="rounded-xl bg-[#222] px-5 py-2 text-sm font-black text-white disabled:opacity-40">{posting ? 'Posting…' : 'Post'}</button>
+      <button type="button" disabled={!draft.trim() || posting || (isPage && !pageNamed)} onClick={() => void publish(visibility === 'anonymous' && !isPage)} className="rounded-xl bg-[#222] px-5 py-2 text-sm font-black text-white disabled:opacity-40">{posting ? 'Posting…' : isPage || visibility === 'public' ? 'Create post' : 'Post to Social'}</button>
+      {(isPage || visibility === 'public') && <button type="button" disabled={!draft.trim() || posting || (isPage && !pageNamed)} onClick={() => void publish(true)} className="rounded-xl bg-[#C62828] px-5 py-2 text-sm font-black text-white disabled:opacity-40">Create & share on g000st Social</button>}
     </div>
   </section>;
 }

@@ -137,8 +137,14 @@ export class SocialService {
     const media = incoming.length
       ? await Promise.all(incoming.map((item) => this.requireMedia().promoteSocialMedia({ media: item, postId: clientPostId, publicId: ownerId })))
       : undefined;
-    const post = await this.store.createPost(ownerId, clientPostId, { ...postInput, ...(sharedPostId ? { sharedPostId } : {}), ...(media ? { media } : {}), content: input.content.trim() }, this.now());
+    const post = await this.store.createPost(ownerId, clientPostId, { ...postInput, sharedToSocial: input.visibility === 'anonymous' || input.sharedToSocial !== false, ...(sharedPostId ? { sharedPostId } : {}), ...(media ? { media } : {}), content: input.content.trim() }, this.now());
     return this.withMediaUrls(post, ownerId);
+  }
+
+  async shareToSocial(viewerId: string, postId: string) {
+    const post = await this.store.shareToSocial(viewerId, postId, this.now());
+    if (!post) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found.');
+    return this.withMediaUrls(post, viewerId);
   }
 
   async updatePost(viewerId: string, postId: string, content: string) {

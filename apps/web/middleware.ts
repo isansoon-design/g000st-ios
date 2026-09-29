@@ -10,7 +10,9 @@ const protectedRoutes = [
   "/social-chat",
   "/contacts",
   "/profile",
+  "/beacons/",
   "/mobile",
+  "/posts/",
   "/users/",
 ];
 const adminRoutes = ["/dashboard", "/client-desk", "/analytics", "/billing"];

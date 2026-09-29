@@ -1,7 +1,7 @@
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -19,17 +19,18 @@ import Toast from "react-native-toast-message";
 
 import { listBeaconPages, type BeaconPage } from "@/api/auth";
 import { startChatConversation } from "@/api/chat";
-import { listMarketPosts } from "@/api/market";
 import {
   getSocialProfile,
   listSocialPosts,
+  shareSocialPostToSocial,
   toggleSocialCamp,
   updateSocialProfile,
   uploadAvatarMedia,
   uploadCoverMedia,
 } from "@/api/social";
+import { useOpenBeaconPageEditor } from "@/components/navigation/app-sidebar";
 import { AppThemeSwitch } from "@/components/navigation/app-theme-switch";
-import type { MarketPost } from "@/domain/market/types";
+import { PostContentText } from "@/components/posts/post-content-text";
 import type { SocialPost, SocialProfile } from "@/domain/social/types";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useCalling } from "@/features/calling/hooks/use-calling";
@@ -37,7 +38,6 @@ import { chatConversationHref } from "@/features/chat/navigation";
 import { PageContactLinks } from "@/features/identity/components/page-contact-links";
 import { ProfilePostComposer } from "@/features/social/components/profile-post-composer";
 
-type Tab = "social" | "market";
 type ProfileDraft = {
   displayName: string;
   bio: string;
@@ -77,6 +77,7 @@ function profileDraft(profile: SocialProfile): ProfileDraft {
 export default function UserProfileScreen() {
   const { publicId } = useLocalSearchParams<{ publicId: string }>();
   const router = useRouter();
+  const openPageEditor = useOpenBeaconPageEditor();
   const insets = useSafeAreaInsets();
   const { activePublicId, setActivePublicId, user } = useAuth();
   const { callUser } = useCalling();
@@ -90,12 +91,9 @@ export default function UserProfileScreen() {
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<SocialProfile>();
-  const [social, setSocial] = useState<SocialPost[]>([]);
-  const [market, setMarket] = useState<MarketPost[]>([]);
-  const [tab, setTab] = useState<Tab>("social");
-  const [cursors, setCursors] = useState<{ social?: string; market?: string }>(
-    {},
-  );
+  const [posts, setPosts] = useState<SocialPost[]>([]);
+  const [cursor, setCursor] = useState<string>();
+  const [sharingId, setSharingId] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -213,26 +211,20 @@ export default function UserProfileScreen() {
         if (!active) return null;
         setLoading(true);
         setProfile(undefined);
-        setSocial([]);
-        setMarket([]);
-        setCursors({});
+        setPosts([]);
+        setCursor(undefined);
         setError("");
         return Promise.all([
           getSocialProfile(publicId),
           listSocialPosts(publicId, undefined, true),
-          listMarketPosts(publicId),
         ]);
       })
       .then((result) => {
         if (!active || !result) return;
-        const [person, socialPage, marketPage] = result;
+        const [person, page] = result;
         setProfile(person);
-        setSocial(socialPage.items);
-        setMarket(marketPage.items);
-        setCursors({
-          social: socialPage.nextCursor,
-          market: marketPage.nextCursor,
-        });
+        setPosts(page.items);
+        setCursor(page.nextCursor);
       })
       .catch((reason) => {
         if (active)
@@ -251,28 +243,17 @@ export default function UserProfileScreen() {
   }, [publicId]);
 
   const loadMore = useCallback(async () => {
-    if (!publicId || !cursors[tab] || loadingMore) return;
+    if (!publicId || !cursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      if (tab === "social") {
-        const page = await listSocialPosts(publicId, cursors.social, true);
-        setSocial((current) => [
-          ...current,
-          ...page.items.filter(
-            (item) => !current.some((old) => old.id === item.id),
-          ),
-        ]);
-        setCursors((current) => ({ ...current, social: page.nextCursor }));
-      } else {
-        const page = await listMarketPosts(publicId, cursors.market);
-        setMarket((current) => [
-          ...current,
-          ...page.items.filter(
-            (item) => !current.some((old) => old.id === item.id),
-          ),
-        ]);
-        setCursors((current) => ({ ...current, market: page.nextCursor }));
-      }
+      const page = await listSocialPosts(publicId, cursor, true);
+      setPosts((current) => [
+        ...current,
+        ...page.items.filter(
+          (item) => !current.some((old) => old.id === item.id),
+        ),
+      ]);
+      setCursor(page.nextCursor);
     } catch (reason) {
       Toast.show({
         type: "error",
@@ -285,7 +266,25 @@ export default function UserProfileScreen() {
     } finally {
       setLoadingMore(false);
     }
-  }, [cursors, loadingMore, publicId, tab]);
+  }, [cursor, loadingMore, publicId]);
+
+  async function shareToSocial(postId: string) {
+    if (!publicId || sharingId) return;
+    setSharingId(postId);
+    try {
+      const shared = await shareSocialPostToSocial(postId, publicId);
+      setPosts((items) => items.map((item) => (item.id === postId ? { ...item, sharedToSocial: shared.sharedToSocial } : item)));
+      Toast.show({ type: "success", text1: "Shared on g000st Social." });
+    } catch (reason) {
+      Toast.show({
+        type: "error",
+        text1: "Could not share",
+        text2: reason instanceof Error ? reason.message : "Try again.",
+      });
+    } finally {
+      setSharingId(undefined);
+    }
+  }
 
   async function openChat() {
     if (!publicId) return;
@@ -426,7 +425,7 @@ export default function UserProfileScreen() {
 
   return (
     <View
-      className="flex-1 bg-[#e6e8eb] dark:bg-night-canvas"
+      className="flex-1  bg-[#e6e8eb] dark:bg-night-canvas"
       style={{ paddingTop: insets.top }}
     >
       <ScrollView
@@ -460,7 +459,7 @@ export default function UserProfileScreen() {
               accessibilityRole="button"
               onPress={() => void changeCover()}
               disabled={uploading}
-              className="absolute bottom-4 right-4 rounded-full bg-white dark:bg-night-surface px-4 py-2"
+              className="absolute bottom-12  right-4 rounded-full bg-white dark:bg-night-surface px-4 py-2"
             >
               <Text className="text-xs font-black">
                 {uploading ? "Uploading…" : "✦ Change cover"}
@@ -547,13 +546,14 @@ export default function UserProfileScreen() {
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => {
-                      if (editing) void endEdit();
+                      if (profile.isPage) openPageEditor?.(publicId, setProfile);
+                      else if (editing) void endEdit();
                       else void beginEdit();
                     }}
                     className="mt-4 self-start rounded-full border border-black/15 dark:border-night-border px-4 py-2"
                   >
                     <Text className="text-xs font-black text-[#17191d] dark:text-night-text">
-                      {editing ? "✎ Cancel editing" : "✎ Edit profile"}
+                      {editing ? "✎ Cancel editing" : profile.isPage ? "✎ Edit page" : "✎ Edit profile"}
                     </Text>
                   </Pressable>
                 )}
@@ -749,73 +749,42 @@ export default function UserProfileScreen() {
                 )}
               </Animated.View>
 
-              <View className="mx-3 mt-5 flex-row rounded-2xl bg-white dark:bg-night-surface p-1.5">
-                <Pressable
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: tab === "social" }}
-                  onPress={() => setTab("social")}
-                  className={`flex-1 rounded-xl py-3 ${tab === "social" ? "bg-[#17191d]" : ""}`}
-                >
-                  <Text
-                    className={`text-center text-sm font-black ${tab === "social" ? "text-white" : "text-black/45 dark:text-night-muted"}`}
-                  >
-                    ◎ Social
-                  </Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: tab === "market" }}
-                  onPress={() => setTab("market")}
-                  className={`flex-1 rounded-xl py-3 ${tab === "market" ? "bg-[#17191d]" : ""}`}
-                >
-                  <Text
-                    className={`text-center text-sm font-black ${tab === "market" ? "text-white" : "text-black/45 dark:text-night-muted"}`}
-                  >
-                    ◈ Market
-                  </Text>
-                </Pressable>
-              </View>
-              <View className="mx-3 mt-4 gap-3">
-                {tab === "social" && own && publicId && (
+              <View className="mx-3 mt-5 gap-3">
+                {own && publicId && (
                   <ProfilePostComposer
                     key={publicId}
                     publicId={publicId}
                     isPage={profile.isPage}
                     pageNamed={!!profile.displayName?.trim()}
                     onPublished={(post) =>
-                      setSocial((items) => [post, ...items])
+                      setPosts((items) => [post, ...items])
                     }
                   />
                 )}
-                {(tab === "social" ? social : market).length === 0 && (
+                {posts.length === 0 && (
                   <Text className="rounded-3xl bg-white dark:bg-night-surface p-12 text-center text-sm text-black/45 dark:text-night-muted">
-                    {tab === "social"
-                      ? "No public social posts yet."
-                      : "No market listings yet."}
+                    No posts yet.
                   </Text>
                 )}
-                {tab === "social"
-                  ? social.map((post, index) => (
-                    <Animated.View
-                      entering={FadeInDown.delay(
-                        Math.min(index * 45, 250),
-                      ).duration(350)}
-                      key={post.id}
-                    >
-                      <SocialCard post={post} />
-                    </Animated.View>
-                  ))
-                  : market.map((post, index) => (
-                    <Animated.View
-                      entering={FadeInDown.delay(
-                        Math.min(index * 45, 250),
-                      ).duration(350)}
-                      key={post.id}
-                    >
-                      <MarketCard post={post} />
-                    </Animated.View>
-                  ))}
-                {!!cursors[tab] && (
+                {posts.map((post, index) => (
+                  <Animated.View
+                    entering={FadeInDown.delay(
+                      Math.min(index * 45, 250),
+                    ).duration(350)}
+                    key={post.id}
+                  >
+                    <SocialCard
+                      post={post}
+                      onShare={
+                        own && !post.sharedToSocial && post.visibility === "public"
+                          ? () => void shareToSocial(post.id)
+                          : undefined
+                      }
+                      sharing={sharingId === post.id}
+                    />
+                  </Animated.View>
+                ))}
+                {!!cursor && (
                   <Pressable
                     onPress={() => void loadMore()}
                     disabled={loadingMore}
@@ -890,7 +859,16 @@ function CardHeader({
   );
 }
 
-function SocialCard({ post }: { post: SocialPost }) {
+function SocialCard({
+  post,
+  onShare,
+  sharing,
+}: {
+  post: SocialPost;
+  onShare?: () => void;
+  sharing?: boolean;
+}) {
+  const router = useRouter();
   return (
     <View className="overflow-hidden rounded-3xl bg-white dark:bg-night-surface">
       <CardHeader
@@ -898,14 +876,14 @@ function SocialCard({ post }: { post: SocialPost }) {
         avatarUrl={post.author.avatarUrl}
         createdAtMs={post.createdAtMs}
       />
-      <Text className="px-4 pb-4 text-sm leading-6">{post.content}</Text>
+      {!!post.content && <PostContentText content={post.content} onOpen={() => router.push(`/posts/social/${post.id}` as Href)} className="px-4 pb-4 text-sm leading-6 text-g000st-black dark:text-night-text" />}
       {post.sharedPost && (
         <View className="mx-4 mb-4 overflow-hidden rounded-2xl bg-[#f1f2f4] dark:bg-night-raised">
           <View className="p-4">
             <Text className="text-xs font-black">
               {post.sharedPost.author.displayName}
             </Text>
-            <Text className="mt-1 text-sm">{post.sharedPost.content}</Text>
+            <PostContentText content={post.sharedPost.content} onOpen={() => router.push(`/posts/social/${post.sharedPost!.id}` as Href)} className="mt-1 text-sm text-g000st-black dark:text-night-text" />
           </View>
           {post.sharedPost.media?.map((item) => (
             <CardMedia key={item.id} item={item} />
@@ -918,36 +896,18 @@ function SocialCard({ post }: { post: SocialPost }) {
       <Text className="p-4 text-xs text-black/40 dark:text-night-muted">
         ♡ {post.likeCount} ◌ {post.commentCount}
       </Text>
-    </View>
-  );
-}
-
-function MarketCard({ post }: { post: MarketPost }) {
-  return (
-    <View className="overflow-hidden rounded-3xl bg-white dark:bg-night-surface">
-      <CardHeader
-        name={post.author.displayName}
-        avatarUrl={post.author.avatarUrl}
-        createdAtMs={post.createdAtMs}
-      />
-      <Text className="px-4 pb-3 text-sm leading-6">{post.content}</Text>
-      <View className="flex-row flex-wrap gap-2 px-4 pb-4">
-        <Text className="rounded-full bg-[#c62828] px-3 py-1.5 text-xs font-black text-white">
-          {post.price.toLocaleString()} {post.currency}
-        </Text>
-        <Text className="rounded-full bg-[#f0f1f4] dark:bg-night-surface px-3 py-1.5 text-xs font-black">
-          {post.city}
-        </Text>
-        <Text className="rounded-full bg-[#f0f1f4] dark:bg-night-surface px-3 py-1.5 text-xs font-black">
-          Qty {post.quantity}
-        </Text>
-      </View>
-      {post.media?.map((item) => (
-        <CardMedia key={item.id} item={item} />
-      ))}
-      <Text className="p-4 text-xs text-black/40 dark:text-night-muted">
-        ♡ {post.likeCount} ◌ {post.commentCount}
-      </Text>
+      {onShare && (
+        <Pressable
+          accessibilityRole="button"
+          disabled={sharing}
+          onPress={onShare}
+          className="mx-4 mb-4 self-start rounded-xl bg-[#c62828] px-4 py-2 disabled:opacity-50"
+        >
+          <Text className="text-xs font-black text-white">
+            {sharing ? "Sharing…" : "Share on g000st Social"}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }

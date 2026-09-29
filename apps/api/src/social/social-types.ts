@@ -66,6 +66,7 @@ export type SocialPost = Readonly<{
   sharedPostId?: string;
   media?: readonly SocialMedia[];
   visibility: SocialVisibility;
+  sharedToSocial: boolean;
   createdAtMs: number;
   updatedAtMs: number;
   editedAtMs?: number;
@@ -114,6 +115,7 @@ export type CreateSocialPostInput = Readonly<{
   sharedPostId?: string;
   media?: readonly Omit<SocialMedia, 'kind'>[];
   visibility: SocialVisibility;
+  sharedToSocial?: boolean;
 }>;
 
 export type UpdateSocialPostInput = Readonly<{ content: string }>;

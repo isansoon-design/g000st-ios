@@ -3,6 +3,7 @@ import { memo } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native';
 
 import { FeatureScreen } from '@/components/layout/feature-screen';
+import { useTabBarScroll } from '@/components/navigation/tab-bar-scroll';
 import type { Contact } from '@/domain/contacts/types';
 import type { ContactsTab } from '@/features/contacts/hooks/use-contacts-screen';
 import { useAppTheme } from '@/theme/app-theme';
@@ -152,6 +153,7 @@ function ContactsScreenContentComponent({
   tab,
 }: ContactsScreenContentProps) {
   const { isDark } = useAppTheme();
+  const tabScroll = useTabBarScroll();
   return (
     <FeatureScreen
       title={
@@ -204,6 +206,8 @@ function ContactsScreenContentComponent({
       ) : (
         <FlatList
           contentContainerStyle={{ paddingBottom: 12, paddingTop: 4 }}
+          onScroll={tabScroll?.onScroll}
+          scrollEventThrottle={16}
           data={contacts}
           keyExtractor={(item) => item.publicId}
           renderItem={({ item }) => (

@@ -4,7 +4,6 @@ import {
   Bell,
   Heart,
   MessageCircle,
-  Send,
   Share2,
   UserCheck,
   UserPlus,
@@ -18,14 +17,11 @@ import toast from "react-hot-toast";
 
 import { sessionStorage } from "@/app/api/session-storage";
 import {
-  createSocialComment,
   createSocialPost,
-  deleteSocialComment,
   deleteSocialPost,
   followSocialProfile,
   getSocialProfile,
   listSocialAlerts,
-  listSocialComments,
   listSocialPosts,
   listSocialSuggestions,
   markSocialAlertsRead,
@@ -36,7 +32,6 @@ import {
   updateSocialProfile,
   uploadSocialMedia,
   type SocialAlert,
-  type SocialComment,
   type SocialPost,
   type SocialProfile,
   type SocialSuggestion,
@@ -44,6 +39,7 @@ import {
 } from "@/app/api/social";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { PostImage } from "@/components/media/PostImage";
+import { PostContentLink } from "@/components/posts/PostContentLink";
 import { startChatConversation } from "@/features/chat/api";
 
 type View = "home" | "mine" | "alerts";
@@ -54,7 +50,6 @@ export default function SocialPage() {
   const [view, setView] = useState<View>("home");
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [alerts, setAlerts] = useState<SocialAlert[]>([]);
-  const [commentsPost, setCommentsPost] = useState<SocialPost>();
   const [editingPost, setEditingPost] = useState<SocialPost>();
   const [sharingPost, setSharingPost] = useState<SocialPost>();
   const [shareDraft, setShareDraft] = useState("");
@@ -64,6 +59,7 @@ export default function SocialPage() {
   const [draft, setDraft] = useState("");
   const [visibility, setVisibility] = useState<SocialVisibility>("anonymous");
   const [busy, setBusy] = useState(false);
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
   const [suggestions, setSuggestions] = useState<SocialSuggestion[]>([]);
@@ -219,6 +215,7 @@ export default function SocialPage() {
       setPosts((items) => [post, ...items]);
       setDraft("");
       setMediaFiles([]);
+      setIsComposerOpen(false);
       toast.success("Posted");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not post.");
@@ -277,87 +274,23 @@ export default function SocialPage() {
         </button>
       </header>
       <main ref={feedScrollRef} className="min-h-0 flex-1 overflow-y-auto">
-        {view !== "alerts" && (
-          <div data-admin-part="centre.composer" className="border-b border-black/10 dark:border-night-border bg-white/80 dark:bg-night-surface p-4">
-            <textarea
-              className="min-h-24 w-full resize-none rounded-2xl border border-black/15 dark:border-night-border bg-white dark:bg-night-surface p-3 outline-none"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder="Share without a name…"
-              maxLength={4000}
-            />
-            {mediaFiles.length > 0 && (
-              <div className="mt-2 flex gap-2 overflow-x-auto">
-                {mediaFiles.map((file, index) => (
-                  <MediaPreview
-                    key={index}
-                    file={file}
-                    onRemove={() =>
-                      setMediaFiles((current) =>
-                        current.filter((_, i) => i !== index),
-                      )
-                    }
-                  />
-                ))}
-              </div>
-            )}
-            <div className="mt-2 flex items-center gap-2">
-              <label className="flex items-center gap-2 rounded-xl border border-black/10 dark:border-night-border px-3 py-2 text-xs font-bold">
-                📎
-                <input
-                  className="hidden"
-                  type="file"
-                  multiple
-                  accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
-                  onChange={(event) => {
-                    const files = [...(event.target.files ?? [])];
-                    const videos = files.filter((file) =>
-                      file.type.startsWith("video/"),
-                    );
-                    if (files.some((file) => file.size > 5 * 1024 * 1024)) {
-                      toast.error("Each file must be 5 MB or smaller.");
-                      event.target.value = "";
-                      return;
-                    }
-                    if (
-                      (videos.length && files.length !== 1) ||
-                      videos.length > 1 ||
-                      (!videos.length && files.length > 2)
-                    ) {
-                      toast.error("Choose up to two images or one video.");
-                      event.target.value = "";
-                      return;
-                    }
-                    setMediaFiles(files);
-                  }}
-                />
-                {mediaFiles.length ? `${mediaFiles.length} selected` : "Media"}
-              </label>
-              <label className="flex flex-1 items-center gap-2 text-xs font-bold">
-                <input
-                  type="checkbox"
-                  checked={isPage || visibility === "public"}
-                  disabled={isPage}
-                  onChange={(event) =>
-                    setVisibility(event.target.checked ? "public" : "anonymous")
-                  }
-                />{" "}
-                {isPage ? "Page name is always shown" : "Show my identity"}
-              </label>
-              <button
-                disabled={busy || !draft.trim()}
-                onClick={() => void publish()}
-                className="rounded-xl bg-[#222] px-5 py-2 text-sm font-black text-white disabled:opacity-40"
-              >
-                Post
-              </button>
-            </div>
-          </div>
-        )}
         {view === "alerts" ? (
           <Alerts alerts={alerts} />
         ) : (
           <div data-admin-part="centre.feed" className="mx-auto max-w-2xl space-y-3 p-3">
+            <button
+              type="button"
+              aria-label="Create a Social post"
+              onClick={() => setIsComposerOpen(true)}
+              className="mb-1 flex w-full items-center gap-3 rounded-2xl border border-black/10 bg-white p-4 text-left shadow-sm dark:border-night-border dark:bg-night-surface"
+            >
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#c62828] text-2xl font-light text-white">＋</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-black text-[#17191d] dark:text-night-text">Create a Social post</span>
+                <span className="mt-0.5 block text-xs text-black/50 dark:text-night-muted">Share with the community</span>
+              </span>
+              <span aria-hidden="true" className="text-xl font-bold text-[#c62828]">›</span>
+            </button>
             {view === "mine" && profile && (
               <ProfileEditor
                 profile={profile}
@@ -515,9 +448,7 @@ export default function SocialPage() {
                   )}
                 </div>
                 {!!post.content && (
-                  <p className="whitespace-pre-wrap px-4 pb-3 text-[15px] leading-6">
-                    {post.content}
-                  </p>
+                  <PostContentLink content={post.content} href={`/posts/social/${post.id}`} className="px-4 pb-3 text-[15px] leading-6" />
                 )}
                 {post.sharedPostId && (
                   <div className="mx-4 mb-4">
@@ -579,7 +510,7 @@ export default function SocialPage() {
                     {post.likeCount}
                   </button>
                   <button
-                    onClick={() => setCommentsPost(post)}
+                    onClick={() => router.push(`/posts/social/${post.id}`)}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3 font-black"
                   >
                     <MessageCircle size={18} />
@@ -666,23 +597,107 @@ export default function SocialPage() {
           label="Alerts"
         />
       </nav>
-      <SocialCommentsModal
-        post={commentsPost}
-        visibility={isPage ? "public" : visibility}
-        onClose={() => setCommentsPost(undefined)}
-        onCountChange={(postId, delta) =>
-          setPosts((items) =>
-            items.map((item) =>
-              item.id === postId
-                ? {
-                  ...item,
-                  commentCount: Math.max(0, item.commentCount + delta),
-                }
-                : item,
-            ),
-          )
-        }
-      />
+      {isComposerOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="New Social post"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-5"
+        >
+          <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-[28px] bg-[#f7f7f8] pt-5 dark:bg-night-surface sm:rounded-[28px]">
+            <div className="flex items-center justify-between px-5 pb-4">
+              <div>
+                <h2 className="text-xl font-black">New Social post</h2>
+                <p className="mt-1 text-xs text-black/50 dark:text-night-muted">Share with the community</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close new Social post"
+                disabled={busy}
+                onClick={() => setIsComposerOpen(false)}
+                className="grid h-10 w-10 place-items-center rounded-full bg-white text-xl disabled:opacity-40 dark:bg-night-raised"
+              >×</button>
+            </div>
+            <div className="overflow-y-auto px-5 pb-5">
+              <div data-admin-part="centre.composer" className="border-b border-black/10 dark:border-night-border bg-white/80 dark:bg-night-surface p-4">
+                <textarea
+                  className="min-h-24 w-full resize-none rounded-2xl border border-black/15 dark:border-night-border bg-white dark:bg-night-surface p-3 outline-none"
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  placeholder="Share without a name…"
+                  maxLength={4000}
+                />
+                {mediaFiles.length > 0 && (
+                  <div className="mt-2 flex gap-2 overflow-x-auto">
+                    {mediaFiles.map((file, index) => (
+                      <MediaPreview
+                        key={index}
+                        file={file}
+                        onRemove={() =>
+                          setMediaFiles((current) =>
+                            current.filter((_, i) => i !== index),
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
+                <div className="mt-2 flex items-center gap-2">
+                  <label className="flex items-center gap-2 rounded-xl border border-black/10 dark:border-night-border px-3 py-2 text-xs font-bold">
+                    📎
+                    <input
+                      className="hidden"
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
+                      onChange={(event) => {
+                        const files = [...(event.target.files ?? [])];
+                        const videos = files.filter((file) =>
+                          file.type.startsWith("video/"),
+                        );
+                        if (files.some((file) => file.size > 5 * 1024 * 1024)) {
+                          toast.error("Each file must be 5 MB or smaller.");
+                          event.target.value = "";
+                          return;
+                        }
+                        if (
+                          (videos.length && files.length !== 1) ||
+                          videos.length > 1 ||
+                          (!videos.length && files.length > 2)
+                        ) {
+                          toast.error("Choose up to two images or one video.");
+                          event.target.value = "";
+                          return;
+                        }
+                        setMediaFiles(files);
+                      }}
+                    />
+                    {mediaFiles.length ? `${mediaFiles.length} selected` : "Media"}
+                  </label>
+                  <label className="flex flex-1 items-center gap-2 text-xs font-bold">
+                    <input
+                      type="checkbox"
+                      checked={isPage || visibility === "public"}
+                      disabled={isPage}
+                      onChange={(event) =>
+                        setVisibility(event.target.checked ? "public" : "anonymous")
+                      }
+                    />{" "}
+                    {isPage ? "Page name is always shown" : "Show my identity"}
+                  </label>
+                  <button
+                    disabled={busy || !draft.trim()}
+                    onClick={() => void publish()}
+                    className="rounded-xl bg-[#222] px-5 py-2 text-sm font-black text-white disabled:opacity-40"
+                  >
+                    Post
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <EditSocialPostModal
         post={editingPost}
         onClose={() => setEditingPost(undefined)}
@@ -768,11 +783,7 @@ function SharedPostPreview({
     <div className="overflow-hidden rounded-xl border border-black/15 dark:border-night-border bg-black/[.03] dark:bg-white/10">
       <div className="p-3">
         <p className="text-xs font-black">{post.author.displayName}</p>
-        <p
-          className={`mt-1 whitespace-pre-wrap text-sm ${compact ? "line-clamp-3" : ""}`}
-        >
-          {post.content}
-        </p>
+        <PostContentLink content={post.content} href={`/posts/social/${post.id}`} className={`mt-1 text-sm ${compact ? "line-clamp-3" : ""}`} />
       </div>
       {!compact && post.media?.length ? (
         <div
@@ -807,129 +818,6 @@ function SharedPostPreview({
   );
 }
 
-function SocialCommentsModal({
-  post,
-  visibility,
-  onClose,
-  onCountChange,
-}: {
-  post?: SocialPost;
-  visibility: SocialVisibility;
-  onClose: () => void;
-  onCountChange: (postId: string, delta: number) => void;
-}) {
-  const [comments, setComments] = useState<SocialComment[]>([]);
-  const [cursor, setCursor] = useState<string>();
-  const [value, setValue] = useState("");
-  const [loading, setLoading] = useState(false);
-  useEffect(() => {
-    if (!post) return;
-    setLoading(true);
-    setComments([]);
-    void listSocialComments(post.id)
-      .then((page) => {
-        setComments(page.items);
-        setCursor(page.nextCursor);
-      })
-      .catch(() => toast.error("Could not load comments."))
-      .finally(() => setLoading(false));
-  }, [post]);
-  if (!post) return null;
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-5"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="flex h-[75dvh] w-full max-w-xl flex-col rounded-t-[28px] bg-white dark:bg-night-surface p-4 shadow-2xl sm:rounded-[28px]">
-        <div className="flex items-center justify-between border-b pb-3">
-          <h2 className="text-lg font-black">Comments</h2>
-          <button aria-label="Close" onClick={onClose}>
-            <X />
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-3">
-          {comments.map((item) => (
-            <div
-              key={item.id}
-              className="flex gap-2 rounded-xl bg-black/[.04] dark:bg-white/10 p-3"
-            >
-              <p className="min-w-0 flex-1 text-sm">
-                <b>{item.author.displayName}</b> {item.content}
-              </p>
-              {item.ownedByViewer && (
-                <button
-                  onClick={async () => {
-                    await deleteSocialComment(post.id, item.id);
-                    setComments((current) =>
-                      current.filter((comment) => comment.id !== item.id),
-                    );
-                    onCountChange(post.id, -1);
-                  }}
-                  className="text-xs font-black text-[#c62828]"
-                >
-                  Delete
-                </button>
-              )}
-            </div>
-          ))}
-          {!loading && !comments.length && (
-            <div className="py-16 text-center text-black/40 dark:text-night-muted">
-              No comments yet.
-            </div>
-          )}
-          {cursor && (
-            <button
-              disabled={loading}
-              onClick={async () => {
-                setLoading(true);
-                try {
-                  const page = await listSocialComments(post.id, cursor);
-                  setComments((current) => [...current, ...page.items]);
-                  setCursor(page.nextCursor);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              className="w-full py-3 text-sm font-black"
-            >
-              {loading ? "Loading…" : "Load more"}
-            </button>
-          )}
-        </div>
-        <form
-          className="flex gap-2 border-t pt-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const content = value.trim();
-            if (!content) return;
-            void createSocialComment(post.id, content, visibility)
-              .then((item) => {
-                setComments((current) => [...current, item]);
-                setValue("");
-                onCountChange(post.id, 1);
-              })
-              .catch(() => toast.error("Could not add comment."));
-          }}
-        >
-          <input
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            className="min-w-0 flex-1 rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
-            placeholder="Write a comment…"
-            maxLength={1000}
-          />
-          <button
-            aria-label="Send"
-            className="rounded-xl bg-black px-4 text-white"
-          >
-            <Send size={17} />
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
 function EditSocialPostModal({
   post,
   onClose,

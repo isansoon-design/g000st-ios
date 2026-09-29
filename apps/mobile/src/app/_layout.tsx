@@ -3,11 +3,11 @@ import '@/global.css';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, type PropsWithChildren } from 'react';
 import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
-import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
+import { initialWindowMetrics, SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/features/auth/context/auth-provider';
 import { useAuth } from '@/features/auth/hooks/use-auth';
@@ -21,6 +21,16 @@ import { AppThemeProvider, useAppTheme } from '@/theme/app-theme';
 import Toast from 'react-native-toast-message';
 
 void SplashScreen.preventAutoHideAsync();
+
+function AppBottomSafeArea({ children }: PropsWithChildren) {
+  const { colors } = useAppTheme();
+
+  return (
+    <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: colors.canvas }}>
+      {children}
+    </SafeAreaView>
+  );
+}
 
 function RootNavigator() {
   const { activePublicId, status } = useAuth();
@@ -44,13 +54,15 @@ export default function RootLayout() {
             <QueryProvider>
               <AuthProvider>
                 <AppThemeProvider>
-                  <ConfirmModalProvider>
-                    <NotificationsBootstrap />
-                    <PresenceHeartbeat />
-                    <CallingBootstrap />
-                    <RootNavigator />
-                    <CallOverlayHost />
-                  </ConfirmModalProvider>
+                  <AppBottomSafeArea>
+                    <ConfirmModalProvider>
+                      <NotificationsBootstrap />
+                      <PresenceHeartbeat />
+                      <CallingBootstrap />
+                      <RootNavigator />
+                      <CallOverlayHost />
+                    </ConfirmModalProvider>
+                  </AppBottomSafeArea>
                 </AppThemeProvider>
               </AuthProvider>
             </QueryProvider>

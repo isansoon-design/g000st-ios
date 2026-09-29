@@ -43,8 +43,8 @@ export async function listBeaconPages(): Promise<BeaconPage[]> {
   return data.pages;
 }
 
-export async function createBeaconPage(): Promise<BeaconPage> {
-  const { data } = await axiosInstance.post<{ page: BeaconPage }>('/auth/pages', {});
+export async function createBeaconPage(input: Readonly<{ displayName: string; bio?: string }>): Promise<BeaconPage> {
+  const { data } = await axiosInstance.post<{ page: BeaconPage }>('/auth/pages', input);
   return data.page;
 }
 

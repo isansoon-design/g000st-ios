@@ -10,6 +10,7 @@ const uploadSchema = z.object({ upload: z.object({ media: pendingMediaSchema, he
 export type PendingMarketMedia = z.infer<typeof pendingMediaSchema>;
 
 export async function listMarketPosts(ownerId?: string, cursor?: string) { const response = await axiosInstance.get('/market/posts', { params: { ownerId, cursor, limit: 10 } }); return parseApiPayload(marketPostPageSchema, response.data); }
+export async function getMarketPost(postId: string) { const response = await axiosInstance.get(`/market/posts/${postId}`); return parseApiPayload(marketPostResultSchema, response.data).post; }
 export async function createMarketPost(clientPostId: string, fields: MarketPostFields, media?: PendingMarketMedia[]) { const response = await axiosInstance.post('/market/posts', { clientPostId, ...fields, ...(media?.length ? { media } : {}) }); return parseApiPayload(marketPostResultSchema, response.data).post; }
 export async function updateMarketPost(postId: string, fields: MarketPostFields) { const response = await axiosInstance.patch(`/market/posts/${postId}`, fields); return parseApiPayload(marketPostResultSchema, response.data).post; }
 export async function deleteMarketPost(postId: string) { await axiosInstance.delete(`/market/posts/${postId}`); }

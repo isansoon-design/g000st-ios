@@ -26,6 +26,8 @@ type StoredPost = Readonly<{
   sharedPostId?: string;
   media?: readonly SocialMedia[];
   visibility: 'anonymous' | 'public';
+  /** Missing on posts created before profile-only posting; those were always in the Social feed. */
+  sharedToSocial?: boolean;
   createdAtMs: number;
   updatedAtMs: number;
   editedAtMs?: number;
@@ -66,7 +68,8 @@ export class FirestoreSocialStore implements SocialStore {
     let first = await query.limit(Math.max(limit + 1, 30)).get();
     while (true) {
       for (const document of first.docs) {
-        if (document.data().hidden !== true && !document.data().deletedAtMs) visible.push(document);
+        const data = document.data();
+        if (data.hidden !== true && !data.deletedAtMs && (ownerId || data.sharedToSocial !== false)) visible.push(document);
         if (visible.length > limit) break;
       }
       if (visible.length > limit || first.empty || first.size < Math.max(limit + 1, 30)) break;
@@ -101,6 +104,21 @@ export class FirestoreSocialStore implements SocialStore {
       return post;
     });
     return this.toPost(ownerId, id, stored);
+  }
+
+  async shareToSocial(viewerId: string, postId: string, nowMs: number): Promise<SocialPost | null> {
+    const reference = this.posts().doc(postId);
+    const updated = await this.db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(reference);
+      if (!snapshot.exists) return null;
+      const post = snapshot.data() as StoredPost;
+      if (post.ownerPublicId !== viewerId) return null;
+      if (post.sharedToSocial !== false) return post;
+      const next = { ...post, sharedToSocial: true, updatedAtMs: nowMs };
+      transaction.set(reference, next);
+      return next;
+    });
+    return updated ? this.toPost(viewerId, postId, updated) : null;
   }
 
   async updatePost(viewerId: string, postId: string, content: string, nowMs: number): Promise<SocialPost | null> {
@@ -277,7 +295,7 @@ export class FirestoreSocialStore implements SocialStore {
   private async toPost(viewerId: string, id: string, post: StoredPost): Promise<SocialPost> {
     const [liked, camped, author] = await Promise.all([this.reactions(id).doc(viewerId).get(), this.camps(viewerId).doc(post.ownerPublicId).get(), this.author(post.ownerPublicId, post.visibility === 'public' || post.ownerPublicId === viewerId)]);
     const ownedByViewer = post.ownerPublicId === viewerId;
-    return { id, ...(ownedByViewer || post.visibility === 'public' ? { ownerPublicId: post.ownerPublicId } : {}), author, content: post.content, ...(post.sharedPostId ? { sharedPostId: post.sharedPostId } : {}), ...(post.media?.length ? { media: post.media } : {}), visibility: post.visibility, createdAtMs: post.createdAtMs, updatedAtMs: post.updatedAtMs, ...(post.editedAtMs ? { editedAtMs: post.editedAtMs } : {}), likeCount: post.likeCount, commentCount: post.commentCount, likedByViewer: liked.exists, campedByViewer: camped.exists, ownedByViewer };
+    return { id, ...(ownedByViewer || post.visibility === 'public' ? { ownerPublicId: post.ownerPublicId } : {}), author, content: post.content, ...(post.sharedPostId ? { sharedPostId: post.sharedPostId } : {}), ...(post.media?.length ? { media: post.media } : {}), visibility: post.visibility, sharedToSocial: post.sharedToSocial !== false, createdAtMs: post.createdAtMs, updatedAtMs: post.updatedAtMs, ...(post.editedAtMs ? { editedAtMs: post.editedAtMs } : {}), likeCount: post.likeCount, commentCount: post.commentCount, likedByViewer: liked.exists, campedByViewer: camped.exists, ownedByViewer };
   }
 
   private async toComment(viewerId: string, postId: string, id: string, comment: StoredComment): Promise<SocialComment> {

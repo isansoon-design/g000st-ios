@@ -9,6 +9,7 @@ export type MarketPostFields = Pick<MarketPost, 'content' | 'price' | 'currency'
 export type PendingMarketMedia = { byteSize: number; contentType: string; fileName: string; id: string; objectKey: string };
 
 export async function listMarketPosts(cursor?: string, ownerId?: string) { const { data } = await axios.get<MarketPage<MarketPost>>('/market/posts', { params: { cursor, ownerId, limit: 10 } }); return data; }
+export async function getMarketPost(postId: string) { const { data } = await axios.get<{ post: MarketPost }>(`/market/posts/${postId}`); return data.post; }
 export async function createMarketPost(clientPostId: string, fields: MarketPostFields, media?: PendingMarketMedia[]) { const { data } = await axios.post<{ post: MarketPost }>('/market/posts', { clientPostId, ...fields, ...(media?.length ? { media } : {}) }); return data.post; }
 export async function updateMarketPost(postId: string, fields: MarketPostFields) { const { data } = await axios.patch<{ post: MarketPost }>(`/market/posts/${postId}`, fields); return data.post; }
 export async function deleteMarketPost(postId: string) { await axios.delete(`/market/posts/${postId}`); }

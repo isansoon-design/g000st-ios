@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native
 
 import type { ChatConversationSummary } from '@/domain/chat/types';
 import { useAppTheme } from '@/theme/app-theme';
+import { useTabBarScroll } from '@/components/navigation/tab-bar-scroll';
 
 type ChatConversationListProps = Readonly<{
   conversations: readonly ChatConversationSummary[];
@@ -38,6 +39,7 @@ function ChatConversationListComponent({
   onStart,
 }: ChatConversationListProps) {
   const { colors, isDark } = useAppTheme();
+  const tabScroll = useTabBarScroll();
   const [kind, setKind] = useState<'private' | 'market'>(initialKind ?? 'private');
   const visibleConversations = conversations.filter((conversation) => (conversation.kind ?? 'private') === kind);
   if (isLoading) {
@@ -75,6 +77,8 @@ function ChatConversationListComponent({
       </View>
       <FlatList
         className="flex-1"
+        onScroll={tabScroll?.onScroll}
+        scrollEventThrottle={16}
         style={{ backgroundColor: colors.canvas }}
         contentContainerClassName="p-3"
         data={visibleConversations}
