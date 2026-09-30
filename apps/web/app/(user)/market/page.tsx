@@ -7,6 +7,7 @@ import {
   Package,
   Phone,
   ShoppingBag,
+  UserCheck,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -188,15 +189,11 @@ export default function MarketPage() {
             >
               <div className="flex items-center gap-3 p-4">
                 <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-black text-white">
-                  {post.author.avatarUrl ? (
-                    <img
-                      src={post.author.avatarUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    "👻"
-                  )}
+                  <img
+                    src={post.author.avatarUrl || "/g000st-icon.jpeg"}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <button
                   onClick={() => router.push(`/users/${post.ownerPublicId}`)}
@@ -330,6 +327,7 @@ export default function MarketPage() {
                 </button>
                 {!post.ownedByViewer && (
                   <button
+                    aria-label={post.campedByViewer ? "Following seller. Unfollow" : "Follow seller"}
                     onClick={async () => {
                       try {
                         const result = await toggleSocialCamp(
@@ -346,9 +344,9 @@ export default function MarketPage() {
                         showError(error, "Could not update follow.");
                       }
                     }}
-                    className="flex-1 rounded-xl py-3 font-black"
+                    className={`flex flex-1 items-center justify-center gap-1 rounded-xl py-3 font-black ${post.campedByViewer ? "text-[#c62828]" : ""}`}
                   >
-                    {post.campedByViewer ? "Following" : "+ Follow"}
+                    {post.campedByViewer ? <><UserCheck size={28} /> Following</> : "+ Follow"}
                   </button>
                 )}
                 {!post.ownedByViewer && (post.allowCalls ?? true) && (

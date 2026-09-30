@@ -6,7 +6,6 @@ import {
   MessageCircle,
   Pencil,
   Phone,
-  ShoppingBag,
   Sparkles,
   UserCheck,
   UserPlus,
@@ -17,7 +16,6 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import { listBeaconPages, type BeaconPage } from "@/app/api/auth";
-import { listMarketPosts, type MarketPost } from "@/app/api/market";
 import { sessionStorage } from "@/app/api/session-storage";
 import {
   getSocialProfile,
@@ -35,7 +33,6 @@ import { startChatConversation } from "@/features/chat/api";
 import { PageContactLinks } from "@/features/profile/page-contact-links";
 import { ProfilePostComposer } from "@/features/profile/profile-post-composer";
 
-type Tab = "social" | "market";
 type ProfileDraft = {
   displayName: string;
   bio: string;
@@ -81,12 +78,8 @@ export default function PublicUserPage() {
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<SocialProfile>();
-  const [tab, setTab] = useState<Tab>("social");
   const [social, setSocial] = useState<SocialPost[]>([]);
-  const [market, setMarket] = useState<MarketPost[]>([]);
-  const [cursors, setCursors] = useState<{ social?: string; market?: string }>(
-    {},
-  );
+  const [cursor, setCursor] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
@@ -193,23 +186,17 @@ export default function PublicUserPage() {
     setLoading(true);
     setProfile(undefined);
     setSocial([]);
-    setMarket([]);
-    setCursors({});
+    setCursor(undefined);
     setError("");
     Promise.all([
       getSocialProfile(publicId),
       listSocialPosts(undefined, publicId, true),
-      listMarketPosts(undefined, publicId),
     ])
-      .then(([person, socialPage, marketPage]) => {
+      .then(([person, socialPage]) => {
         if (!active) return;
         setProfile(person);
         setSocial(socialPage.items);
-        setMarket(marketPage.items);
-        setCursors({
-          social: socialPage.nextCursor,
-          market: marketPage.nextCursor,
-        });
+        setCursor(socialPage.nextCursor);
       })
       .catch((reason) => {
         if (active)
@@ -228,29 +215,17 @@ export default function PublicUserPage() {
   }, [publicId]);
 
   async function loadMore() {
-    const cursor = cursors[tab];
     if (!cursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      if (tab === "social") {
-        const page = await listSocialPosts(cursor, publicId, true);
-        setSocial((current) => [
-          ...current,
-          ...page.items.filter(
-            (item) => !current.some((old) => old.id === item.id),
-          ),
-        ]);
-        setCursors((current) => ({ ...current, social: page.nextCursor }));
-      } else {
-        const page = await listMarketPosts(cursor, publicId);
-        setMarket((current) => [
-          ...current,
-          ...page.items.filter(
-            (item) => !current.some((old) => old.id === item.id),
-          ),
-        ]);
-        setCursors((current) => ({ ...current, market: page.nextCursor }));
-      }
+      const page = await listSocialPosts(cursor, publicId, true);
+      setSocial((current) => [
+        ...current,
+        ...page.items.filter(
+          (item) => !current.some((old) => old.id === item.id),
+        ),
+      ]);
+      setCursor(page.nextCursor);
     } catch (reason) {
       toast.error(
         reason instanceof Error ? reason.message : "Could not load more posts.",
@@ -329,7 +304,6 @@ export default function PublicUserPage() {
     }
   }
 
-  const posts = tab === "social" ? social : market;
   return (
     <main className="h-full overflow-y-auto bg-[#e6e8eb] dark:bg-night-canvas text-[#17191d] dark:text-night-text">
       <div className="mx-auto max-w-5xl pb-12">
@@ -457,7 +431,7 @@ export default function PublicUserPage() {
                     {profile.bio}
                   </p>
                 )}
-                {own && !editing && (
+                {/* {own && !editing && (
                   <button
                     type="button"
                     onClick={switchToThisProfile}
@@ -470,7 +444,7 @@ export default function PublicUserPage() {
                       ? "Switch interaction as this page"
                       : "Switch interaction as your profile"}
                   </button>
-                )}
+                )} */}
                 {own && editing && draft && (
                   <div className="mt-5 space-y-3 border-t border-black/10 pt-5 dark:border-night-border">
                     <label className="block text-xs font-black">
@@ -615,27 +589,9 @@ export default function PublicUserPage() {
               </section>
 
               <div
-                className="mx-3 mt-5 max-w-3xl rounded-2xl bg-white/85 dark:bg-night-surface p-1.5 shadow-sm sm:mx-5 lg:mx-auto"
-                role="tablist"
-                aria-label="Profile posts"
+                className="profile-reveal mx-3 mt-5 max-w-3xl space-y-4 sm:mx-5 lg:mx-auto"
               >
-                {(["social", "market"] as const).map((item) => (
-                  <button
-                    key={item}
-                    role="tab"
-                    aria-selected={tab === item}
-                    onClick={() => setTab(item)}
-                    className={`w-1/2 rounded-xl px-4 py-3 text-sm font-black transition-all duration-300 ${tab === item ? "bg-[#17191d] text-white shadow-lg" : "text-black/45 dark:text-night-muted hover:text-black"}`}
-                  >
-                    {item === "social" ? "◎ Social" : "◈ Market"}
-                  </button>
-                ))}
-              </div>
-              <div
-                key={tab}
-                className="profile-reveal mx-3 mt-4 max-w-3xl space-y-4 sm:mx-5 lg:mx-auto"
-              >
-                {tab === "social" && own && (
+                {own && (
                   <ProfilePostComposer
                     key={publicId}
                     publicId={publicId}
@@ -646,99 +602,49 @@ export default function PublicUserPage() {
                     }
                   />
                 )}
-                {posts.length === 0 && (
+                {social.length === 0 && (
                   <div className="rounded-3xl bg-white dark:bg-night-surface p-12 text-center text-sm font-semibold text-black/45 dark:text-night-muted">
-                    {tab === "social"
-                      ? "No public social posts yet."
-                      : "No market listings yet."}
+                    No public posts yet.
                   </div>
                 )}
-                {tab === "social"
-                  ? social.map((post) => (
-                    <article
-                      key={post.id}
-                      className="overflow-hidden rounded-3xl border border-white bg-white dark:bg-night-surface shadow-[0_10px_35px_rgba(20,24,34,.06)]"
-                    >
-                      <div className="flex items-center gap-3 p-4">
-                        <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-full bg-[#202530] text-white">
-                          {post.author.avatarUrl ? (
-                            <img
-                              src={post.author.avatarUrl}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            "👻"
-                          )}
-                        </div>
-                        <div>
-                          <b className="text-sm">{post.author.displayName}</b>
-                          <p className="text-xs text-black/40 dark:text-night-muted">
-                            {new Date(post.createdAtMs).toLocaleString()}
-                          </p>
-                        </div>
+                {social.map((post) => (
+                  <article
+                    key={post.id}
+                    className="overflow-hidden rounded-3xl border border-white bg-white dark:bg-night-surface shadow-[0_10px_35px_rgba(20,24,34,.06)]"
+                  >
+                    <div className="flex items-center gap-3 p-4">
+                      <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-full bg-[#202530] text-white">
+                        <img
+                          src={post.author.avatarUrl || "/g000st-icon.jpeg"}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
                       </div>
-                      {!!post.content && <PostContentLink content={post.content} href={`/posts/social/${post.id}`} className="px-4 pb-4 text-sm leading-6" />}
-                      {post.sharedPost && (
-                        <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/10 dark:border-night-border bg-[#f7f7f8] dark:bg-night-surface text-sm">
-                          <div className="p-4">
-                            <b>{post.sharedPost.author.displayName}</b>
-                            <PostContentLink content={post.sharedPost.content} href={`/posts/social/${post.sharedPost.id}`} className="mt-1" />
-                          </div>
-                          <PostMedia media={post.sharedPost.media} />
+                      <div>
+                        <b className="text-sm">{post.author.displayName}</b>
+                        <p className="text-xs text-black/40 dark:text-night-muted">
+                          {new Date(post.createdAtMs).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    {!!post.content && <PostContentLink content={post.content} href={`/posts/social/${post.id}`} className="px-4 pb-4 text-sm leading-6" />}
+                    {post.sharedPost && (
+                      <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/10 dark:border-night-border bg-[#f7f7f8] dark:bg-night-surface text-sm">
+                        <div className="p-4">
+                          <b>{post.sharedPost.author.displayName}</b>
+                          <PostContentLink content={post.sharedPost.content} href={`/posts/social/${post.sharedPost.id}`} className="mt-1" />
                         </div>
-                      )}
-                      <PostMedia media={post.media} />
-                      <div className="flex gap-5 px-4 py-3 text-xs font-bold text-black/40 dark:text-night-muted">
-                        ♡ {post.likeCount}
-                        <span>◌ {post.commentCount}</span>
+                        <PostMedia media={post.sharedPost.media} />
                       </div>
-                    </article>
-                  ))
-                  : market.map((post) => (
-                    <article
-                      key={post.id}
-                      className="overflow-hidden rounded-3xl border border-white bg-white dark:bg-night-surface shadow-[0_10px_35px_rgba(20,24,34,.06)]"
-                    >
-                      <div className="flex items-center gap-3 p-4">
-                        <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-full bg-[#202530] text-white">
-                          {post.author.avatarUrl ? (
-                            <img
-                              src={post.author.avatarUrl}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <ShoppingBag size={18} />
-                          )}
-                        </div>
-                        <div>
-                          <b className="text-sm">{post.author.displayName}</b>
-                          <p className="text-xs text-black/40 dark:text-night-muted">
-                            {new Date(post.createdAtMs).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <PostContentLink content={post.content} href={`/posts/market/${post.id}`} className="px-4 pb-3 text-sm leading-6" />
-                      <div className="flex flex-wrap gap-2 px-4 pb-4 text-xs font-black">
-                        <span className="rounded-full bg-[#c62828] px-3 py-1.5 text-white">
-                          {post.price.toLocaleString()} {post.currency}
-                        </span>
-                        <span className="rounded-full bg-[#f0f1f4] dark:bg-night-surface px-3 py-1.5">
-                          {post.city}
-                        </span>
-                        <span className="rounded-full bg-[#f0f1f4] dark:bg-night-surface px-3 py-1.5">
-                          Qty {post.quantity}
-                        </span>
-                      </div>
-                      <PostMedia media={post.media} />
-                      <div className="flex gap-5 px-4 py-3 text-xs font-bold text-black/40 dark:text-night-muted">
-                        ♡ {post.likeCount}
-                        <span>◌ {post.commentCount}</span>
-                      </div>
-                    </article>
-                  ))}
-                {cursors[tab] && (
+                    )}
+                    <PostMedia media={post.media} />
+                    <div className="flex gap-5 px-4 py-3 text-xs font-bold text-black/40 dark:text-night-muted">
+                      ♡ {post.likeCount}
+                      <span>◌ {post.commentCount}</span>
+                    </div>
+                  </article>
+                ))}
+                {cursor && (
                   <button
                     onClick={() => void loadMore()}
                     disabled={loadingMore}

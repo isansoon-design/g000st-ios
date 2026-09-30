@@ -228,7 +228,7 @@ function PostDetailContent({ kind, postId }: { kind: string; postId: string }) {
               <article className="bg-white dark:bg-night-surface">
                 <button type="button" disabled={!post.author.publicId} onClick={() => post.author.publicId && router.push(`/users/${post.author.publicId}`)} className="flex w-full items-center gap-3 p-4 text-left disabled:cursor-default">
                   <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-black text-white">
-                    {post.author.avatarUrl ? <img src={post.author.avatarUrl} alt="" className="h-full w-full object-cover" /> : "👻"}
+                    <img src={post.author.avatarUrl || "/g000st-icon.jpeg"} alt="" className="h-full w-full object-cover" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <strong className="block truncate text-sm">{post.author.displayName}</strong>
@@ -256,7 +256,7 @@ function PostDetailContent({ kind, postId }: { kind: string; postId: string }) {
                 <div className="flex items-center justify-around gap-2 border-t border-black/10 p-2 dark:border-night-border">
                   <button type="button" disabled={liking} onClick={() => void like()} className={`flex items-center gap-1 rounded-lg px-3 py-2 font-black ${post.likedByViewer ? "text-[#c62828]" : ""}`} aria-label="Like post"><Heart size={18} fill={post.likedByViewer ? "currentColor" : "none"} /> {post.likeCount}</button>
                   <span className="flex items-center gap-1 font-black"><MessageCircle size={18} /> {post.commentCount}</span>
-                  {!post.ownedByViewer && post.ownerPublicId && <button type="button" disabled={following} onClick={() => void follow()} className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-black">{post.campedByViewer ? <UserCheck size={18} /> : <UserPlus size={18} />}{post.campedByViewer ? "Following" : "Follow"}</button>}
+                  {!post.ownedByViewer && post.ownerPublicId && <button type="button" disabled={following} onClick={() => void follow()} className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-black">{post.campedByViewer ? <UserCheck size={26} className="text-[#c62828]" /> : <UserPlus size={18} />}{post.campedByViewer ? "Following" : "Follow"}</button>}
                   <button type="button" onClick={() => void share()} className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-black"><Share2 size={18} /> Share</button>
                 </div>
               </article>

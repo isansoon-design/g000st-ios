@@ -566,11 +566,11 @@ export default function UserProfileScreen() {
                     <Text className="mr-2 text-xl font-black text-white">
                       ⇄
                     </Text>
-                    <Text className="text-sm font-black text-white">
+                    {/* <Text className="text-sm font-black text-white">
                       {profile.isPage
                         ? "Switch interaction as this page"
                         : "Switch interaction as your profile"}
-                    </Text>
+                    </Text> */}
                   </Pressable>
                 )}
                 {own && editing && draft && (
@@ -839,15 +839,11 @@ function CardHeader({
   return (
     <View className="flex-row items-center gap-3 p-4">
       <View className="h-10 w-10 overflow-hidden rounded-full bg-[#222]">
-        {avatarUrl ? (
-          <Image
-            source={{ uri: avatarUrl }}
-            style={{ width: 40, height: 40 }}
-            contentFit="cover"
-          />
-        ) : (
-          <Text className="pt-2 text-center text-white">👻</Text>
-        )}
+        <Image
+          source={avatarUrl ? { uri: avatarUrl } : require("../../../../assets/g000st-icon.jpeg")}
+          style={{ width: 40, height: 40 }}
+          contentFit="cover"
+        />
       </View>
       <View>
         <Text className="text-sm font-black">{name}</Text>

@@ -130,8 +130,15 @@ export function UserSidebar({
               <X size={19} />
             </button>
           </div> */}
+          <button
+            type="button"
+            onClick={create}
+            className=" w-full rounded-xl bg-[#C62828] px-3 py-2 text-xs font-black text-white "
+          >
+            BUILD YOUR BEACON
+          </button>
           {ownerId && (
-            <div className="mb-5 rounded-2xl border border-black/10 bg-[#f5f6f8] p-2 dark:border-white/10 dark:bg-night-surface">
+            <div className="my-5 rounded-2xl border border-black/10 bg-[#f5f6f8] p-2 dark:border-white/10 dark:bg-night-surface">
               <div className="flex items-center">
                 <Link
                   href={`/users/${ownerId}`}
@@ -201,13 +208,7 @@ export function UserSidebar({
                       </button>
                     </div>
                   ))}
-                  <button
-                    type="button"
-                    onClick={create}
-                    className="w-full rounded-xl bg-[#C62828] px-3 py-2 text-xs font-black text-white"
-                  >
-                    BUILD YOUR BEACON
-                  </button>
+
                 </div>
               )}
             </div>

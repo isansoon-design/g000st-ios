@@ -39,7 +39,7 @@ export function ProfilePostComposer({
   const [posting, setPosting] = useState(false);
 
   const anonymous = !isPage && visibility === "anonymous";
-  const canPost = !!draft.trim() && !posting && !(isPage && !pageNamed);
+  const canPost = (!!draft.trim() || selectedMedia.length > 0) && !posting && !(isPage && !pageNamed);
 
   function acceptMedia(items: ImagePicker.ImagePickerAsset[]) {
     const videos = items.filter((item) => item.type === "video");
@@ -118,7 +118,7 @@ export function ProfilePostComposer({
 
   async function publish(shareToSocial: boolean) {
     const content = draft.trim();
-    if (!content || posting || (isPage && !pageNamed)) return;
+    if ((!content && selectedMedia.length === 0) || posting || (isPage && !pageNamed)) return;
     setPosting(true);
     try {
       const clientPostId = randomUUID();

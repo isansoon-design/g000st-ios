@@ -92,6 +92,11 @@ export function SocialScreen() {
   const [followingSuggestionId, setFollowingSuggestionId] = useState<
     string | null
   >(null);
+  const followingSuggestionIdRef = useRef<string | null>(null);
+  const followedSuggestionIdsRef = useRef(new Set<string>());
+  const [followedSuggestionIds, setFollowedSuggestionIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingMoreRef = useRef(false);
@@ -125,7 +130,17 @@ export function SocialScreen() {
   const loadSuggestions = useCallback(async () => {
     if (!userPublicId || view !== "home") return;
     try {
-      setSuggestions((await listSocialSuggestions()).items);
+      const items = (await listSocialSuggestions()).items;
+      const receivedIds = new Set(items.map((person) => person.publicId));
+      setSuggestions((current) => [
+        ...items,
+        ...current.filter(
+          (person) =>
+            (followedSuggestionIdsRef.current.has(person.publicId) ||
+              followingSuggestionIdRef.current === person.publicId) &&
+            !receivedIds.has(person.publicId),
+        ),
+      ]);
     } catch (error) {
       Toast.show({
         type: "error",
@@ -139,14 +154,16 @@ export function SocialScreen() {
   }, [userPublicId, view]);
 
   async function followSuggestion(publicId: string) {
-    if (followingSuggestionId) return;
+    if (
+      followingSuggestionIdRef.current ||
+      followedSuggestionIdsRef.current.has(publicId)
+    ) return;
+    followingSuggestionIdRef.current = publicId;
     setFollowingSuggestionId(publicId);
     try {
       await followSocialProfile(publicId);
-      setSuggestions((current) =>
-        current.filter((person) => person.publicId !== publicId),
-      );
-      await loadSuggestions();
+      followedSuggestionIdsRef.current.add(publicId);
+      setFollowedSuggestionIds(new Set(followedSuggestionIdsRef.current));
       Toast.show({ type: "success", text1: "Following" });
     } catch (error) {
       Toast.show({
@@ -158,6 +175,7 @@ export function SocialScreen() {
             : "Could not follow this person.",
       });
     } finally {
+      followingSuggestionIdRef.current = null;
       setFollowingSuggestionId(null);
     }
   }
@@ -302,7 +320,7 @@ export function SocialScreen() {
 
   async function publish() {
     const content = draft.trim();
-    if (!content || posting) return;
+    if ((!content && selectedMedia.length === 0) || posting) return;
     setPosting(true);
     try {
       const clientPostId = randomUUID();
@@ -520,7 +538,7 @@ export function SocialScreen() {
                       {isPage ? "Page name is always shown" : "Show identity"}
                     </Text>
                     <Pressable
-                      disabled={!draft.trim() || posting}
+                      disabled={(!draft.trim() && selectedMedia.length === 0) || posting}
                       onPress={() => void publish()}
                       className="rounded-xl bg-[#222] px-5 py-3 disabled:opacity-40"
                     >
@@ -621,6 +639,7 @@ export function SocialScreen() {
                   <SuggestedPeople
                     suggestions={suggestions}
                     followingId={followingSuggestionId}
+                    followedIds={followedSuggestionIds}
                     onFollow={followSuggestion}
                   />
                 ) : view === "mine" && profile ? (
@@ -804,10 +823,12 @@ export function SocialScreen() {
 function SuggestedPeople({
   suggestions,
   followingId,
+  followedIds,
   onFollow,
 }: {
   suggestions: SocialSuggestion[];
   followingId: string | null;
+  followedIds: ReadonlySet<string>;
   onFollow: (publicId: string) => Promise<void>;
 }) {
   const router = useRouter();
@@ -863,13 +884,25 @@ function SuggestedPeople({
                 : "Discover someone new"}
             </Text>
             <Pressable
-              disabled={followingId !== null}
+              disabled={followingId !== null || followedIds.has(person.publicId)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                followingId === person.publicId
+                  ? `Following ${person.displayName}`
+                  : followedIds.has(person.publicId)
+                    ? `Followed ${person.displayName}`
+                    : `Follow ${person.displayName}`
+              }
               onPress={() => void onFollow(person.publicId)}
-              className="mt-2 w-full rounded-lg bg-[#222] px-3 py-2 disabled:opacity-40"
+              className="mt-2 h-9 w-full items-center justify-center rounded-lg bg-[#222] px-3"
             >
-              <Text className="text-center text-xs font-bold text-white">
-                {followingId === person.publicId ? "✓" : "➕ Follow"}
-              </Text>
+              {followingId === person.publicId ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text className="text-center text-xs font-bold text-white">
+                  {followedIds.has(person.publicId) ? "✓" : "➕ Follow"}
+                </Text>
+              )}
             </Pressable>
           </View>
         ))}
@@ -1032,7 +1065,13 @@ function PostCard({
           onPress={async () => onComments()}
         />
         {post.ownerPublicId && !post.ownedByViewer && (
-          <Action label={post.campedByViewer ? "✓" : "➕"} onPress={onCamp} />
+          <Action
+            label={post.campedByViewer ? "✓" : "➕"}
+            active={post.campedByViewer}
+            enlarged={post.campedByViewer}
+            accessibilityLabel={post.campedByViewer ? "Following author. Unfollow" : "Follow author"}
+            onPress={onCamp}
+          />
         )}
 
         <Action label="↗️" onPress={onShare} />
@@ -1276,19 +1315,26 @@ function AlertList({ alerts }: { alerts: SocialAlert[] }) {
 function Action({
   label,
   active,
+  enlarged,
+  accessibilityLabel,
   onPress,
 }: {
   label: string;
   active?: boolean;
+  enlarged?: boolean;
+  accessibilityLabel?: string;
   onPress: () => void | Promise<void>;
 }) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
       onPress={() => void onPress()}
       className="flex-1 items-center rounded-xl py-3"
     >
       <Text
         className={`font-black ${active ? "text-[#C62828]" : "text-black/70 dark:text-night-muted"}`}
+        style={enlarged ? { transform: [{ scale: 1.6 }] } : undefined}
       >
         {label}
       </Text>

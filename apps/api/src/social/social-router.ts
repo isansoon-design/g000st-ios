@@ -17,7 +17,7 @@ const cursorQuery = z.object({ cursor: z.string().min(1).max(256).optional(), li
 const socialContentType = z.enum(['image/gif', 'image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime', 'video/webm']);
 const pendingMedia = z.object({ byteSize: z.number().int().positive().max(MAX_SOCIAL_MEDIA_BYTES), contentType: socialContentType, fileName: z.string().min(1).max(255), id: uuid, objectKey: z.string().min(1).max(600) }).strict();
 const createPostBody = z.object({ clientPostId: uuid, content: z.string().trim().max(4_000), sharedPostId: uuid.optional(), media: z.array(pendingMedia).max(MAX_SOCIAL_IMAGES).optional(), visibility: visibility.default('anonymous'), shareToSocial: z.boolean().default(true) }).strict().superRefine((value, context) => {
-  if (!value.content && !value.sharedPostId) context.addIssue({ code: 'custom', message: 'A post must contain text or share another post.', path: ['content'] });
+  if (!value.content && !value.sharedPostId && !value.media?.length) context.addIssue({ code: 'custom', message: 'A post must contain text, media, or share another post.', path: ['content'] });
   if (value.sharedPostId && value.media?.length) context.addIssue({ code: 'custom', message: 'A shared post cannot include new media.', path: ['media'] });
   const videoCount = value.media?.filter((item) => item.contentType.startsWith('video/')).length ?? 0;
   if (videoCount > 0 && (videoCount !== 1 || value.media?.length !== 1)) context.addIssue({ code: 'custom', message: 'A post can contain up to two images or one video.', path: ['media'] });

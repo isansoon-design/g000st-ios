@@ -561,15 +561,11 @@ function MarketCard({
       <View className="flex-row items-center gap-3 p-4">
         {/* Start Image */}
         <View className="h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-black">
-          {post.author.avatarUrl ? (
-            <Image
-              source={{ uri: post.author.avatarUrl }}
-              className="h-full w-full"
-              contentFit="cover"
-            />
-          ) : (
-            <Text className="text-white">👻</Text>
-          )}
+          <Image
+            source={post.author.avatarUrl ? { uri: post.author.avatarUrl } : require("../../../../assets/g000st-icon.jpeg")}
+            className="h-full w-full"
+            contentFit="cover"
+          />
         </View>
         {/* End Image */}
         {/* Start Username && date  */}
@@ -689,7 +685,13 @@ function MarketCard({
           onPress={async () => onComments()}
         />
         {!post.ownedByViewer && (
-          <Action label={post.campedByViewer ? "✓" : " ➕"} onPress={onFollow} />
+          <Action
+            label={post.campedByViewer ? "✓" : "➕"}
+            active={post.campedByViewer}
+            enlarged={post.campedByViewer}
+            accessibilityLabel={post.campedByViewer ? "Following seller. Unfollow" : "Follow seller"}
+            onPress={onFollow}
+          />
         )}
 
         {!post.ownedByViewer && <Pressable
@@ -856,21 +858,28 @@ function Badge({ text }: { text: string }) {
 function Action({
   label,
   active,
+  enlarged,
+  accessibilityLabel,
   onPress,
   minW,
 }: {
   label: string;
   active?: boolean;
+  enlarged?: boolean;
+  accessibilityLabel?: string;
   onPress: () => Promise<void>;
   minW?: string
 }) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
       onPress={() => void onPress()}
       className={`${minW ? minW : " min-w-[64px]"} flex-1 items-center rounded-xl py-3`}
     >
       <Text
         className={`font-black ${active ? "text-[#C62828]" : "text-black/70 dark:text-night-muted"}`}
+        style={enlarged ? { transform: [{ scale: 1.6 }] } : undefined}
       >
         {label}
       </Text>

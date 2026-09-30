@@ -478,14 +478,19 @@ export function PostDetailScreen({
                     {!post.ownedByViewer && post.ownerPublicId && (
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel="Follow author"
+                        accessibilityLabel={post.campedByViewer ? "Following author. Unfollow" : "Follow author"}
                         disabled={following}
                         onPress={() => void toggleFollow()}
                         className="px-3 py-3"
                       >
-                        <Text className="font-black text-g000st-black dark:text-night-text">
-                          {post.campedByViewer ? "✓ Following" : "+ Follow"}
-                        </Text>
+                        {post.campedByViewer ? (
+                          <View className="flex-row items-center gap-1">
+                            <Text className="text-[26px] font-black leading-[28px] text-g000st-red">✓</Text>
+                            <Text className="font-black text-g000st-black dark:text-night-text">Following</Text>
+                          </View>
+                        ) : (
+                          <Text className="font-black text-g000st-black dark:text-night-text">+ Follow</Text>
+                        )}
                       </Pressable>
                     )}
                     <Pressable

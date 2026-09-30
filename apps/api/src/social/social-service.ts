@@ -121,7 +121,7 @@ export class SocialService {
       }
     }
     const { media: pendingMedia, ...postInput } = input;
-    if (!input.content.trim() && !input.sharedPostId) throw new ApiError(400, 'INVALID_POST', 'A post must contain text or share another post.');
+    if (!input.content.trim() && !input.sharedPostId && !pendingMedia?.length) throw new ApiError(400, 'INVALID_POST', 'A post must contain text, media, or share another post.');
     if (input.sharedPostId && pendingMedia?.length) throw new ApiError(400, 'INVALID_SHARED_POST', 'A shared post cannot include new media.');
     let sharedPostId = input.sharedPostId;
     if (sharedPostId) {

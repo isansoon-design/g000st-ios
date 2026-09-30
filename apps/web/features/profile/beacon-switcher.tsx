@@ -1,6 +1,5 @@
 "use client";
 
-import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -71,7 +70,7 @@ export function BeaconSwitcher() {
               {ownerId.slice(0, 8)} · View profile
             </span>
           </button>
-          <button
+          {/* <button
             type="button"
             onClick={() => switchTo(ownerId, "Personal profile")}
             aria-label="Switch interaction as your profile"
@@ -85,7 +84,7 @@ export function BeaconSwitcher() {
             {personalSelected && (
               <Check aria-hidden="true" size={14} strokeWidth={3} />
             )}
-          </button>
+          </button> */}
         </div>
       )}
       {pages.map((page) => {
@@ -107,7 +106,7 @@ export function BeaconSwitcher() {
                 {page.publicId.slice(0, 8)} · View page
               </span>
             </button>
-            <button
+            {/* <button
               type="button"
               onClick={() =>
                 switchTo(page.publicId, page.displayName || "Untitled page")
@@ -123,7 +122,7 @@ export function BeaconSwitcher() {
               {selected && (
                 <Check aria-hidden="true" size={14} strokeWidth={3} />
               )}
-            </button>
+            </button> */}
           </div>
         );
       })}

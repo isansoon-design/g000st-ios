@@ -2,12 +2,12 @@
 
 import {
   Bell,
+  Loader2,
   Heart,
   MessageCircle,
   Share2,
   UserCheck,
   UserPlus,
-  UserRound,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -67,6 +67,11 @@ export default function SocialPage() {
   const [followingSuggestionId, setFollowingSuggestionId] = useState<
     string | null
   >(null);
+  const followingSuggestionIdRef = useRef<string | null>(null);
+  const followedSuggestionIdsRef = useRef(new Set<string>());
+  const [followedSuggestionIds, setFollowedSuggestionIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const feedScrollRef = useRef<HTMLElement>(null);
@@ -107,7 +112,17 @@ export default function SocialPage() {
   const loadSuggestions = useCallback(async () => {
     if (!myId || view !== "home") return;
     try {
-      setSuggestions((await listSocialSuggestions()).items);
+      const items = (await listSocialSuggestions()).items;
+      const receivedIds = new Set(items.map((person) => person.publicId));
+      setSuggestions((current) => [
+        ...items,
+        ...current.filter(
+          (person) =>
+            (followedSuggestionIdsRef.current.has(person.publicId) ||
+              followingSuggestionIdRef.current === person.publicId) &&
+            !receivedIds.has(person.publicId),
+        ),
+      ]);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not load suggestions.",
@@ -140,14 +155,16 @@ export default function SocialPage() {
   }, [loadSuggestions, myId, view]);
 
   async function followSuggestion(publicId: string) {
-    if (followingSuggestionId) return;
+    if (
+      followingSuggestionIdRef.current ||
+      followedSuggestionIdsRef.current.has(publicId)
+    ) return;
+    followingSuggestionIdRef.current = publicId;
     setFollowingSuggestionId(publicId);
     try {
       await followSocialProfile(publicId);
-      setSuggestions((current) =>
-        current.filter((person) => person.publicId !== publicId),
-      );
-      await loadSuggestions();
+      followedSuggestionIdsRef.current.add(publicId);
+      setFollowedSuggestionIds(new Set(followedSuggestionIdsRef.current));
       toast.success("Following");
     } catch (error) {
       toast.error(
@@ -156,6 +173,7 @@ export default function SocialPage() {
           : "Could not follow this person.",
       );
     } finally {
+      followingSuggestionIdRef.current = null;
       setFollowingSuggestionId(null);
     }
   }
@@ -199,7 +217,7 @@ export default function SocialPage() {
   }, [loadMore, nextCursor, view]);
 
   async function publish() {
-    if (!draft.trim() || busy) return;
+    if ((!draft.trim() && mediaFiles.length === 0) || busy) return;
     setBusy(true);
     try {
       const clientPostId = crypto.randomUUID();
@@ -350,12 +368,25 @@ export default function SocialPage() {
                       </div>
                       <button
                         type="button"
-                        disabled={followingSuggestionId !== null}
+                        disabled={
+                          followingSuggestionId !== null ||
+                          followedSuggestionIds.has(person.publicId)
+                        }
+                        aria-label={
+                          followingSuggestionId === person.publicId
+                            ? `Following ${person.displayName}`
+                            : followedSuggestionIds.has(person.publicId)
+                              ? `Followed ${person.displayName}`
+                              : `Follow ${person.displayName}`
+                        }
+                        aria-live="polite"
                         onClick={() => void followSuggestion(person.publicId)}
-                        className="mt-2 flex w-full items-center justify-center rounded-lg bg-[#222] px-3 py-2 text-white disabled:opacity-40"
+                        className="mt-2 flex h-10 w-full items-center justify-center rounded-lg bg-[#222] px-3 text-white"
                       >
                         {followingSuggestionId === person.publicId ? (
-                          <UserCheck size={16} />
+                          <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                        ) : followedSuggestionIds.has(person.publicId) ? (
+                          <span aria-hidden="true">✓</span>
                         ) : (
                           <>
                             <UserPlus size={16} /> Follow
@@ -383,15 +414,11 @@ export default function SocialPage() {
               >
                 <div className="flex items-center gap-3 p-4">
                   <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-black text-white">
-                    {post.author.avatarUrl ? (
-                      <img
-                        src={post.author.avatarUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <UserRound size={20} />
-                    )}
+                    <img
+                      src={post.author.avatarUrl || "/g000st-icon.jpeg"}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
                   </div>
                   <button
                     className="min-w-0 flex-1 text-left"
@@ -525,6 +552,7 @@ export default function SocialPage() {
                   </button>
                   {post.ownerPublicId && !post.ownedByViewer && (
                     <button
+                      aria-label={post.campedByViewer ? "Following author. Unfollow" : "Follow author"}
                       onClick={async () => {
                         const result = await toggleSocialCamp(
                           post.ownerPublicId!,
@@ -546,10 +574,10 @@ export default function SocialPage() {
                           void loadSuggestions();
                         }
                       }}
-                      className="flex flex-1 items-center justify-center rounded-xl py-3 font-black"
+                      className={`flex flex-1 items-center justify-center rounded-xl py-3 font-black ${post.campedByViewer ? "text-[#c62828]" : ""}`}
                     >
                       {post.campedByViewer ? (
-                        <UserCheck size={18} />
+                        <UserCheck size={28} />
                       ) : (
                         <UserPlus size={18} />
                       )}
@@ -676,7 +704,7 @@ export default function SocialPage() {
                     {isPage ? "Page name is always shown" : "Show my identity"}
                   </label>
                   <button
-                    disabled={busy || !draft.trim()}
+                    disabled={busy || (!draft.trim() && mediaFiles.length === 0)}
                     onClick={() => void publish()}
                     className="rounded-xl bg-[#222] px-5 py-2 text-sm font-black text-white disabled:opacity-40"
                   >
