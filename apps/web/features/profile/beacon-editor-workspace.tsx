@@ -6,10 +6,12 @@ import {
   Check,
   ImagePlus,
   Monitor,
+  PanelLeftOpen,
   Save,
   Smartphone,
   Sparkles,
   UsersRound,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -140,6 +142,9 @@ export function BeaconEditorWorkspace({
   const router = useRouter();
   const coverInput = useRef<HTMLInputElement>(null);
   const avatarInput = useRef<HTMLInputElement>(null);
+  const openDetailsButton = useRef<HTMLButtonElement>(null);
+  const closeDetailsButton = useRef<HTMLButtonElement>(null);
+  const detailsPanel = useRef<HTMLElement>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [profile, setProfile] = useState<SocialProfile>();
   const [posts, setPosts] = useState<SocialPost[]>([]);
@@ -148,10 +153,55 @@ export function BeaconEditorWorkspace({
   const [coverPreview, setCoverPreview] = useState<string>();
   const [avatarPreview, setAvatarPreview] = useState<string>();
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  const [detailsOpen, setDetailsOpen] = useState(true);
+  const [smallScreen, setSmallScreen] = useState(false);
   const [loading, setLoading] = useState(!!publicId);
   const [saving, setSaving] = useState(false);
   const [createdId, setCreatedId] = useState<string>();
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 1023px)");
+    const update = () => setSmallScreen(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (smallScreen && detailsOpen) closeDetailsButton.current?.focus();
+  }, [smallScreen, detailsOpen]);
+  useEffect(() => {
+    if (!smallScreen || !detailsOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !saving) {
+        setDetailsOpen(false);
+        requestAnimationFrame(() => openDetailsButton.current?.focus());
+      }
+      if (event.key === "Tab" && detailsPanel.current) {
+        const focusable = [...detailsPanel.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]',
+        )].filter((element) => element.getClientRects().length > 0);
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (!first || !last) return;
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [smallScreen, detailsOpen, saving]);
+
+  const closeDetails = () => {
+    if (saving) return;
+    setDetailsOpen(false);
+    requestAnimationFrame(() => openDetailsButton.current?.focus());
+  };
 
   useEffect(() => {
     if (!publicId) return;
@@ -273,10 +323,18 @@ export function BeaconEditorWorkspace({
     "mt-1.5 w-full rounded-xl border border-black/10 bg-white px-3.5 py-3 text-sm text-[#17191d] outline-none transition focus:border-[#C62828] focus:ring-2 focus:ring-[#C62828]/15 dark:border-night-border dark:bg-night-raised dark:text-white";
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-[#e7e9ed] text-[#17191d] dark:bg-[#29282d] dark:text-night-text lg:flex-row lg:overflow-hidden">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[#e7e9ed] text-[#17191d] dark:bg-[#29282d] dark:text-night-text lg:flex-row">
+      <button
+        type="button"
+        aria-label="Close page editor"
+        disabled={saving}
+        onClick={closeDetails}
+        className={`absolute inset-0 z-10 bg-black/50 transition-[opacity,visibility] duration-300 lg:hidden ${detailsOpen ? "visible opacity-100" : "pointer-events-none invisible opacity-0"}`}
+      />
       <section
         aria-label="Beacon preview"
-        className="order-2 min-h-0 flex-none px-4 py-6 sm:px-7 lg:order-1 lg:flex-1 lg:overflow-y-auto lg:px-10 lg:py-8"
+        inert={smallScreen && detailsOpen}
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-7 lg:px-10 lg:py-8"
       >
         <div className="mx-auto max-w-[1080px]">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -288,6 +346,16 @@ export function BeaconEditorWorkspace({
                 {publicId ? "Shape your page" : "Your page starts here"}
               </h1>
             </div>
+            <button
+              ref={openDetailsButton}
+              type="button"
+              aria-controls="beacon-page-details"
+              aria-expanded={detailsOpen}
+              onClick={() => setDetailsOpen(true)}
+              className="flex items-center gap-2 rounded-xl bg-[#C62828] px-4 py-2.5 text-xs font-black text-white lg:hidden"
+            >
+              <PanelLeftOpen size={16} /> {publicId ? "Edit details" : "Page details"}
+            </button>
             <div
               className="inline-flex rounded-xl border border-black/10 bg-white p-1 dark:border-white/10 dark:bg-night-surface"
               aria-label="Preview size"
@@ -432,31 +500,46 @@ export function BeaconEditorWorkspace({
         </div>
       </section>
       <aside
+        ref={detailsPanel}
+        id="beacon-page-details"
         aria-label={publicId ? "Edit beacon" : "Create beacon"}
-        className="order-1 flex w-full shrink-0 flex-col border-b border-black/10 bg-[#f7f8fa] dark:border-white/10 dark:bg-night-header lg:order-2 lg:w-[370px] lg:border-b-0 lg:border-l xl:w-[400px]"
+        role={smallScreen && detailsOpen ? "dialog" : undefined}
+        aria-modal={smallScreen && detailsOpen ? true : undefined}
+        className={`absolute inset-y-0 left-0 z-20 flex w-[88%] max-w-[400px] flex-col overflow-hidden border-r border-black/10 bg-[#f7f8fa] shadow-2xl transition-[transform,visibility] duration-300 ease-out dark:border-white/10 dark:bg-night-header lg:relative lg:inset-auto lg:w-[370px] lg:max-w-none lg:shrink-0 lg:translate-x-0 lg:visible lg:border-r-0 lg:border-l lg:shadow-none xl:w-[400px] ${detailsOpen ? "visible translate-x-0" : "pointer-events-none invisible -translate-x-full lg:pointer-events-auto"}`}
       >
         <div className="flex items-start gap-3 border-b border-black/10 px-5 py-5 dark:border-white/10">
           <button
             type="button"
             aria-label="Leave editor"
             onClick={() => router.push(cancelHref)}
-            className="mt-0.5 rounded-full p-2 text-black/50 transition hover:bg-black/5 dark:text-night-muted dark:hover:bg-white/10"
+            className="mt-0.5 hidden rounded-full p-2 text-black/50 transition hover:bg-black/5 dark:text-night-muted dark:hover:bg-white/10 lg:inline-flex"
           >
             <ArrowLeft size={19} />
           </button>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[.22em] text-[#C62828]">
+          <div className="min-w-0 flex-1">
+            <p className="hidden text-[10px] font-black uppercase tracking-[.22em] text-[#C62828] lg:block">
               {publicId ? "Edit your beacon" : "Create a beacon"}
             </p>
             <h2 className="mt-1 text-xl font-black">
-              {publicId ? "Page details" : "Tell your story"}
+              <span className="lg:hidden">{publicId ? "Edit beacon" : "Build your beacon"}</span>
+              <span className="hidden lg:inline">{publicId ? "Page details" : "Tell your story"}</span>
             </h2>
             <p className="mt-1 text-xs leading-5 text-black/50 dark:text-night-muted">
-              Only the page name is required. Your preview updates as you type.
+              Only the page name is required.<span className="hidden lg:inline"> Your preview updates as you type.</span>
             </p>
           </div>
+          <button
+            ref={closeDetailsButton}
+            type="button"
+            aria-label="Close page editor"
+            disabled={saving}
+            onClick={closeDetails}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-black/60 hover:bg-black/5 disabled:opacity-40 dark:text-night-muted dark:hover:bg-white/10 lg:hidden"
+          >
+            <X size={22} />
+          </button>
         </div>
-        <div className="min-h-0 flex-1 space-y-5 px-5 py-5 lg:overflow-y-auto">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
           {loading && <p className="text-sm">Loading your beacon…</p>}
           {error && (
             <p

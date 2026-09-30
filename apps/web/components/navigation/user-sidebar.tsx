@@ -8,8 +8,7 @@ import {
   MessageCircle,
   ShoppingBag,
   Smartphone,
-  UsersRound,
-  X,
+  UsersRound
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -118,7 +117,7 @@ export function UserSidebar({
         className="user-sidebar absolute bottom-0 left-0 top-14 z-50 flex w-[min(85vw,280px)] shrink-0 flex-col overflow-hidden border-r border-black/10 bg-white/95 text-[#444b56] shadow-xl dark:border-white/10 dark:bg-night-header dark:text-night-text lg:relative lg:inset-auto lg:z-auto lg:shadow-none"
       >
         <div className="flex min-h-0 w-[min(85vw,280px)] flex-1 flex-col overflow-y-auto px-3 py-5 lg:w-56">
-          <div className="flex items-center justify-between px-3 pb-3">
+          {/* <div className="flex items-center justify-between px-3 pb-3">
             <p className="text-[10px] font-black uppercase tracking-[.22em] text-black/35 dark:text-night-muted">
               {" "}
             </p>
@@ -130,7 +129,7 @@ export function UserSidebar({
             >
               <X size={19} />
             </button>
-          </div>
+          </div> */}
           {ownerId && (
             <div className="mb-5 rounded-2xl border border-black/10 bg-[#f5f6f8] p-2 dark:border-white/10 dark:bg-night-surface">
               <div className="flex items-center">

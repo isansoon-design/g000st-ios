@@ -28,8 +28,8 @@ import {
 import { sessionStorage } from "@/app/api/session-storage";
 import { toggleSocialCamp } from "@/app/api/social";
 import { PostImage } from "@/components/media/PostImage";
-import { PostContentLink } from "@/components/posts/PostContentLink";
 import { UserHeaderPortal } from "@/components/navigation/header-portal";
+import { PostContentLink } from "@/components/posts/PostContentLink";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { useCalling } from "@/features/calling/use-calling";
 import { startMarketChatConversation } from "@/features/chat/api";
@@ -502,7 +502,7 @@ function Composer({
       <CallOptions fields={fields} onChange={onChange} />
       <div className="flex justify-between">
         <label className="cursor-pointer rounded-xl border border-black/15 dark:border-night-border px-4 py-3 text-xs font-black">
-          📎 {mediaFiles.length ? `${mediaFiles.length} selected` : "Media"}
+          📎 {" "} {mediaFiles.length ? `${mediaFiles.length} selected` : "Media"}
           <input
             className="hidden"
             type="file"

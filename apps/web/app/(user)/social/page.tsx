@@ -37,10 +37,10 @@ import {
   type SocialSuggestion,
   type SocialVisibility,
 } from "@/app/api/social";
-import { useConfirmModal } from "@/context/ConfirmModalContext";
-import { UserHeaderPortal } from "@/components/navigation/header-portal";
 import { PostImage } from "@/components/media/PostImage";
+import { UserHeaderPortal } from "@/components/navigation/header-portal";
 import { PostContentLink } from "@/components/posts/PostContentLink";
+import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { startChatConversation } from "@/features/chat/api";
 
 type View = "home" | "mine" | "alerts";
@@ -634,7 +634,7 @@ export default function SocialPage() {
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <label className="flex items-center gap-2 rounded-xl border border-black/10 dark:border-night-border px-3 py-2 text-xs font-bold">
-                    📎
+                    📎{" "}
                     <input
                       className="hidden"
                       type="file"
