@@ -38,6 +38,7 @@ import {
   type SocialVisibility,
 } from "@/app/api/social";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
+import { UserHeaderPortal } from "@/components/navigation/header-portal";
 import { PostImage } from "@/components/media/PostImage";
 import { PostContentLink } from "@/components/posts/PostContentLink";
 import { startChatConversation } from "@/features/chat/api";
@@ -99,6 +100,7 @@ export default function SocialPage() {
     }
   }, [myId, view]);
   useEffect(() => {
+    feedScrollRef.current?.scrollTo(0, 0);
     void load();
   }, [load]);
 
@@ -262,17 +264,22 @@ export default function SocialPage() {
 
   return (
     <div className="flex h-full flex-col bg-[#e7e7e9] dark:bg-night-canvas text-[#171717] dark:text-night-text">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-black/10 dark:border-night-border bg-gradient-to-b from-white to-[#c9c9cb] dark:from-night-header dark:to-night-control px-4 shadow-sm">
-        <h1 className="text-lg font-black">
-          g<span className="text-[#c62828]">000</span>
-          st
-          <span className="text-[#c62828]">S</span>
-          ocial
-        </h1>
-        <button onClick={() => setView("alerts")} aria-label="Alerts">
-          <Bell size={21} />
-        </button>
-      </header>
+      <UserHeaderPortal>
+        <h1 className="mr-auto text-sm font-black lg:text-base"><span className="text-[#c62828]">S</span>ocial</h1>
+        <nav aria-label="Social navigation" className="hidden items-center gap-1 lg:flex">
+          {(["home", "mine", "alerts"] as const).map((item) => (
+            <button key={item} type="button" aria-current={view === item ? "page" : undefined} onClick={() => setView(item)} className={`rounded-xl px-3 py-2 text-sm font-bold ${view === item ? "bg-[#C62828] text-white" : "text-[#444b56] hover:bg-black/5 dark:text-night-text dark:hover:bg-white/10"}`}>
+              {item === "home" ? "Home" : item === "mine" ? "My Posts" : "Alerts"}
+            </button>
+          ))}
+          <button type="button" onClick={() => setView("alerts")} aria-label="Alerts" className="ml-1 rounded-lg p-2 hover:bg-black/5 dark:hover:bg-white/10"><Bell size={20} /></button>
+        </nav>
+        <select aria-label="Social navigation" value={view} onChange={(event) => setView(event.target.value as View)} className="w-[104px] rounded-lg border border-black/15 bg-white px-1 py-2 text-xs font-bold text-[#17191d] dark:border-white/20 dark:bg-night-surface dark:text-night-text sm:w-[140px] lg:hidden">
+          <option value="home">Home</option>
+          <option value="mine">My Posts</option>
+          <option value="alerts">Alerts</option>
+        </select>
+      </UserHeaderPortal>
       <main ref={feedScrollRef} className="min-h-0 flex-1 overflow-y-auto">
         {view === "alerts" ? (
           <Alerts alerts={alerts} />
@@ -580,23 +587,6 @@ export default function SocialPage() {
           </div>
         )}
       </main>
-      <nav className="flex h-14 shrink-0 border-t border-black/15 dark:border-night-border bg-white/90 dark:bg-night-surface">
-        <ViewButton
-          active={view === "home"}
-          onClick={() => setView("home")}
-          label="Home"
-        />
-        <ViewButton
-          active={view === "mine"}
-          onClick={() => setView("mine")}
-          label="My Posts"
-        />
-        <ViewButton
-          active={view === "alerts"}
-          onClick={() => setView("alerts")}
-          label="Alerts"
-        />
-      </nav>
       {isComposerOpen && (
         <div
           role="dialog"
@@ -982,25 +972,6 @@ function Empty({ text }: { text: string }) {
     <div className="py-16 text-center font-bold text-black/45 dark:text-night-muted">{text}</div>
   );
 }
-function ViewButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-1 text-xs font-black ${active ? "border-t-2 border-[#c62828] text-black dark:text-night-text" : "text-black/45 dark:text-night-muted"}`}
-    >
-      {label}
-    </button>
-  );
-}
-
 function MediaPreview({
   file,
   onRemove,

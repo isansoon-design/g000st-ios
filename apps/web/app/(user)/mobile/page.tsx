@@ -13,6 +13,7 @@ import {
 } from "@/app/api/mobile";
 import type { Balance, BillingSku, OutboundSms } from "@/features/mobile/types";
 import { useExternalCall } from "@/features/mobile/use-external-call";
+import { UserHeaderPortal } from "@/components/navigation/header-portal";
 
 type Tab = "keypad" | "sms" | "plans";
 
@@ -242,13 +243,6 @@ export default function MobilePage() {
     alignItems: "center", justifyContent: "center", padding: 0, cursor: "pointer",
   };
 
-  const tabBtnStyle = (active: boolean): React.CSSProperties => ({
-    height: 36, padding: "0 16px", borderRadius: 12,
-    border: active ? "1.5px solid #9A9A9A" : "1px solid #ccc",
-    background: active ? "linear-gradient(180deg,var(--tone-bg-b8b8b8),var(--app-control))" : "var(--tone-bg-e8e8e8)",
-    color: active ? "var(--tone-fg-ffffff)" : "var(--tone-fg-333333)", fontWeight: 800, fontSize: 12, cursor: "pointer",
-  });
-
   const callStatusLabel: Record<string, string> = {
     connecting: "Connecting…",
     ringing: "Ringing…",
@@ -264,29 +258,22 @@ export default function MobilePage() {
   }
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--app-canvas)", overflow: "hidden", color: "var(--app-text)", position: "relative" }}>
-
-      {/* Top bar */}
-      <div style={{
-        flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "6px 16px",
-        background: "linear-gradient(180deg,var(--tone-bg-fafafa) 0%,var(--app-canvas) 45%,var(--tone-bg-b0b0b0) 100%)",
-        boxShadow: "inset 0 2px 0 rgba(255,255,255,.9),0 4px 12px rgba(0,0,0,.1)",
-        borderBottom: "1px solid rgba(0,0,0,.12)",
-      }}>
-        <div style={{ width: 40 }} /> {/* spacer */}
-        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", color: "var(--tone-fg-c62828)" }}>NO TRACE</div>
-        <button onClick={() => setTab("plans")} style={{
-          width: 40, height: 36, borderRadius: 18, border: "1px solid #999",
-          background: "var(--tone-bg-eeeeee)", color: "var(--app-text)", fontWeight: 900, fontSize: 16, cursor: "pointer",
-        }}>£</button>
-      </div>
-
-      {/* Tab switcher */}
-      <div style={{ display: "flex", gap: 8, padding: "8px 16px 0", flexShrink: 0 }}>
-        <button style={tabBtnStyle(tab === "keypad")} onClick={() => setTab("keypad")}>Keypad</button>
-        <button style={tabBtnStyle(tab === "sms")} onClick={() => setTab("sms")}>SMS</button>
-        <button style={tabBtnStyle(tab === "plans")} onClick={() => setTab("plans")}>Plans £</button>
-      </div>
+      <UserHeaderPortal>
+        <h1 className="mr-auto text-xs font-black tracking-[.1em] text-[#C62828]">NO TRACE</h1>
+        <nav aria-label="Mobile service navigation" className="hidden items-center gap-1 lg:flex">
+          {(["keypad", "sms", "plans"] as const).map((item) => (
+            <button key={item} type="button" aria-current={tab === item ? "page" : undefined} onClick={() => setTab(item)} className={`rounded-xl px-3 py-2 text-sm font-bold ${tab === item ? "bg-[#C62828] text-white" : "text-[#444b56] hover:bg-black/5 dark:text-night-text dark:hover:bg-white/10"}`}>
+              {item === "keypad" ? "Keypad" : item === "sms" ? "SMS" : "Plans £"}
+            </button>
+          ))}
+          <button type="button" onClick={() => setTab("plans")} aria-label="Plans and credit" className="rounded-lg px-2 py-1 text-lg font-black hover:bg-black/5 dark:hover:bg-white/10">£</button>
+        </nav>
+        <select aria-label="Mobile service navigation" value={tab} onChange={(event) => setTab(event.target.value as Tab)} className="w-[104px] rounded-lg border border-black/15 bg-white px-1 py-2 text-xs font-bold text-[#17191d] dark:border-white/20 dark:bg-night-surface dark:text-night-text sm:w-[140px] lg:hidden">
+          <option value="keypad">Keypad</option>
+          <option value="sms">SMS</option>
+          <option value="plans">Plans £</option>
+        </select>
+      </UserHeaderPortal>
 
       {/* KEYPAD TAB */}
       {tab === "keypad" && (

@@ -32,6 +32,7 @@ export default function AdminLayout({
             <span className="text-gray-600 dark:text-night-muted ml-2">Admin</span>
           </h1>
         </div>
+        <div id="admin-page-header-slot" className="flex min-w-0 flex-1 items-center justify-center px-2" />
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <button className="p-2 hover:bg-gray-100 rounded-lg dark:hover:bg-white/10" aria-label="Log out" onClick={() => { logout(); window.location.replace('/login'); }}>

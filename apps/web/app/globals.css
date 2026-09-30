@@ -2,6 +2,61 @@
 @tailwind components;
 @tailwind utilities;
 
+.user-sidebar {
+  transform: translateX(-100%);
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 300ms cubic-bezier(.22, 1, .36, 1), visibility 0s linear 300ms;
+}
+
+.user-sidebar[data-mobile-open="true"] {
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition: transform 300ms cubic-bezier(.22, 1, .36, 1), visibility 0s;
+}
+
+.user-sidebar-backdrop {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 300ms ease, visibility 0s linear 300ms;
+}
+
+.user-sidebar-backdrop[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 300ms ease, visibility 0s;
+}
+
+@media (min-width: 1024px) {
+  .user-sidebar[data-desktop-open="false"] {
+    width: 0;
+    transform: none;
+    visibility: hidden;
+    pointer-events: none;
+    border-right-width: 0;
+    transition: width 300ms cubic-bezier(.22, 1, .36, 1), visibility 0s linear 300ms, border-right-width 0s linear 300ms;
+  }
+
+  .user-sidebar[data-desktop-open="true"] {
+    width: 14rem;
+    transform: none;
+    visibility: visible;
+    pointer-events: auto;
+    border-right-width: 1px;
+    transition: width 300ms cubic-bezier(.22, 1, .36, 1), visibility 0s, border-right-width 0s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-sidebar,
+  .user-sidebar-backdrop {
+    transition: none !important;
+  }
+}
+
 .admin-feature-scope[data-admin-hidden~="mypage.cover"] [data-admin-part="mypage.cover"],
 .admin-feature-scope[data-admin-hidden~="mypage.avatar"] [data-admin-part="mypage.avatar"],
 .admin-feature-scope[data-admin-hidden~="mypage.id"] [data-admin-part="mypage.id"],

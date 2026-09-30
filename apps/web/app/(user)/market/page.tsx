@@ -9,6 +9,7 @@ import {
   ShoppingBag,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -28,6 +29,7 @@ import { sessionStorage } from "@/app/api/session-storage";
 import { toggleSocialCamp } from "@/app/api/social";
 import { PostImage } from "@/components/media/PostImage";
 import { PostContentLink } from "@/components/posts/PostContentLink";
+import { UserHeaderPortal } from "@/components/navigation/header-portal";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { useCalling } from "@/features/calling/use-calling";
 import { startMarketChatConversation } from "@/features/chat/api";
@@ -72,6 +74,7 @@ export default function MarketPage() {
     }
   }, [myId, view]);
   useEffect(() => {
+    feedRef.current?.scrollTo(0, 0);
     void load();
   }, [load]);
 
@@ -144,12 +147,19 @@ export default function MarketPage() {
 
   return (
     <div className="flex h-full flex-col bg-[#e7e7e9] dark:bg-night-canvas text-[#171717] dark:text-night-text">
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-black/10 dark:border-night-border bg-gradient-to-b from-white to-[#c9c9cb] dark:from-night-header dark:to-night-control px-4 shadow-sm">
-        <ShoppingBag size={21} />
-        <h1 className="text-lg font-black">
-          g<span className="text-[#c62828]">000</span>st Market
-        </h1>
-      </header>
+      <UserHeaderPortal>
+        <h1 className="mr-auto flex items-center gap-2 text-sm font-black lg:text-base"><ShoppingBag size={19} aria-hidden="true" className="hidden sm:block" />Market</h1>
+        <nav aria-label="Market navigation" className="hidden items-center gap-1 lg:flex">
+          <button type="button" aria-current={view === "home" ? "page" : undefined} onClick={() => setView("home")} className={`rounded-xl px-3 py-2 text-sm font-bold ${view === "home" ? "bg-[#C62828] text-white" : "text-[#444b56] hover:bg-black/5 dark:text-night-text dark:hover:bg-white/10"}`}>Market</button>
+          <button type="button" aria-current={view === "mine" ? "page" : undefined} onClick={() => setView("mine")} className={`rounded-xl px-3 py-2 text-sm font-bold ${view === "mine" ? "bg-[#C62828] text-white" : "text-[#444b56] hover:bg-black/5 dark:text-night-text dark:hover:bg-white/10"}`}>My Listings</button>
+          <Link href="/chat?kind=market" className="rounded-xl px-3 py-2 text-sm font-bold text-[#444b56] hover:bg-black/5 dark:text-night-text dark:hover:bg-white/10">Market Chats</Link>
+        </nav>
+        <select aria-label="Market navigation" value={view} onChange={(event) => event.target.value === "chats" ? router.push("/chat?kind=market") : setView(event.target.value as "home" | "mine")} className="w-[104px] rounded-lg border border-black/15 bg-white px-1 py-2 text-xs font-bold text-[#17191d] dark:border-white/20 dark:bg-night-surface dark:text-night-text sm:w-[140px] lg:hidden">
+          <option value="home">Market</option>
+          <option value="mine">My Listings</option>
+          <option value="chats">Market Chats</option>
+        </select>
+      </UserHeaderPortal>
       <main ref={feedRef} className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-3 p-3">
           <button
@@ -376,23 +386,6 @@ export default function MarketPage() {
           )}
         </div>
       </main>
-      <nav className="flex h-14 shrink-0 border-t border-black/15 dark:border-night-border bg-white/90 dark:bg-night-surface">
-        <ViewButton
-          active={view === "home"}
-          label="Market"
-          onClick={() => setView("home")}
-        />
-        <ViewButton
-          active={view === "mine"}
-          label="My Listings"
-          onClick={() => setView("mine")}
-        />
-        <ViewButton
-          active={false}
-          label="Market Chats"
-          onClick={() => router.push("/chat?kind=market")}
-        />
-      </nav>
       {isComposerOpen && (
         <div
           role="dialog"
@@ -675,24 +668,6 @@ function Badge({ children }: { children: React.ReactNode }) {
     <span className="inline-flex items-center gap-1 rounded-full bg-black px-3 py-1.5 text-xs text-white">
       {children}
     </span>
-  );
-}
-function ViewButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-1 text-xs font-black ${active ? "border-t-2 border-[#c62828]" : "text-black/45 dark:text-night-muted"}`}
-    >
-      {label}
-    </button>
   );
 }
 function validFields(fields: MarketPostFields) {

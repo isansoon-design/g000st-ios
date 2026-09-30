@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { followByPublicId, listContacts, unfollowContact, updateContactNickname, type Contact } from "@/app/api/contacts";
 import { sessionStorage } from "@/app/api/session-storage";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
+import { UserHeaderPortal } from "@/components/navigation/header-portal";
 import { startChatConversation } from "@/features/chat/api";
 import { useCalling } from "@/features/calling/use-calling";
 
@@ -165,17 +166,11 @@ export default function ContactsPage() {
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--tone-bg-d8dce3)", overflow: "hidden" }}>
-      <div style={{
-        flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "10px 14px",
-        background: "linear-gradient(180deg,var(--tone-bg-fafafa) 0%,var(--app-canvas) 45%,var(--tone-bg-b0b0b0) 100%)",
-        boxShadow: "inset 0 2px 0 rgba(255,255,255,.9),0 6px 16px rgba(0,0,0,.12)",
-        borderBottom: "1px solid var(--app-hairline)",
-      }}>
-        <span style={{ fontWeight: 900, fontSize: 16 }}>Friends</span>
+      <UserHeaderPortal>
+        <h1 className="mr-auto text-sm font-black lg:text-base">Friends</h1>
         <button style={{ ...btnSmStyle, background: "linear-gradient(180deg,var(--tone-bg-b8b8b8),var(--app-control))", color: "var(--tone-fg-ffffff)", border: "1px solid var(--app-control)" }}
           onClick={() => { setAddValue(""); setAddError(null); setIsAddOpen(true); }}>+ Follow</button>
-      </div>
+      </UserHeaderPortal>
 
       <div data-admin-part="network.search" style={{ padding: "10px 14px 0" }}>
         <input

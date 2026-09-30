@@ -14,7 +14,7 @@ import {
     type SocialProfile,
 } from "@/app/api/social";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
-import { ThemeToggle, useTheme } from "@/context/ThemeContext";
+import { UserHeaderPortal } from "@/components/navigation/header-portal";
 import { BeaconSwitcher } from '@/features/profile/beacon-switcher';
 
 type ProfileFields = {
@@ -62,7 +62,6 @@ const fieldClass =
   "h-11 w-full rounded-[12px] border border-black/10 dark:border-night-border bg-white dark:bg-night-surface px-3 text-[13px] font-bold text-[#111] dark:text-night-text outline-none focus:border-[#9A9A9A]";
 
 export default function ProfilePage() {
-  const { mode } = useTheme();
   const { confirm } = useConfirmModal();
   const accountPublicId = sessionStorage.get()?.user.publicId ?? '';
   const publicId = sessionStorage.getActingPublicId() ?? accountPublicId;
@@ -243,30 +242,12 @@ export default function ProfilePage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#D8DCE3] dark:bg-night-canvas">
-      <div
-        style={{
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "10px 14px",
-          background: "linear-gradient(180deg,var(--tone-bg-fafafa) 0%,var(--app-canvas) 45%,var(--tone-bg-b0b0b0) 100%)",
-          boxShadow: "inset 0 2px 0 rgba(255,255,255,.9),0 6px 16px rgba(0,0,0,.12)",
-          borderBottom: "1px solid rgba(0,0,0,.12)",
-        }}
-      >
-        <span style={{ fontWeight: 900, fontSize: 16 }}>ID &amp; Profile</span>
-        <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.1em", color: "var(--app-faint-text)" }}>PROFILE</span>
-      </div>
+      <UserHeaderPortal>
+        <h1 className="mr-auto text-sm font-black lg:text-base">ID &amp; Profile</h1>
+        <span className="hidden text-[10px] font-black tracking-[.1em] text-black/40 dark:text-night-muted lg:inline">PROFILE</span>
+      </UserHeaderPortal>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6" style={{ WebkitOverflowScrolling: "touch" }}>
-        <div className="mx-auto mb-4 flex w-full max-w-5xl items-center justify-between rounded-[18px] border border-white/75 bg-white/50 px-4 py-2 dark:border-white/20 dark:bg-night-surface">
-          <div>
-            <p className="text-sm font-black">Appearance</p>
-            <p className="text-xs font-semibold text-black/55 dark:text-night-muted">{mode === "dark" ? "Dark mode" : "Light mode"}</p>
-          </div>
-          <ThemeToggle />
-        </div>
         <div className="mx-auto grid w-full max-w-5xl items-start gap-5 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
           <aside className="min-w-0 lg:sticky lg:top-0">
             <BeaconSwitcher />

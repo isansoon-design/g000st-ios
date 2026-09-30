@@ -29,6 +29,7 @@ import {
 } from "@/app/api/social";
 import { PostImage } from "@/components/media/PostImage";
 import { PostContentLink } from "@/components/posts/PostContentLink";
+import { UserHeaderPortal } from "@/components/navigation/header-portal";
 
 type Kind = "social" | "market";
 type Post = SocialPost | MarketPost;
@@ -199,13 +200,13 @@ function PostDetailContent({ kind, postId }: { kind: string; postId: string }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-black/10 bg-white px-4 dark:border-night-border dark:bg-night-surface">
+      <UserHeaderPortal>
         <button type="button" aria-label="Back" onClick={() => {
           if (window.history.length > 1) router.back();
           else router.push(kind === "market" ? "/market" : "/social");
         }} className="rounded-lg p-2"><ArrowLeft size={20} /></button>
-        <h1 className="text-base font-black">{kind === "market" ? "Market post" : "Social post"}</h1>
-      </header>
+        <h1 className="mr-auto text-sm font-black lg:text-base">{kind === "market" ? "Market post" : "Social post"}</h1>
+      </UserHeaderPortal>
       {!isKind(kind) || !postId ? (
         <p className="p-8 text-center">Invalid post link.</p>
       ) : loading ? (

@@ -7,6 +7,7 @@ import { adjustAdminBalance, getAdminBalance, getAdminLedger } from "@/app/api/a
 import { getAdminBillingRecent, type AdminBillingRecentV1 } from "@/app/api/admin-desk";
 import { toApiError } from "@/app/api/api-error";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
+import { AdminHeaderPortal } from "@/components/navigation/header-portal";
 import type { Balance, LedgerEvent } from "@/features/mobile/types";
 
 const PUBLIC_ID_LENGTH = 50;
@@ -141,12 +142,10 @@ export default function AdminBillingPage() {
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-night-canvas overflow-auto">
-      <div className="bg-white dark:bg-night-surface border-b border-gray-200 dark:border-night-border px-6 py-4 sticky top-0 z-10">
-        <h2 className="text-lg font-semibold">Call &amp; SMS credits</h2>
-        <p className="text-sm text-gray-600 dark:text-night-muted">Real prepaid balances and ledger for external calls and SMS. In-app calls remain free.</p>
-      </div>
+      <AdminHeaderPortal><h2 className="truncate text-sm font-semibold sm:text-lg">Call &amp; SMS credits</h2></AdminHeaderPortal>
 
       <div className="p-6 max-w-3xl w-full space-y-6">
+        <p className="text-sm text-gray-600 dark:text-night-muted">Real prepaid balances and ledger for external calls and SMS. In-app calls remain free.</p>
         <section className="rounded-lg border border-gray-200 bg-white p-5 dark:border-night-border dark:bg-night-surface">
           <div className="flex items-center justify-between gap-3"><div><h3 className="text-lg font-bold">Recent balances</h3><p className="text-xs text-gray-500 dark:text-night-muted">Accounts with recorded credit activity: {overview?.accountCount ?? "—"}</p></div><button onClick={() => void refreshOverview()} className="rounded-lg border px-3 py-2 text-xs font-bold dark:border-night-border">Refresh</button></div>
           {overviewError && <p role="alert" className="mt-3 text-sm text-red-600">{overviewError}</p>}

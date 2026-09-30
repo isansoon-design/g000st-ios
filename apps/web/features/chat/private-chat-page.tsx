@@ -9,6 +9,7 @@ import {
 } from "@/app/api/contacts";
 import { getSocialProfile, toggleSocialCamp } from "@/app/api/social";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
+import { UserHeaderPortal } from "@/components/navigation/header-portal";
 import { Mic, Send, Square, Trash2, UserRound } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -45,14 +46,6 @@ function formatDuration(value: number): string {
 }
 
 const waveform = [5, 11, 16, 9, 19, 13, 7, 15, 20, 10, 17, 8, 14, 6, 12, 18];
-
-function Brand() {
-  return (
-    <span className="text-[17px] font-black tracking-tight text-[#111] dark:text-night-text">
-      g<span className="text-[#C62828]">000</span>st
-    </span>
-  );
-}
 
 function OnlineSignal() {
   return (
@@ -762,11 +755,11 @@ export default function PrivateChatPage() {
           </p>
         </div>
       ) : null}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-black/15 dark:border-night-border bg-gradient-to-b from-[#fafafa] via-[#d8d8d8] to-[#b0b0b0] dark:from-night-header dark:via-night-raised dark:to-night-control px-3 shadow-md">
-        <div className="flex items-center gap-1.5">
-          <Brand />
-          <OnlineSignal />
-          <div className="ml-2 flex items-center gap-2 rounded-md border border-black/10 dark:border-night-border bg-white/50 px-1">
+      <UserHeaderPortal>
+        <h1 className="mr-auto text-sm font-black lg:text-base">Chat</h1>
+        <span className="hidden sm:inline-flex"><OnlineSignal /></span>
+        <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 rounded-md border border-black/10 dark:border-night-border bg-white/50 px-1">
             <button
               aria-label="Decrease font size"
               className="flex h-6 w-6 items-center justify-center rounded-sm bg-white dark:bg-night-surface text-lg font-black leading-none text-black dark:text-night-text hover:bg-gray-100"
@@ -784,16 +777,16 @@ export default function PrivateChatPage() {
               +
             </button>
           </div>
+          <button
+            aria-label="Start a new private chat"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 dark:border-night-border bg-white/70 dark:bg-night-surface text-2xl font-black text-[#111] dark:text-night-text"
+            onClick={chat.openNewChat}
+            type="button"
+          >
+            +
+          </button>
         </div>
-        <button
-          aria-label="Start a new private chat"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 dark:border-night-border bg-white/70 dark:bg-night-surface text-2xl font-black text-[#111] dark:text-night-text"
-          onClick={chat.openNewChat}
-          type="button"
-        >
-          +
-        </button>
-      </header>
+      </UserHeaderPortal>
 
       {chat.activeConversation ? (
         <div className="flex min-h-0 flex-1 flex-col px-2">
