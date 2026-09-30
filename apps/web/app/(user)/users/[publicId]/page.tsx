@@ -173,14 +173,6 @@ export default function PublicUserPage() {
     }
   }
 
-  function switchToThisProfile() {
-    if (actingPublicId !== publicId) sessionStorage.setActingPublicId(publicId);
-    toast.success(
-      `You are now interacting as ${profile?.displayName || (profile?.isPage ? "this page" : "your profile")}`,
-    );
-    router.push("/social");
-  }
-
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -431,20 +423,6 @@ export default function PublicUserPage() {
                     {profile.bio}
                   </p>
                 )}
-                {/* {own && !editing && (
-                  <button
-                    type="button"
-                    onClick={switchToThisProfile}
-                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#17191d] px-4 py-3 text-sm font-black text-white"
-                  >
-                    <span aria-hidden="true" className="text-xl">
-                      ⇄
-                    </span>
-                    {profile.isPage
-                      ? "Switch interaction as this page"
-                      : "Switch interaction as your profile"}
-                  </button>
-                )} */}
                 {own && editing && draft && (
                   <div className="mt-5 space-y-3 border-t border-black/10 pt-5 dark:border-night-border">
                     <label className="block text-xs font-black">

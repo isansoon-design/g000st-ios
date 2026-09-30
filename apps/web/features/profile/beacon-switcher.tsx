@@ -44,12 +44,6 @@ export function BeaconSwitcher() {
     };
   }, [activeId, ownerId]);
 
-  const switchTo = (publicId: string, displayName: string) => {
-    if (activeId !== publicId) sessionStorage.setActingPublicId(publicId);
-    toast.success(`You are now interacting as ${displayName}`);
-    router.push("/social");
-  };
-
   if (!mounted) return null;
   return (
     <section className="mb-4 w-full rounded-[18px] border border-white/60 dark:border-white/20 bg-[#D0D0D0] dark:bg-night-header p-4">
@@ -70,21 +64,6 @@ export function BeaconSwitcher() {
               {ownerId.slice(0, 8)} · View profile
             </span>
           </button>
-          {/* <button
-            type="button"
-            onClick={() => switchTo(ownerId, "Personal profile")}
-            aria-label="Switch interaction as your profile"
-            aria-pressed={personalSelected}
-            title="Switch interaction profile"
-            className="flex min-w-14 items-center justify-center gap-1 rounded-r-xl border-l border-black/10 px-3 text-sm font-black hover:opacity-75 dark:border-white/20"
-          >
-            <span aria-hidden="true" className="text-xl">
-              ⇄
-            </span>
-            {personalSelected && (
-              <Check aria-hidden="true" size={14} strokeWidth={3} />
-            )}
-          </button> */}
         </div>
       )}
       {pages.map((page) => {
@@ -106,23 +85,6 @@ export function BeaconSwitcher() {
                 {page.publicId.slice(0, 8)} · View page
               </span>
             </button>
-            {/* <button
-              type="button"
-              onClick={() =>
-                switchTo(page.publicId, page.displayName || "Untitled page")
-              }
-              aria-label={`Switch interaction as ${page.displayName || "this page"}`}
-              aria-pressed={selected}
-              title="Switch interaction page"
-              className="flex min-w-14 items-center justify-center gap-1 rounded-r-xl border-l border-black/10 px-3 text-sm font-black hover:opacity-75 dark:border-white/20"
-            >
-              <span aria-hidden="true" className="text-xl">
-                ⇄
-              </span>
-              {selected && (
-                <Check aria-hidden="true" size={14} strokeWidth={3} />
-              )}
-            </button> */}
           </div>
         );
       })}
