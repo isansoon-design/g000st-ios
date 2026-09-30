@@ -461,7 +461,7 @@ function Composer({
         maxLength={4000}
         className="min-h-24 w-full resize-none rounded-xl border border-black/15 dark:border-night-border p-3 outline-none"
       />
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <NumberInput
           value={fields.price || ""}
           placeholder="Price £"
@@ -481,7 +481,7 @@ function Composer({
           }
           placeholder="City"
           maxLength={100}
-          className="min-w-0 rounded-xl border border-black/15 dark:border-night-border px-3"
+          className="col-span-2 min-w-0 rounded-xl border border-black/15 dark:border-night-border px-3 py-2 sm:col-span-1"
         />
       </div>
       {mediaFiles.length > 0 && (
@@ -576,7 +576,7 @@ function EditModal({
           }
           className="min-h-28 w-full rounded-xl border border-black/15 dark:border-night-border p-3"
         />
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <NumberInput
             value={fields.price}
             placeholder={
@@ -598,7 +598,7 @@ function EditModal({
             onChange={(event) =>
               setFields({ ...fields, city: event.target.value })
             }
-            className="min-w-0 rounded-xl border border-black/15 dark:border-night-border px-3"
+            className="col-span-2 min-w-0 rounded-xl border border-black/15 dark:border-night-border px-3 py-2 sm:col-span-1"
           />
         </div>
         {post.currency !== "GBP" && (
@@ -690,7 +690,7 @@ function CallOptions({
   onChange: (fields: MarketPostFields) => void;
 }) {
   return (
-    <div className="flex gap-4 text-sm">
+    <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
       <label className="flex items-center gap-2">
         <input
           type="checkbox"

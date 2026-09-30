@@ -632,7 +632,7 @@ export default function SocialPage() {
                     ))}
                   </div>
                 )}
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   <label className="flex items-center gap-2 rounded-xl border border-black/10 dark:border-night-border px-3 py-2 text-xs font-bold">
                     📎
                     <input
@@ -664,7 +664,7 @@ export default function SocialPage() {
                     />
                     {mediaFiles.length ? `${mediaFiles.length} selected` : "Media"}
                   </label>
-                  <label className="flex flex-1 items-center gap-2 text-xs font-bold">
+                  <label className="flex min-w-0 flex-1 items-center gap-2 text-xs font-bold">
                     <input
                       type="checkbox"
                       checked={isPage || visibility === "public"}

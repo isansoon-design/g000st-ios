@@ -151,14 +151,14 @@ export default function AdminBillingPage() {
           {overviewError && <p role="alert" className="mt-3 text-sm text-red-600">{overviewError}</p>}
           {overview?.balances.length ? <div className="mt-4 space-y-2">{overview.balances.map((item) => <button key={item.publicId} onClick={() => { setPublicIdInput(item.publicId); void load(item.publicId); }} className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-200 p-3 text-left hover:bg-gray-50 dark:border-night-border dark:hover:bg-white/10"><code className="max-w-[210px] truncate text-xs" title={item.publicId}>{item.publicId}</code><span className="text-xs">{formatSeconds(item.voiceSecondsRemaining)} · {item.smsRemaining} SMS</span><span className="text-xs text-gray-500">{new Date(item.updatedAtMs).toLocaleString()}</span></button>)}</div> : overview && <p className="mt-4 text-sm text-gray-500">No credit activity recorded yet. You can still look up an account below.</p>}
         </section>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             type="text"
             placeholder={`Public ID (${PUBLIC_ID_LENGTH} characters)`}
             value={publicIdInput}
             onChange={(event) => setPublicIdInput(event.target.value)}
             onKeyDown={(event) => event.key === "Enter" && handleLookup()}
-            className="flex-1 px-4 py-2 border border-gray-300 dark:border-night-border rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="min-w-0 flex-1 px-4 py-2 border border-gray-300 dark:border-night-border rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             onClick={handleLookup}
@@ -172,8 +172,8 @@ export default function AdminBillingPage() {
         {lookedUpPublicId && balance && (
           <>
             <div className="bg-white dark:bg-night-surface border border-gray-200 dark:border-night-border rounded-lg p-5">
-              <div className="text-xs text-gray-500 dark:text-night-muted font-mono mb-3">{lookedUpPublicId}</div>
-              <div className="flex gap-8">
+              <div className="mb-3 break-all font-mono text-xs text-gray-500 dark:text-night-muted">{lookedUpPublicId}</div>
+              <div className="flex flex-wrap gap-4 sm:gap-8">
                 <div>
                   <div className="text-2xl font-bold text-gray-900 dark:text-night-text">
                     {formatSeconds(balance.voiceSecondsRemaining)}
@@ -235,7 +235,8 @@ export default function AdminBillingPage() {
               {ledger.length === 0 ? (
                 <div className="px-5 py-8 text-center text-sm text-gray-500 dark:text-night-muted">No ledger entries yet.</div>
               ) : (
-                <table className="w-full">
+                <div className="overflow-x-auto">
+                <table className="min-w-[700px] w-full">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-night-border bg-gray-50 dark:bg-night-canvas text-left text-xs font-semibold text-gray-700 dark:text-night-muted">
                       <th className="px-5 py-2">Kind</th>
@@ -262,6 +263,7 @@ export default function AdminBillingPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
               {ledgerCursor && (
                 <div className="px-5 py-3 border-t border-gray-200 dark:border-night-border">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { CreditCard, Users, Settings, LogOut, Menu, BarChart3, PanelsTopLeft } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/context/ThemeContext";
@@ -12,12 +13,13 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const isBillingPage = usePathname() === "/billing";
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-night-canvas">
       {/* Header */}
-      <header className="bg-white dark:bg-night-surface border-b border-gray-200 dark:border-night-border px-3 sm:px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="bg-white dark:bg-night-surface border-b border-gray-200 dark:border-night-border px-2 sm:px-6 py-4 flex items-center justify-between gap-1">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-4">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg lg:hidden"
@@ -25,17 +27,17 @@ export default function AdminLayout({
           >
             <Menu className="w-5 h-5" />
           </button>
-          <h1 className="text-xl font-bold">
+          <h1 className={`${isBillingPage ? "hidden sm:block" : ""} text-lg font-bold sm:text-xl`}>
             <span className="text-gray-900 dark:text-night-text">g</span>
             <span className="text-red-600">000</span>
             <span className="text-gray-900 dark:text-night-text">st</span>
-            <span className="text-gray-600 dark:text-night-muted ml-2">Admin</span>
+            <span className="ml-2 hidden text-gray-600 dark:text-night-muted sm:inline">Admin</span>
           </h1>
         </div>
         <div id="admin-page-header-slot" className="flex min-w-0 flex-1 items-center justify-center px-2" />
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <ThemeToggle />
-          <button className="p-2 hover:bg-gray-100 rounded-lg dark:hover:bg-white/10" aria-label="Log out" onClick={() => { logout(); window.location.replace('/login'); }}>
+          <button className="rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 sm:p-2" aria-label="Log out" onClick={() => { logout(); window.location.replace('/login'); }}>
             <LogOut className="w-5 h-5" />
           </button>
         </div>
