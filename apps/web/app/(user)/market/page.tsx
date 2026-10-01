@@ -434,7 +434,7 @@ export default function MarketPage() {
                 {!post.ownedByViewer && (
                   <button
                     onClick={() => void openChat(post)}
-                    className="rounded-full bg-black px-2 py-2  text-white text-xs"
+                    className="rounded-full bg-black px-2 lg:px-2 py-2  text-white text-xs"
                   >
                     Market Chat
                   </button>

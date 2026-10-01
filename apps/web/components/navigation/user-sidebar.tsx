@@ -261,7 +261,7 @@ export function UserSidebar({
                   <button
                     type="button"
                     onClick={create}
-                    className=" w-full block mt-10 rounded-xl bg-[#C62828] px-3 py-2 text-xs font-black text-white "
+                    className=" w-full block rounded-xl bg-[#C62828] px-3 py-2 text-xs font-black text-white "
                   >
                     BUILD YOUR BEACON
                   </button>
