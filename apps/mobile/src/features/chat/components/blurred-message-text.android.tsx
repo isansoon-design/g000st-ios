@@ -1,6 +1,6 @@
 import { Host, Text } from '@expo/ui/jetpack-compose';
 import { blur } from '@expo/ui/jetpack-compose/modifiers';
-import { Text as ReactNativeText } from 'react-native';
+import { LinkifiedText } from "@/components/text/linkified-text";
 
 type BlurredMessageTextProps = Readonly<{
   blurred: boolean;
@@ -17,7 +17,7 @@ export function BlurredMessageText({
   maxWidth,
 }: BlurredMessageTextProps) {
   if (!blurred) {
-    return <ReactNativeText style={{ color: '#FFFFFF', fontSize, fontWeight: 'bold', lineHeight: Math.round(fontSize * 1.4), maxWidth }}>{content}</ReactNativeText>;
+    return <LinkifiedText content={content} style={{ color: '#FFFFFF', fontSize, fontWeight: 'bold', lineHeight: Math.round(fontSize * 1.4), maxWidth }} />;
   }
   return (
     <Host matchContents={{ vertical: true }} pointerEvents="none" style={{ width: maxWidth }}>

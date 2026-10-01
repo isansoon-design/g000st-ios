@@ -6,7 +6,9 @@ export interface NotificationStore {
   removeDevice(publicId: string, deviceId: string): Promise<void>;
   upsertDevice(input: Readonly<{
     deviceId: string;
-    expoPushToken: string;
+    expoPushToken?: string;
+    fcmToken?: string;
+    ownerPublicId?: string;
     platform: PushPlatform;
     publicId: string;
     updatedAtMs: number;

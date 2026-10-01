@@ -130,26 +130,25 @@ export function MarketScreen() {
 
   async function pickMedia() {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images", "videos"],
+      mediaTypes: ["images"],
       allowsMultipleSelection: true,
       selectionLimit: 2,
       quality: 0.85,
     });
     if (result.canceled) return;
-    const videos = result.assets.filter((asset) => asset.type === "video");
     if (
-      (videos.length && result.assets.length !== 1) ||
+      result.assets.length > 2 ||
       result.assets.some(
         (asset) =>
           !asset.fileSize ||
-          !asset.mimeType ||
+          !asset.mimeType?.startsWith("image/") ||
           asset.fileSize > 5 * 1024 * 1024,
       )
     )
       return Toast.show({
         type: "error",
         text1: "Traiding",
-        text2: "Choose up to two images or one video, max 5 MB each.",
+        text2: "Choose up to two images, max 5 MB each.",
       });
     setSelectedMedia(result.assets);
   }

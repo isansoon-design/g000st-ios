@@ -267,7 +267,7 @@ export default function ProfilePage() {
     if (!confirmed) return;
 
     try {
-      logout();
+      await logout();
       if (profile && !isPage) sessionStorage.updateSavedProfile(profile);
       window.location.replace("/login");
     } catch {
@@ -292,7 +292,7 @@ export default function ProfilePage() {
       try {
         sessionStorage.removeSavedAccount(accountPublicId);
       } finally {
-        logout(true);
+        await logout(true);
         window.location.replace("/login");
       }
     } catch (error) {

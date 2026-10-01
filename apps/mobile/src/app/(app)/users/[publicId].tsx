@@ -1,3 +1,4 @@
+import { NotificationBell } from '@/features/notifications/notification-bell';
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -452,7 +453,7 @@ export default function UserProfileScreen() {
             <Text className="text-xl font-bold text-white">‹</Text>
           </Pressable>
           <View className="absolute right-4 top-4 rounded-full bg-white/80 dark:bg-night-surface">
-            <AppThemeSwitch />
+            <NotificationBell /><AppThemeSwitch />
           </View>
           {own && editing && (
             <Pressable

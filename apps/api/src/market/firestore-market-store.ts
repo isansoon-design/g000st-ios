@@ -1,3 +1,4 @@
+import { queueNotification } from '../notifications/notification-events.js';
 import { randomUUID } from 'node:crypto';
 
 import { FieldPath, FieldValue, type DocumentData, type Firestore, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
@@ -64,7 +65,11 @@ export class FirestoreMarketStore implements MarketStore {
   }
 
   async createReport(reporterId: string, input: CreateMarketReportInput, nowMs: number): Promise<void> {
-    await this.collection('market_reports').doc(randomUUID()).create({ ...input, reporterPublicId: reporterId, status: 'open', createdAtMs: nowMs });
+    const id = randomUUID();
+    const batch = this.db.batch();
+    batch.create(this.collection('market_reports').doc(id), { ...input, reporterPublicId: reporterId, status: 'open', createdAtMs: nowMs });
+    queueNotification(this.db, this.prefix, batch, { type: "admin.report.created", audience: "admins", scope: "admin", category: "reports", title: "New market report", body: "A market listing needs review.", path: `/reports?section=market&reportId=${id}`, createdAtMs: nowMs, pushAfterMs: ['violence', 'privacy', 'sexual'].includes(input.reason) ? nowMs : nowMs + 15 * 60_000, source: { collection: 'market_reports', id } });
+    await batch.commit();
   }
 
   async createPost(ownerId: string, id: string, input: Omit<CreateMarketPostInput, 'media'> & { media?: readonly SocialMedia[] }, nowMs: number) {
@@ -113,7 +118,10 @@ export class FirestoreMarketStore implements MarketStore {
       const liked = !reactionSnapshot.exists;
       const likeCount = Math.max(0, post.likeCount + (liked ? 1 : -1));
       transaction.update(postRef, { likeCount, updatedAtMs: nowMs });
-      if (liked) transaction.create(reactionRef, { createdAtMs: nowMs });
+      if (liked) {
+        transaction.create(reactionRef, { createdAtMs: nowMs });
+        queueNotification(this.db, this.prefix, transaction, { type: "market.post.liked", audience: "recipient", recipientPublicId: post.ownerPublicId, actorPublicId: viewerId, scope: "user", category: "market", title: "New likes", body: "Your listing received new likes.", path: `/posts/market/${postId}`, createdAtMs: nowMs, pushAfterMs: nowMs + 15 * 60_000, source: { collection: 'market_posts', id: postId } });
+      }
       else transaction.delete(reactionRef);
       return { liked, likeCount };
     });
@@ -135,9 +143,12 @@ export class FirestoreMarketStore implements MarketStore {
     const id = randomUUID();
     const comment: StoredComment = { ownerPublicId: viewerId, content, createdAtMs: nowMs };
     const created = await this.db.runTransaction(async (transaction) => {
-      if (!(await transaction.get(postRef)).exists) return false;
+      const postSnapshot = await transaction.get(postRef);
+      if (!postSnapshot.exists) return false;
+      const post = postSnapshot.data() as StoredPost;
       transaction.create(this.comments(postId).doc(id), comment);
       transaction.update(postRef, { commentCount: FieldValue.increment(1), updatedAtMs: nowMs });
+      queueNotification(this.db, this.prefix, transaction, { type: "market.post.commented", audience: "recipient", recipientPublicId: post.ownerPublicId, actorPublicId: viewerId, scope: "user", category: "market", title: "New comment", body: "Someone commented on your listing.", path: `/posts/market/${postId}`, createdAtMs: nowMs, source: { collection: 'market_posts', parentId: postId, id } });
       return true;
     });
     return created ? this.toComment(viewerId, postId, id, comment) : null;

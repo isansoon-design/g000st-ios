@@ -577,19 +577,15 @@ function Composer({
             className="hidden"
             type="file"
             multiple
-            accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             onChange={(event) => {
               const files = [...(event.target.files ?? [])];
-              const videos = files.filter((file) =>
-                file.type.startsWith("video/"),
-              );
               if (
-                files.some((file) => file.size > 5 * 1024 * 1024) ||
-                (videos.length && files.length !== 1) ||
-                (!videos.length && files.length > 2)
+                files.some((file) => !file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) ||
+                files.length > 2
               )
                 return toast.error(
-                  "Choose up to two images or one video, max 5 MB each.",
+                  "Choose up to two images, max 5 MB each.",
                 );
               onFiles(files);
             }}

@@ -21,6 +21,8 @@ import {
   isFocusedConversationNotification,
 } from '@/services/notifications/chat-notification-presentation';
 import { getOrCreatePushDeviceId } from '@/services/notifications/device-id';
+import { iosFcmToken, iosFirebaseMessaging } from './ios-firebase';
+import { openNotificationPath } from '@/features/notifications/notification-navigation';
 
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
@@ -55,12 +57,6 @@ async function registerCurrentDevice(
     env.easProjectId ??
     Constants.expoConfig?.extra?.eas?.projectId ??
     Constants.easConfig?.projectId;
-  if (typeof projectId !== 'string' || !projectId) {
-    throw new Error(
-      'Missing EAS project ID. Set EXPO_PUBLIC_EAS_PROJECT_ID or link this app to an EAS project.',
-    );
-  }
-
   if (Platform.OS === 'android') {
     const currentChannel =
       await Notifications.getNotificationChannelAsync('messages');
@@ -72,6 +68,10 @@ async function registerCurrentDevice(
       name: 'Private messages',
       vibrationPattern: [0, 250, 200, 250],
     });
+    await Notifications.setNotificationChannelAsync('activity', {
+      importance: Notifications.AndroidImportance.DEFAULT,
+      name: 'Activity and account updates',
+    });
   }
 
   const existing = await Notifications.getPermissionsAsync();
@@ -79,17 +79,17 @@ async function registerCurrentDevice(
     existing.granted ? existing : await Notifications.requestPermissionsAsync();
   if (!permission.granted) return;
 
-  const [deviceId, token] = await Promise.all([
-    getOrCreatePushDeviceId(),
-    Notifications.getExpoPushTokenAsync({
-      ...(devicePushToken ? { devicePushToken } : {}),
-      projectId,
-    }),
-  ]);
+  const deviceId = await getOrCreatePushDeviceId();
+  const fcmToken = platform === 'android'
+    ? String((devicePushToken ?? await Notifications.getDevicePushTokenAsync()).data)
+    : await iosFcmToken().catch(() => null);
+  const expoToken = !fcmToken && typeof projectId === 'string' && projectId
+    ? (await Notifications.getExpoPushTokenAsync({ projectId })).data : null;
+  if (!fcmToken && !expoToken) return;
   const pages = await listBeaconPages();
   await Promise.all([ownerPublicId, ...pages.map((page) => page.publicId)].map((actorPublicId) => registerPushDevice({
     deviceId,
-    expoPushToken: token.data,
+    ...(fcmToken ? { fcmToken } : { expoPushToken: expoToken! }),
     platform,
   }, actorPublicId)));
 }
@@ -111,6 +111,7 @@ export function NotificationsBootstrap() {
     });
 
     const refreshChat = (notification: Notifications.Notification) => {
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
       const conversationId = conversationIdFromNotification(notification);
       if (isFocusedConversationNotification(notification)) {
         void focusedMessagePlayer.seekTo(0)
@@ -146,6 +147,8 @@ export function NotificationsBootstrap() {
 
       const conversationId = conversationIdFromNotification(response.notification);
       if (!conversationId) {
+        const path = response.notification.request.content.data?.path;
+        if (typeof path === 'string') openNotificationPath(path);
         Notifications.clearLastNotificationResponse();
         return;
       }
@@ -179,11 +182,37 @@ export function NotificationsBootstrap() {
     pendingResponse.current = null;
     void openConversation(resume ?? Notifications.getLastNotificationResponse());
 
+    let firebaseCleanup: (() => void) | null = null;
+    void (async () => {
+      const messaging = await iosFirebaseMessaging();
+      if (!messaging || !isActive) return;
+      const { onMessage, onTokenRefresh, onNotificationOpenedApp, getInitialNotification } = await import('@react-native-firebase/messaging');
+      const toResponse = (message: { messageId?: string; data?: Record<string, string | object> }) => ({
+        actionIdentifier: Notifications.DEFAULT_ACTION_IDENTIFIER,
+        notification: { request: { identifier: message.messageId ?? 'fcm', content: { data: message.data ?? {} } } },
+      } as Notifications.NotificationResponse);
+      const removeMessage = onMessage(messaging, (message) => {
+        if (!isActive) return;
+        const response = toResponse(message);
+        refreshChat(response.notification);
+        if (!isFocusedConversationNotification(response.notification)) void Notifications.scheduleNotificationAsync({
+          content: { title: message.notification?.title ?? 'g000st', body: message.notification?.body ?? 'You have a new notification.', data: message.data, sound: 'default' }, trigger: null,
+        }).catch(() => undefined);
+      });
+      const removeToken = onTokenRefresh(messaging, () => { if (isActive) void registerCurrentDevice(user.publicId).catch(reportRegistrationError); });
+      const removeOpened = onNotificationOpenedApp(messaging, (message) => { if (isActive) void openConversation(toResponse(message)); });
+      firebaseCleanup = () => { removeMessage(); removeToken(); removeOpened(); };
+      const initial = await getInitialNotification(messaging);
+      if (initial && isActive) void openConversation(toResponse(initial));
+      if (!isActive) firebaseCleanup();
+    })().catch(reportRegistrationError);
+
     return () => {
       isActive = false;
       notificationSubscription.remove();
       responseSubscription.remove();
       tokenSubscription.remove();
+      firebaseCleanup?.();
     };
   }, [activePublicId, focusedMessagePlayer, queryClient, setActivePublicId, status, user]);
 

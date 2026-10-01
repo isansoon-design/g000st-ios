@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Bell,
   Heart,
   Loader2,
   MessageCircle,
@@ -290,7 +289,6 @@ export default function SocialPage() {
               {item === "home" ? "Home" : item === "mine" ? "My Posts" : "Alerts"}
             </button>
           ))}
-          <button type="button" onClick={() => setView("alerts")} aria-label="Alerts" className="ml-1 rounded-lg p-2 hover:bg-black/5 dark:hover:bg-white/10"><Bell size={20} /></button>
         </nav>
         <select aria-label="Social navigation" value={view} onChange={(event) => setView(event.target.value as View)} className="w-[104px] rounded-lg border border-black/15 bg-white px-1 py-2 text-xs font-bold text-[#17191d] dark:border-white/20 dark:bg-night-surface dark:text-night-text sm:w-[140px] lg:hidden">
           <option value="home">Home</option>
@@ -667,23 +665,18 @@ export default function SocialPage() {
                       className="hidden"
                       type="file"
                       multiple
-                      accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
                       onChange={(event) => {
                         const files = [...(event.target.files ?? [])];
-                        const videos = files.filter((file) =>
-                          file.type.startsWith("video/"),
-                        );
-                        if (files.some((file) => file.size > 5 * 1024 * 1024)) {
-                          toast.error("Each file must be 5 MB or smaller.");
+                        if (files.some((file) => !file.type.startsWith("image/") || file.size > 5 * 1024 * 1024)) {
+                          toast.error("Choose images up to 5 MB per file.");
                           event.target.value = "";
                           return;
                         }
                         if (
-                          (videos.length && files.length !== 1) ||
-                          videos.length > 1 ||
-                          (!videos.length && files.length > 2)
+                          files.length > 2
                         ) {
-                          toast.error("Choose up to two images or one video.");
+                          toast.error("Choose up to two images.");
                           event.target.value = "";
                           return;
                         }

@@ -1,3 +1,4 @@
+import { NotificationBell } from '@/features/notifications/notification-bell';
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
 import * as ScreenCapture from "expo-screen-capture";
@@ -648,7 +649,7 @@ function ChatThreadComponent({
         </View>
         {/* End Increase & Decrease Font Size & Blur */}
 
-        <AppThemeSwitch />
+        <NotificationBell /><AppThemeSwitch />
       </View>
 
       <KeyboardAvoidingView
@@ -869,7 +870,7 @@ function ChatThreadComponent({
             style={{ backgroundColor: isDark ? colors.toolbar : "#FFFFFF" }}
           >
             {[
-              ["Photo or video library", onPickLibraryAttachment],
+              ["Photo library", onPickLibraryAttachment],
               ["Camera", onCaptureAttachment],
               ["PDF or Word file", onPickDocumentAttachment],
             ].map(([label, action]) => (

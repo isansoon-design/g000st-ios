@@ -1,3 +1,4 @@
+import { queueNotification } from '../notifications/notification-events.js';
 import { randomUUID } from 'node:crypto';
 import { FieldPath, type Firestore, type QueryDocumentSnapshot, type WriteBatch } from 'firebase-admin/firestore';
 
@@ -168,6 +169,40 @@ export class AdminDeskService {
     await batch.commit();
   }
 
+  async listReports(section: Section, cursor?: string, reportId?: string) {
+    let query = this.collection(`${section}_reports`).orderBy('createdAtMs', 'desc').orderBy(FieldPath.documentId(), 'desc');
+    if (cursor) {
+      try {
+        const value = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+        if (!Number.isSafeInteger(value.time) || typeof value.id !== 'string' || !/^[a-f0-9-]{36}$/.test(value.id)) throw new Error();
+        query = query.startAfter(value.time, value.id);
+      } catch { throw new ApiError(400, 'INVALID_CURSOR', 'Invalid report cursor.'); }
+    }
+    const snapshot = await query.limit(31).get();
+    const docs = snapshot.docs.slice(0, 30);
+    const last = docs.at(-1);
+    const selected = reportId ? await this.collection(`${section}_reports`).doc(reportId).get() : null;
+    return { version: 1, items: docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      ...(selected?.exists ? { selected: { id: selected.id, ...selected.data() } } : {}),
+      ...(snapshot.size > 30 && last ? { nextCursor: Buffer.from(JSON.stringify({ time: last.data().createdAtMs, id: last.id })).toString('base64url') } : {}) };
+  }
+
+  async resolveReport(section: Section, id: string, resolution: 'action_taken' | 'no_violation', actor: string) {
+    const ref = this.collection(`${section}_reports`).doc(id);
+    await this.db.runTransaction(async (transaction) => {
+      const doc = await transaction.get(ref);
+      if (!doc.exists) throw new ApiError(404, 'REPORT_NOT_FOUND', 'Report not found.');
+      if (doc.data()?.status === 'resolved') return;
+      const nowMs = this.now();
+      transaction.update(ref, { status: 'resolved', resolution, resolvedAtMs: nowMs, resolvedBy: actor });
+      transaction.create(this.collection('admin_audit').doc(randomUUID()), { actor, action: 'report.resolve', target: id, createdAtMs: nowMs });
+      queueNotification(this.db, this.prefix, transaction, { type: 'report.resolved', audience: 'recipient',
+        recipientPublicId: doc.data()!.reporterPublicId, scope: 'user', category: 'reports', title: 'Report reviewed',
+        body: resolution === 'action_taken' ? 'Your report was reviewed and action was taken.' : 'Your report was reviewed. No violation was found.',
+        path: '/notifications', createdAtMs: nowMs, push: false });
+    });
+  }
+
   async getExperienceConfig() {
     const config = (await this.collection('admin_config').doc('desk').get()).data();
     return {
@@ -248,7 +283,14 @@ export class AdminDeskService {
     const user = await ref.get();
     if (!user.exists || user.data()?.status === 'deleted' || user.data()?.ownerPublicId) throw new ApiError(404, 'USER_NOT_FOUND', 'Account not found.');
     if (publicId === actor || user.data()?.role === 'admin') throw new ApiError(403, 'ADMIN_PROTECTED', 'Administrator accounts cannot be suspended here.');
-    await this.commit(actor, `user.${status}`, publicId, (batch) => batch.update(ref, { status }));
+    if (user.data()?.status === status) return;
+    await this.commit(actor, `user.${status}`, publicId, (batch) => {
+      batch.update(ref, { status });
+      queueNotification(this.db, this.prefix, batch, { type: 'account.status_changed', audience: 'recipient',
+        recipientPublicId: publicId, scope: 'user', category: 'administration', title: 'Account status changed',
+        body: status === 'suspended' ? 'Your account was suspended. Contact support for details.' : 'Your account was reactivated.',
+        path: '/notifications', createdAtMs: this.now() });
+    });
   }
 
   async setDisplayName(publicId: string, displayName: string, actor: string): Promise<void> {
@@ -262,26 +304,48 @@ export class AdminDeskService {
   async setPostHidden(section: Section, postId: string, hidden: boolean, actor: string): Promise<void> {
     const ref = this.postCollection(section).doc(postId);
     if (!(await ref.get()).exists) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found.');
-    await this.commit(actor, `${section}.${hidden ? 'hide' : 'show'}`, postId, (batch) => batch.update(ref, { hidden, updatedAtMs: this.now() }));
+    const post = (await ref.get()).data()!;
+    await this.commit(actor, `${section}.${hidden ? 'hide' : 'show'}`, postId, (batch) => {
+      batch.update(ref, { hidden, updatedAtMs: this.now() });
+      queueNotification(this.db, this.prefix, batch, { type: 'moderation.content_action', audience: 'recipient',
+        recipientPublicId: post.ownerPublicId, scope: 'user', category: 'administration', title: 'Content visibility changed',
+        body: hidden ? 'The administration hid your content. Contact support for details.' : 'The administration restored your content.',
+        path: '/notifications', createdAtMs: this.now() });
+    });
   }
 
   async setPostContent(postId: string, content: string, actor: string): Promise<void> {
     const ref = this.postCollection('social').doc(postId);
     if (!(await ref.get()).exists) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found.');
-    await this.commit(actor, 'social.edit', postId, (batch) => batch.update(ref, { content, editedAtMs: this.now(), updatedAtMs: this.now() }));
+    const post = (await ref.get()).data()!;
+    await this.commit(actor, 'social.edit', postId, (batch) => {
+      batch.update(ref, { content, editedAtMs: this.now(), updatedAtMs: this.now() });
+      queueNotification(this.db, this.prefix, batch, { type: 'moderation.content_action', audience: 'recipient',
+        recipientPublicId: post.ownerPublicId, scope: 'user', category: 'administration', title: 'Content updated',
+        body: 'The administration updated your content. Contact support for details.', path: '/notifications', createdAtMs: this.now() });
+    });
   }
 
   async deletePost(section: Section, postId: string, actor: string): Promise<void> {
     const ref = this.postCollection(section).doc(postId);
     if (!(await ref.get()).exists) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found.');
-    await this.commit(actor, `${section}.delete`, postId, (batch) => batch.update(ref, { hidden: true, deletedAtMs: this.now(), updatedAtMs: this.now() }));
+    const post = (await ref.get()).data()!;
+    await this.commit(actor, `${section}.delete`, postId, (batch) => {
+      batch.update(ref, { hidden: true, deletedAtMs: this.now(), updatedAtMs: this.now() });
+      queueNotification(this.db, this.prefix, batch, { type: 'moderation.content_action', audience: 'recipient',
+        recipientPublicId: post.ownerPublicId, scope: 'user', category: 'administration', title: 'Content removed',
+        body: 'The administration removed your content. Contact support for details.', path: '/notifications', createdAtMs: this.now() });
+    });
   }
 
   async sendMessage(input: AdminMessageInput, actor: string) {
     if (input.to !== 'all' && !(await this.collection('users').doc(input.to).get()).exists) throw new ApiError(404, 'USER_NOT_FOUND', 'Account not found.');
     const id = randomUUID();
     const message = { id, ...input, createdAtMs: this.now(), from: actor };
-    await this.commit(actor, `message.${input.type}`, input.to, (batch) => batch.create(this.collection('admin_messages').doc(id), message));
+    await this.commit(actor, `message.${input.type}`, input.to, (batch) => {
+      batch.create(this.collection('admin_messages').doc(id), message);
+      queueNotification(this.db, this.prefix, batch, { type: input.to === 'all' ? 'admin.announcement' : 'admin.message', audience: input.to === 'all' ? 'all' : 'recipient', recipientPublicId: input.to, scope: "user", category: "administration", title: "Message from g000st", body: "You have a new message from the administration.", path: `/notifications?noticeId=${id}`, createdAtMs: message.createdAtMs, push: input.to !== 'all' || input.type === 'warning', source: { collection: 'admin_messages', id } });
+    });
     return message;
   }
 
@@ -298,6 +362,7 @@ export class AdminDeskService {
       if (message.data()?.status === 'replied') throw new ApiError(409, 'ALREADY_REPLIED', 'This message was already answered.');
       const noticeId = randomUUID();
       transaction.create(this.collection('admin_messages').doc(noticeId), { id: noticeId, to: from, text, type: 'msg', from: actor, createdAtMs: this.now() });
+      queueNotification(this.db, this.prefix, transaction, { type: "support.replied", audience: "recipient", recipientPublicId: from, scope: "user", category: "support", title: "Support replied", body: "The support team replied to your request.", path: `/notifications?noticeId=${noticeId}`, createdAtMs: this.now(), source: { collection: 'admin_messages', id: noticeId } });
       transaction.update(ref, { status: 'replied', repliedAtMs: this.now() });
       transaction.create(this.collection('admin_audit').doc(randomUUID()), { actor, action: 'inbox.reply', target: id, createdAtMs: this.now() });
     });
@@ -306,7 +371,12 @@ export class AdminDeskService {
   async createSupportMessage(from: string, text: string): Promise<void> {
     const user = await this.collection('users').doc(from).get();
     if (!user.exists || user.data()?.status !== 'active') throw new ApiError(403, 'ACCOUNT_UNAVAILABLE', 'Account is unavailable.');
-    await this.collection('support_inbox').doc(randomUUID()).create({ from, text, status: 'open', createdAtMs: this.now() });
+    const id = randomUUID();
+    const createdAtMs = this.now();
+    const batch = this.db.batch();
+    batch.create(this.collection('support_inbox').doc(id), { from, text, status: 'open', createdAtMs });
+    queueNotification(this.db, this.prefix, batch, { type: "admin.support.created", audience: "admins", scope: "admin", category: "support", title: "New support request", body: "A user contacted support.", path: "/client-desk", createdAtMs: createdAtMs, push: false, source: { collection: 'support_inbox', id } });
+    await batch.commit();
   }
 
   async listNotices(publicId: string) {
@@ -318,5 +388,12 @@ export class AdminDeskService {
       .sort((a, b) => Number(b.data().createdAtMs ?? 0) - Number(a.data().createdAtMs ?? 0))
       .slice(0, 20)
       .map((doc) => ({ id: doc.id, text: String(doc.data().text ?? ''), type: doc.data().type === 'warning' ? 'warning' as const : 'msg' as const, createdAtMs: Number(doc.data().createdAtMs ?? 0) }));
+  }
+
+  async getNotice(publicId: string, id: string) {
+    const doc = await this.collection('admin_messages').doc(id).get();
+    const data = doc.data();
+    if (!doc.exists || (data?.to !== publicId && data?.to !== 'all')) throw new ApiError(404, 'NOTICE_NOT_FOUND', 'Message is unavailable.');
+    return { id: doc.id, text: String(data.text ?? ''), type: data.type === 'warning' ? 'warning' as const : 'msg' as const, createdAtMs: Number(data.createdAtMs ?? 0) };
   }
 }

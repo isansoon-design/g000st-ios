@@ -48,7 +48,8 @@ export async function createBeaconPage(input: Readonly<{ displayName: string; bi
   return data.page;
 }
 
-export function logout(forgetAccount = false): void {
+export async function logout(forgetAccount = false): Promise<void> {
+  await import('@/features/notifications/firebase-push').then(({ unregisterWebPush }) => unregisterWebPush()).catch(() => undefined);
   const current = sessionStorage.get();
   if (current && !forgetAccount) {
     const recoveryId = sessionStorage.getRecoveryId(current.user.publicId);

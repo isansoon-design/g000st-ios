@@ -20,9 +20,6 @@ const ALLOWED_MEDIA = new Set([
   "image/png",
   "image/webp",
   "image/gif",
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
 ]);
 
 export function ProfilePostComposer({
@@ -42,7 +39,6 @@ export function ProfilePostComposer({
   const canPost = (!!draft.trim() || selectedMedia.length > 0) && !posting && !(isPage && !pageNamed);
 
   function acceptMedia(items: ImagePicker.ImagePickerAsset[]) {
-    const videos = items.filter((item) => item.type === "video");
     if (
       items.some(
         (item) =>
@@ -59,11 +55,11 @@ export function ProfilePostComposer({
       });
       return false;
     }
-    if (items.length > 2 || (videos.length > 0 && items.length !== 1)) {
+    if (items.length > 2) {
       Toast.show({
         type: "error",
         text1: "Media",
-        text2: "Choose up to two images or one video.",
+        text2: "Choose up to two images.",
       });
       return false;
     }
@@ -92,12 +88,12 @@ export function ProfilePostComposer({
         source === "library"
           ? await ImagePicker.launchImageLibraryAsync({
             allowsMultipleSelection: true,
-            mediaTypes: ["images", "videos"],
+            mediaTypes: ["images"],
             quality: 0.9,
             selectionLimit: 2,
           })
           : await ImagePicker.launchCameraAsync({
-            mediaTypes: ["images", "videos"],
+            mediaTypes: ["images"],
             quality: 0.9,
           });
       if (!result.canceled)

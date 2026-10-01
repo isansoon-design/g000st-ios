@@ -24,6 +24,9 @@ import { createFirestore } from './firebase/create-firestore.js';
 import { ExpoPushGateway } from './notifications/expo-push-gateway.js';
 import { FirestoreNotificationStore } from './notifications/firestore-notification-store.js';
 import { NotificationService } from './notifications/notification-service.js';
+import { NotificationCenter } from './notifications/notification-center.js';
+import { NotificationWorker } from './notifications/notification-worker.js';
+import { FcmPushGateway } from './notifications/fcm-push-gateway.js';
 import { MediaService } from './media/media-service.js';
 import { FirestoreMarketStore } from './market/firestore-market-store.js';
 import { MarketService } from './market/market-service.js';
@@ -48,8 +51,10 @@ async function main(): Promise<void> {
   );
   const notificationService = new NotificationService(
     notificationStore,
-    new ExpoPushGateway(notificationStore, environment.expoPushAccessToken),
+    new FcmPushGateway(firestore, environment.collectionPrefix, new ExpoPushGateway(notificationStore, environment.expoPushAccessToken)),
   );
+  const notificationCenter = new NotificationCenter(firestore, environment.collectionPrefix);
+  const notificationWorker = new NotificationWorker(firestore, environment.collectionPrefix, notificationService);
   const mediaService = environment.media ? new MediaService(environment.media) : undefined;
   const contactsStore = new FirestoreContactsStore(firestore, environment.collectionPrefix);
   const socialService = new SocialService(
@@ -80,7 +85,7 @@ async function main(): Promise<void> {
     chatStore,
     store,
     Date.now,
-    notificationService,
+    undefined, // The Firestore store queues the event atomically with the message.
     mediaService,
     socialService,
     contactsService,
@@ -145,11 +150,13 @@ async function main(): Promise<void> {
     marketService,
     notificationService,
     presenceService,
+    notificationCenter,
     socialService,
     telephony,
   });
   const server = app.listen(environment.port, environment.host, () => {
     expirationWorker.start();
+    notificationWorker.start();
     console.log(`g000st API listening on ${environment.host}:${environment.port}`);
   });
   server.on('upgrade', (request, socket, head) => {
@@ -158,6 +165,7 @@ async function main(): Promise<void> {
 
   const close = () => {
     expirationWorker.stop();
+    notificationWorker.stop();
     server.close((error) => {
       if (error) {
         console.error('g000st API shutdown failed');

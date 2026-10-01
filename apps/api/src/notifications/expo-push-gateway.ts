@@ -19,6 +19,7 @@ export class ExpoPushGateway {
   ) {}
 
   async send(devices: readonly PushDevice[], message: PushMessage): Promise<void> {
+    devices = devices.filter((device) => !!device.expoPushToken && !device.fcmToken);
     if (devices.length === 0) return;
 
     const response = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -43,12 +44,16 @@ export class ExpoPushGateway {
     if (!response.ok) throw new Error(`Expo Push Service returned ${response.status}.`);
 
     const payload = (await response.json()) as ExpoPushResponse;
+    if (!payload.data || payload.data.length !== devices.length) throw new Error('Incomplete Expo Push response.');
     await Promise.all(
       (payload.data ?? []).map(async (ticket, index) => {
         if (ticket.status !== 'error' || ticket.details?.error !== 'DeviceNotRegistered') return;
         const device = devices[index];
-        if (device) await this.store.disableToken(device.expoPushToken);
+        if (device?.expoPushToken) await this.store.disableToken(device.expoPushToken);
       }),
     );
+    if (payload.data.some((ticket) => ticket.status === 'error' && ticket.details?.error !== 'DeviceNotRegistered')) {
+      throw new Error('Expo Push delivery needs a retry.');
+    }
   }
 }

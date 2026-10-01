@@ -1,3 +1,4 @@
+import { queueNotification } from '../notifications/notification-events.js';
 import { FieldPath, type Firestore, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 import { decodeBillingCursor, encodeBillingCursor, type BillingCursor } from './billing-cursor.js';
@@ -79,6 +80,21 @@ export class FirestoreBillingStore implements BillingStore {
         createdAtMs: input.nowMs,
       } satisfies StoredLedgerEvent);
 
+      const notification = { audience: 'recipient' as const, recipientPublicId: input.publicId,
+        scope: 'user' as const, category: 'billing' as const, createdAtMs: input.nowMs, path: '/mobile' };
+      if (input.kind === 'purchase' || input.kind === 'admin_adjustment') {
+        queueNotification(this.db, this.prefix, transaction, { ...notification,
+          type: input.kind === 'purchase' ? 'billing.purchase_confirmed' : 'billing.balance_adjusted',
+          title: input.kind === 'purchase' ? 'Purchase confirmed' : 'Balance adjusted',
+          body: input.kind === 'purchase' ? 'Your purchase was confirmed and your balance updated.' : 'The administration adjusted your balance. View the ledger for details.' });
+      }
+      const lowVoice = current.voiceSecondsRemaining >= 300 && nextVoiceSeconds < 300;
+      const lowSms = current.smsRemaining >= 5 && nextSms < 5;
+      const depleted = (current.voiceSecondsRemaining > 0 && nextVoiceSeconds <= 0) || (current.smsRemaining > 0 && nextSms <= 0);
+      if (input.kind !== 'purchase' && (lowVoice || lowSms || depleted)) {
+        queueNotification(this.db, this.prefix, transaction, { ...notification, type: 'billing.balance_warning',
+          title: depleted ? 'Balance depleted' : 'Low balance', body: 'Check your remaining call and SMS balance.' });
+      }
       return { status: 'applied', balance: next };
     });
   }

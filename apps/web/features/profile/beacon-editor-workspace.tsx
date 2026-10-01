@@ -1,5 +1,7 @@
 "use client";
 
+import { LinkifiedText } from "@/components/text/LinkifiedText";
+
 import {
   ArrowLeft,
   Camera,
@@ -459,7 +461,7 @@ export function BeaconEditorWorkspace({
                         {new Date(post.createdAtMs).toLocaleDateString()}
                       </p>
                       <p className="mt-4 whitespace-pre-wrap text-sm leading-6">
-                        {post.content}
+                        <LinkifiedText content={post.content} />
                       </p>
                     </article>
                   ))

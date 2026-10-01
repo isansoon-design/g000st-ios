@@ -1,5 +1,7 @@
 "use client";
 
+import { LinkifiedText } from "@/components/text/LinkifiedText";
+
 import {
   getPeerPreferences,
   listContactNicknames,
@@ -1087,8 +1089,8 @@ export default function PrivateChatPage() {
                       >
                         <div
                           className={`min-w-0 max-w-[78%] px-3 py-2 text-left ${mine
-                            ? "rounded-[18px] rounded-br bg-[#79201D] dark:bg-night-outgoing dark:ring-2 dark:ring-[#C1282D]"
-                            : "rounded-[18px] rounded-bl bg-[#29292B] dark:bg-night-incoming dark:ring-2 dark:ring-[#C1282D]"
+                            ? "rounded-[18px] rounded-br bg-[#29292B] dark:bg-night-outgoing dark:ring-2 dark:ring-[#C1282D]"
+                            : "rounded-[18px] rounded-bl bg-[#79201D] dark:bg-night-incoming dark:ring-2 dark:ring-[#C1282D]"
                             }`}
                           onPointerDown={(event) => {
                             if (
@@ -1166,7 +1168,7 @@ export default function PrivateChatPage() {
                             >
                               {message.locked
                                 ? `🔒 Click to open · burns in ${message.burnAfterReadSeconds}s`
-                                : message.content}
+                                : blurMessages ? message.content : <LinkifiedText content={message.content} />}
                             </p>
                           ) : null}
                           {!message.locked && message.attachments?.length ? (
@@ -1247,7 +1249,7 @@ export default function PrivateChatPage() {
                     +
                   </button>
                   <input
-                    accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     className="hidden"
                     multiple
                     onChange={(event) => {

@@ -1,3 +1,4 @@
+import { queueNotification } from '../notifications/notification-events.js';
 import { randomUUID } from 'node:crypto';
 
 import { FieldPath, FieldValue, type DocumentData, type Firestore, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
@@ -159,6 +160,7 @@ export class FirestoreSocialStore implements SocialStore {
       else transaction.delete(reactionRef);
       if (liked && post.ownerPublicId !== viewerId) {
         transaction.create(this.alerts(post.ownerPublicId).doc(randomUUID()), { actorPublicId: viewerId, createdAtMs: nowMs, kind: 'like', postId, readAtMs: null });
+        queueNotification(this.db, this.prefix, transaction, { type: "social.post.liked", audience: "recipient", recipientPublicId: post.ownerPublicId, actorPublicId: viewerId, scope: "user", category: "social", title: "New likes", body: "Your post received new likes.", path: `/posts/social/${postId}`, createdAtMs: nowMs, pushAfterMs: nowMs + 15 * 60_000, source: { collection: 'social_posts', id: postId } });
       }
       return { liked, likeCount };
     });
@@ -186,6 +188,7 @@ export class FirestoreSocialStore implements SocialStore {
       transaction.create(this.comments(postId).doc(id), comment);
       transaction.update(postRef, { commentCount: FieldValue.increment(1), updatedAtMs: nowMs });
       if (post.ownerPublicId !== viewerId) transaction.create(this.alerts(post.ownerPublicId).doc(randomUUID()), { actorPublicId: viewerId, commentId: id, createdAtMs: nowMs, kind: 'comment', postId, readAtMs: null });
+      queueNotification(this.db, this.prefix, transaction, { type: "social.post.commented", audience: "recipient", recipientPublicId: post.ownerPublicId, actorPublicId: viewerId, scope: "user", category: "social", title: "New comment", body: input.visibility === 'anonymous' ? 'Someone commented anonymously on your post.' : 'Someone commented on your post.', path: `/posts/social/${postId}`, createdAtMs: nowMs, source: { collection: 'social_posts', parentId: postId, id } });
       return true;
     });
     return created ? this.toComment(viewerId, postId, id, comment) : null;
@@ -211,6 +214,7 @@ export class FirestoreSocialStore implements SocialStore {
       if (camped) {
         transaction.create(reference, { createdAtMs: nowMs });
         transaction.create(this.alerts(targetId).doc(randomUUID()), { actorPublicId: viewerId, createdAtMs: nowMs, kind: 'camp', readAtMs: null });
+        queueNotification(this.db, this.prefix, transaction, { type: "social.followed", audience: "recipient", recipientPublicId: targetId, actorPublicId: viewerId, scope: "user", category: "social", title: "New follower", body: "Someone started following you.", path: `/users/${viewerId}`, createdAtMs: nowMs });
       } else transaction.delete(reference);
       return { camped };
     });
@@ -222,6 +226,7 @@ export class FirestoreSocialStore implements SocialStore {
       if ((await transaction.get(reference)).exists) return;
       transaction.create(reference, { createdAtMs: nowMs });
       transaction.create(this.alerts(targetId).doc(randomUUID()), { actorPublicId: viewerId, createdAtMs: nowMs, kind: 'camp', readAtMs: null });
+      queueNotification(this.db, this.prefix, transaction, { type: "social.followed", audience: "recipient", recipientPublicId: targetId, actorPublicId: viewerId, scope: "user", category: "social", title: "New follower", body: "Someone started following you.", path: `/users/${viewerId}`, createdAtMs: nowMs });
     });
   }
 
@@ -275,7 +280,10 @@ export class FirestoreSocialStore implements SocialStore {
     const documents = snapshot.docs.slice(0, limit);
     const items = await Promise.all(documents.map(async (document) => {
       const data = document.data();
-      return { id: document.id, kind: data.kind, actor: await this.author(data.actorPublicId, true), ...(data.postId ? { postId: data.postId } : {}), ...(data.commentId ? { commentId: data.commentId } : {}), createdAtMs: data.createdAtMs, ...(data.readAtMs ? { readAtMs: data.readAtMs } : {}) } as SocialAlert;
+      const comment = data.kind === 'comment' && data.postId && data.commentId
+        ? await this.comments(data.postId).doc(data.commentId).get() : null;
+      const showActor = data.kind !== 'comment' || comment?.data()?.visibility === 'public';
+      return { id: document.id, kind: data.kind, actor: await this.author(data.actorPublicId, showActor), ...(data.postId ? { postId: data.postId } : {}), ...(data.commentId ? { commentId: data.commentId } : {}), createdAtMs: data.createdAtMs, ...(data.readAtMs ? { readAtMs: data.readAtMs } : {}) } as SocialAlert;
     }));
     const last = documents.at(-1);
     return { items, ...(snapshot.size > limit && last ? { nextCursor: encodeSocialCursor({ createdAtMs: last.data().createdAtMs, id: last.id }) } : {}) };
@@ -289,7 +297,11 @@ export class FirestoreSocialStore implements SocialStore {
   }
 
   async createReport(reporterId: string, input: CreateSocialReportInput, nowMs: number): Promise<void> {
-    await this.collection('social_reports').doc(randomUUID()).create({ ...input, reporterPublicId: reporterId, status: 'open', createdAtMs: nowMs });
+    const id = randomUUID();
+    const batch = this.db.batch();
+    batch.create(this.collection('social_reports').doc(id), { ...input, reporterPublicId: reporterId, status: 'open', createdAtMs: nowMs });
+    queueNotification(this.db, this.prefix, batch, { type: "admin.report.created", audience: "admins", scope: "admin", category: "reports", title: "New social report", body: "A social post or comment needs review.", path: `/reports?section=social&reportId=${id}`, createdAtMs: nowMs, pushAfterMs: ['violence', 'privacy', 'sexual'].includes(input.reason) ? nowMs : nowMs + 15 * 60_000, source: { collection: 'social_reports', id } });
+    await batch.commit();
   }
 
   private async toPost(viewerId: string, id: string, post: StoredPost): Promise<SocialPost> {

@@ -13,9 +13,6 @@ const supportedMimeTypes = new Set([
   'image/jpeg',
   'image/png',
   'image/webp',
-  'video/mp4',
-  'video/quicktime',
-  'video/webm',
 ]);
 
 export type SelectedChatAttachment = Readonly<{
@@ -34,11 +31,8 @@ function mimeFromFileName(fileName: string): string | null {
       gif: 'image/gif',
       jpeg: 'image/jpeg',
       jpg: 'image/jpeg',
-      mov: 'video/quicktime',
-      mp4: 'video/mp4',
       pdf: 'application/pdf',
       png: 'image/png',
-      webm: 'video/webm',
       webp: 'image/webp',
     }[extension ?? ''] ?? null
   );
@@ -67,7 +61,7 @@ export function useChatAttachments() {
         (incomingHasNonImage && (incoming.length > 1 || current.length > 0)) ||
         (currentHasNonImage && incoming.length > 0)
       ) {
-        setError('Videos and documents must be sent one at a time.');
+        setError('Documents must be sent one at a time.');
         return current;
       }
       const available = MAX_ATTACHMENTS - current.length;
@@ -81,7 +75,7 @@ export function useChatAttachments() {
       const accepted: SelectedChatAttachment[] = [];
       for (const attachment of incoming) {
         if (!supportedMimeTypes.has(attachment.contentType)) {
-          setError('Only images, videos, PDF, and Word files are allowed.');
+          setError('Only images, PDF, and Word files are allowed.');
           continue;
         }
         if (attachment.byteSize < 1 || attachment.byteSize > MAX_ATTACHMENT_BYTES) {
@@ -102,7 +96,7 @@ export function useChatAttachments() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsMultipleSelection: true,
-      mediaTypes: ['images', 'videos'],
+      mediaTypes: ['images'],
       quality: 1,
       selectionLimit: MAX_ATTACHMENTS,
     });
@@ -125,7 +119,7 @@ export function useChatAttachments() {
       setError('Camera permission is required to capture media.');
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images', 'videos'], quality: 1 });
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 });
     if (result.canceled) return;
     const asset = result.assets[0];
     if (!asset) return;

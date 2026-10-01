@@ -1,8 +1,9 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ProfilePostComposer } from "@/features/social/components/profile-post-composer";
+import { FeatureScreen } from '@/components/layout/feature-screen';
 
 export default function FirstBeaconPostScreen() {
   const { publicId } = useLocalSearchParams<{ publicId: string }>();
@@ -13,10 +14,7 @@ export default function FirstBeaconPostScreen() {
   };
 
   return (
-    <View
-      className="flex-1 bg-[#e6e8eb] dark:bg-night-canvas"
-      style={{ paddingTop: insets.top }}
-    >
+    <FeatureScreen title="New page">
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
@@ -48,6 +46,6 @@ export default function FirstBeaconPostScreen() {
           </Text>
         </Pressable>
       </ScrollView>
-    </View>
+    </FeatureScreen>
   );
 }

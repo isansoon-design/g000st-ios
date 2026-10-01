@@ -10,6 +10,8 @@ import { ThemeToggle } from "@/context/ThemeContext";
 import { NoticeBanner } from "@/features/admin/notice-banner";
 import { PresenceHeartbeat } from "@/features/presence/presence-heartbeat";
 import { UserSidebar } from "@/components/navigation/user-sidebar";
+import { NotificationBell } from '@/features/notifications/notification-bell';
+import { PushBootstrap } from '@/features/notifications/push-bootstrap';
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -42,6 +44,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="admin-feature-scope h-[100dvh] overflow-hidden bg-[#c8cdd5] text-[#17191d] dark:bg-[#242326] dark:text-night-text" data-admin-hidden={hiddenParts}>
       <PresenceHeartbeat />
+      <PushBootstrap />
       <div className="relative mx-auto flex h-full w-full max-w-[1720px] flex-col bg-[#e6e8eb] shadow-[0_0_60px_rgba(18,24,36,.18)] dark:bg-night-canvas">
         <header className="flex h-14 shrink-0 items-center justify-between gap-1 border-b border-black/10 bg-white/90 px-2 backdrop-blur dark:border-white/10 dark:bg-night-header/95 sm:px-4 lg:h-16 lg:px-6">
           <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
@@ -52,6 +55,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
           </div>
           <div id="user-page-header-slot" className="flex min-w-0 flex-1 items-center justify-end gap-2" />
           <div className="flex min-w-0 items-center gap-1">
+            <NotificationBell />
             <ThemeToggle />
           </div>
         </header>

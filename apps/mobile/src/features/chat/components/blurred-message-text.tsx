@@ -1,3 +1,4 @@
+import { LinkifiedText } from "@/components/text/linkified-text";
 import { Text } from 'react-native';
 
 type BlurredMessageTextProps = Readonly<{
@@ -10,6 +11,7 @@ type BlurredMessageTextProps = Readonly<{
 
 export function BlurredMessageText({ blurred, content, fontSize = 14, maxWidth }: BlurredMessageTextProps) {
   const style = { fontSize, lineHeight: Math.round(fontSize * 1.4), maxWidth };
+  if (!blurred) return <LinkifiedText content={content} className="shrink font-bold text-white" style={style} />;
   return (
     <Text
       accessibilityLabel={blurred ? 'Message hidden by blur' : undefined}

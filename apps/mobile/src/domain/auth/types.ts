@@ -12,6 +12,7 @@ export const authTokensSchema = z.object({
 
 export const authenticatedUserSchema = z.object({
   publicId: g000stIdSchema,
+  role: z.enum(['user', 'admin']).default('user'),
 });
 
 export const persistedSessionSchema = z.object({

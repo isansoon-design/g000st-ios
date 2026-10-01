@@ -13,21 +13,25 @@ export class FirestoreNotificationStore implements NotificationStore {
 
   async upsertDevice(input: Readonly<{
     deviceId: string;
-    expoPushToken: string;
+    expoPushToken?: string;
+    fcmToken?: string;
+    ownerPublicId?: string;
     platform: PushPlatform;
     publicId: string;
     updatedAtMs: number;
   }>): Promise<void> {
-    const tokenHash = this.tokenHash(input.expoPushToken);
-    await this.devices().doc(`${input.publicId}_${tokenHash}`).set(
-      {
-        ...input,
-        disabledAtMs: null,
-      },
-      { merge: true },
-    );
+    const token = input.fcmToken ?? input.expoPushToken;
+    if (!token) throw new Error('A push token is required.');
+    const tokenHash = this.tokenHash(token);
+    // Replace a rotated token atomically; never leave the installation unregistered.
+    const old = await this.devices().where('publicId', '==', input.publicId).where('deviceId', '==', input.deviceId).get();
+    const target = this.devices().doc(`${input.publicId}_${tokenHash}`);
+    const batch = this.db.batch();
+    old.docs.forEach((doc) => { if (doc.id !== target.id) batch.delete(doc.ref); });
+    batch.set(target, { ...input, disabledAtMs: null });
     const legacy = this.devices().doc(tokenHash);
-    if ((await legacy.get()).data()?.publicId === input.publicId) await legacy.delete();
+    if ((await legacy.get()).data()?.publicId === input.publicId) batch.delete(legacy);
+    await batch.commit();
   }
 
   async removeDevice(publicId: string, deviceId: string): Promise<void> {
@@ -50,8 +54,8 @@ export class FirestoreNotificationStore implements NotificationStore {
       if (
         data.disabledAtMs != null ||
         typeof data.deviceId !== 'string' ||
-        typeof data.expoPushToken !== 'string' ||
-        (data.platform !== 'android' && data.platform !== 'ios') ||
+        (typeof data.expoPushToken !== 'string' && typeof data.fcmToken !== 'string') ||
+        (data.platform !== 'android' && data.platform !== 'ios' && data.platform !== 'web') ||
         typeof data.publicId !== 'string' ||
         typeof data.updatedAtMs !== 'number'
       ) {

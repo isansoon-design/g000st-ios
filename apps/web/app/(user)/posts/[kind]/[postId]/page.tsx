@@ -36,6 +36,7 @@ import {
 } from "@/app/api/social";
 import { PostImage } from "@/components/media/PostImage";
 import { UserHeaderPortal } from "@/components/navigation/header-portal";
+import { LinkifiedText } from "@/components/text/LinkifiedText";
 import { PostContentLink } from "@/components/posts/PostContentLink";
 
 type Kind = "social" | "market";
@@ -457,7 +458,7 @@ function PostDetailContent({ kind, postId }: { kind: string; postId: string }) {
                           {item.author.displayName}
                         </strong>
                         <p className="whitespace-pre-wrap text-sm">
-                          {item.content}
+                          <LinkifiedText content={item.content} />
                         </p>
                         <time className="text-xs text-black/40 dark:text-night-muted">
                           {new Date(item.createdAtMs).toLocaleString()}

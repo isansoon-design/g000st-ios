@@ -1,6 +1,5 @@
-import { ExpoPushGateway } from './expo-push-gateway.js';
 import type { NotificationStore } from './notification-store.js';
-import type { PushPlatform } from './notification-types.js';
+import type { PushGateway, PushMessage, PushPlatform } from './notification-types.js';
 
 export type NewChatMessageNotification = Readonly<{
   conversationId: string;
@@ -25,7 +24,7 @@ export interface CallingNotifier {
 export class NotificationService implements ChatNotifier, CallingNotifier {
   constructor(
     private readonly store: NotificationStore,
-    private readonly gateway: ExpoPushGateway,
+    private readonly gateway: PushGateway,
     private readonly now: () => number = Date.now,
   ) {}
 
@@ -33,8 +32,10 @@ export class NotificationService implements ChatNotifier, CallingNotifier {
     publicId: string,
     input: Readonly<{
       deviceId: string;
-      expoPushToken: string;
+      expoPushToken?: string;
+      fcmToken?: string;
       platform: PushPlatform;
+      ownerPublicId?: string;
     }>,
   ): Promise<void> {
     await this.store.upsertDevice({ ...input, publicId, updatedAtMs: this.now() });
@@ -42,6 +43,10 @@ export class NotificationService implements ChatNotifier, CallingNotifier {
 
   async unregisterDevice(publicId: string, deviceId: string): Promise<void> {
     await this.store.removeDevice(publicId, deviceId);
+  }
+
+  async sendTo(publicId: string, message: PushMessage): Promise<void> {
+    await this.gateway.send(await this.store.listActiveDevices(publicId), message);
   }
 
   async notifyNewMessage(input: NewChatMessageNotification): Promise<void> {

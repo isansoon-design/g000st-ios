@@ -6,6 +6,8 @@ import { CreditCard, Users, Settings, LogOut, Menu, BarChart3, PanelsTopLeft } f
 import { useState } from "react";
 import { ThemeToggle } from "@/context/ThemeContext";
 import { logout } from "@/app/api/auth";
+import { NotificationBell } from '@/features/notifications/notification-bell';
+import { PushBootstrap } from '@/features/notifications/push-bootstrap';
 
 export default function AdminLayout({
   children,
@@ -17,6 +19,7 @@ export default function AdminLayout({
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-night-canvas">
+      <PushBootstrap />
       {/* Header */}
       <header className="bg-white dark:bg-night-surface border-b border-gray-200 dark:border-night-border px-2 sm:px-6 py-4 flex items-center justify-between gap-1">
         <div className="flex shrink-0 items-center gap-1 sm:gap-4">
@@ -36,8 +39,9 @@ export default function AdminLayout({
         </div>
         <div id="admin-page-header-slot" className="flex min-w-0 flex-1 items-center justify-center px-2" />
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <NotificationBell scope="admin" />
           <ThemeToggle />
-          <button className="rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 sm:p-2" aria-label="Log out" onClick={() => { logout(); window.location.replace('/login'); }}>
+          <button className="rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 sm:p-2" aria-label="Log out" onClick={async () => { await logout(); window.location.replace('/login'); }}>
             <LogOut className="w-5 h-5" />
           </button>
         </div>
@@ -50,6 +54,7 @@ export default function AdminLayout({
           className={`${isSidebarOpen ? "absolute inset-y-0 left-0 z-20 w-64" : "hidden"} lg:relative lg:block lg:w-64 shrink-0 bg-white dark:bg-night-surface border-r border-gray-200 dark:border-night-border overflow-y-auto`}
         >
           <div className="p-6 space-y-4">
+            <Link href="/reports" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 rounded-lg px-4 py-2 text-gray-700 hover:bg-gray-100 dark:text-night-muted dark:hover:bg-white/10">Reports</Link>
             <Link
               href="/dashboard"
               onClick={() => setIsSidebarOpen(false)}

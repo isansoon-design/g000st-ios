@@ -14,13 +14,11 @@ const uuid = z.string().uuid();
 const publicId = z.string().length(G000ST_ID_LENGTH).regex(/^[A-Za-z0-9]+$/);
 const visibility = z.enum(['anonymous', 'public']);
 const cursorQuery = z.object({ cursor: z.string().min(1).max(256).optional(), limit: z.coerce.number().int().min(1).max(50).default(20) });
-const socialContentType = z.enum(['image/gif', 'image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime', 'video/webm']);
+const socialContentType = z.enum(['image/gif', 'image/jpeg', 'image/png', 'image/webp']);
 const pendingMedia = z.object({ byteSize: z.number().int().positive().max(MAX_SOCIAL_MEDIA_BYTES), contentType: socialContentType, fileName: z.string().min(1).max(255), id: uuid, objectKey: z.string().min(1).max(600) }).strict();
 const createPostBody = z.object({ clientPostId: uuid, content: z.string().trim().max(4_000), sharedPostId: uuid.optional(), media: z.array(pendingMedia).max(MAX_SOCIAL_IMAGES).optional(), visibility: visibility.default('anonymous'), shareToSocial: z.boolean().default(true) }).strict().superRefine((value, context) => {
   if (!value.content && !value.sharedPostId && !value.media?.length) context.addIssue({ code: 'custom', message: 'A post must contain text, media, or share another post.', path: ['content'] });
   if (value.sharedPostId && value.media?.length) context.addIssue({ code: 'custom', message: 'A shared post cannot include new media.', path: ['media'] });
-  const videoCount = value.media?.filter((item) => item.contentType.startsWith('video/')).length ?? 0;
-  if (videoCount > 0 && (videoCount !== 1 || value.media?.length !== 1)) context.addIssue({ code: 'custom', message: 'A post can contain up to two images or one video.', path: ['media'] });
 });
 const uploadBody = z.object({ byteSize: z.number().int().positive().max(MAX_SOCIAL_MEDIA_BYTES), clientPostId: uuid, contentType: socialContentType, fileName: z.string().min(1).max(255) }).strict();
 const updatePostBody = z.object({ content: z.string().trim().min(1).max(4_000) }).strict();

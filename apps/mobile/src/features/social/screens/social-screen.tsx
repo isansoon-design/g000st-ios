@@ -248,32 +248,29 @@ export function SocialScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsMultipleSelection: true,
-      mediaTypes: ["images", "videos"],
+      mediaTypes: ["images"],
       quality: 0.9,
       selectionLimit: 2,
     });
     if (result.canceled) return;
-    const videos = result.assets.filter((item) => item.type === "video");
     if (
       result.assets.some(
         (item) =>
-          !item.fileSize || !item.mimeType || item.fileSize > 5 * 1024 * 1024,
+          !item.fileSize || !item.mimeType?.startsWith("image/") || item.fileSize > 5 * 1024 * 1024,
       )
     )
       return Toast.show({
         type: "error",
         text1: "Media",
-        text2: "Each file must be 5 MB or smaller.",
+        text2: "Choose images up to 5 MB per file.",
       });
     if (
-      (videos.length && result.assets.length !== 1) ||
-      videos.length > 1 ||
-      (!videos.length && result.assets.length > 2)
+      result.assets.length > 2
     )
       return Toast.show({
         type: "error",
         text1: "Media",
-        text2: "Choose up to two images or one video.",
+        text2: "Choose up to two images.",
       });
     setSelectedMedia(result.assets);
   };
@@ -289,28 +286,25 @@ export function SocialScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images", "videos"],
+      mediaTypes: ["images"],
       quality: 0.9,
     });
     if (result.canceled) return;
     if (
       result.assets.some(
         (item) =>
-          !item.fileSize || !item.mimeType || item.fileSize > 5 * 1024 * 1024,
+          !item.fileSize || !item.mimeType?.startsWith("image/") || item.fileSize > 5 * 1024 * 1024,
       )
     )
       return Toast.show({
         type: "error",
         text1: "Media",
-        text2: "Each file must be 5 MB or smaller.",
+        text2: "Choose images up to 5 MB per file.",
       });
     setSelectedMedia((prev) => {
       const next = [...prev, ...result.assets];
-      const nextVideos = next.filter((item) => item.type === "video");
       if (
-        (nextVideos.length && next.length !== 1) ||
-        nextVideos.length > 1 ||
-        (!nextVideos.length && next.length > 2)
+        next.length > 2
       ) {
         return result.assets;
       }
@@ -408,11 +402,6 @@ export function SocialScreen() {
 
   return (
     <FeatureScreen
-      rightAction={
-        <Pressable onPress={() => setView("alerts")}>
-          <Text className="text-xl">🔔</Text>
-        </Pressable>
-      }
       title={
         <View className="h-14 flex-row items-center justify-between border-b border-black/10 dark:border-night-border px-4">
           <Text className="text-lg font-black text-[#1A1A1A] dark:text-night-text">
@@ -550,7 +539,7 @@ export function SocialScreen() {
                   {isAttachmentMenuOpen && (
                     <View className="mt-3 rounded-2xl border border-black/10 bg-white px-4 dark:border-night-border dark:bg-night-raised">
                       {[
-                        ["Photo or video library", onPickLibraryAttachment],
+                        ["Photo library", onPickLibraryAttachment],
                         ["Camera", onCaptureAttachment],
                       ].map(([label, action], index) => (
                         <Pressable

@@ -22,9 +22,6 @@ const ALLOWED_MEDIA = new Set([
   "image/png",
   "image/webp",
   "image/gif",
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
 ]);
 
 export function ProfilePostComposer({
@@ -39,7 +36,6 @@ export function ProfilePostComposer({
   const [posting, setPosting] = useState(false);
 
   function selectMedia(files: File[]) {
-    const videos = files.filter((file) => file.type.startsWith("video/"));
     if (
       files.some(
         (file) => !ALLOWED_MEDIA.has(file.type) || file.size > 5 * 1024 * 1024,
@@ -48,8 +44,8 @@ export function ProfilePostComposer({
       toast.error("Choose supported media up to 5 MB per file.");
       return;
     }
-    if (files.length > 2 || (videos.length > 0 && files.length !== 1)) {
-      toast.error("Choose up to two images or one video.");
+    if (files.length > 2) {
+      toast.error("Choose up to two images.");
       return;
     }
     setMediaFiles(files);
@@ -138,7 +134,7 @@ export function ProfilePostComposer({
           📎 {mediaFiles.length ? `${mediaFiles.length} selected` : "Media"}
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             multiple
             className="hidden"
             onChange={(event) => {

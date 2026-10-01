@@ -1,5 +1,10 @@
 module.exports = ({ config }) => ({
   ...config,
+  plugins: [
+    ...(config.plugins ?? []),
+    ['@react-native-firebase/app', { ios: { disableSPM: true } }],
+    ['expo-build-properties', { ios: { useFrameworks: 'static' } }],
+  ],
   android: {
     ...config.android,
     googleServicesFile:

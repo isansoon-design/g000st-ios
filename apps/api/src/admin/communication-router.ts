@@ -21,7 +21,12 @@ export function createCommunicationRouter(auth: AuthService, desk: AdminDeskServ
     next();
   }));
   router.get('/notices', asyncRoute(async (request, response) => {
-    response.json({ notices: await desk.listNotices(request.authenticatedPublicId) });
+    const actor = await auth.getActor(bearerToken(request), request.header('x-acting-public-id') ?? undefined);
+    response.json({ notices: await desk.listNotices(actor.publicId) });
+  }));
+  router.get('/notices/:noticeId', asyncRoute(async (request, response) => {
+    const actor = await auth.getActor(bearerToken(request), request.header('x-acting-public-id') ?? undefined);
+    response.json({ version: 1, notice: await desk.getNotice(actor.publicId, z.string().uuid().parse(request.params.noticeId)) });
   }));
   router.post('/contact', rateLimit({ legacyHeaders: false, limit: 5, standardHeaders: 'draft-8', windowMs: 60 * 60_000 }), asyncRoute(async (request, response) => {
     const { text } = z.object({ text: z.string().trim().min(1).max(2_000) }).strict().parse(request.body);

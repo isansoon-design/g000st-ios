@@ -34,6 +34,16 @@ export function createAdminRouter(auth: AuthService, analytics: AdminAnalyticsSe
   }));
   router.use(requireAdminRole);
 
+  router.get('/reports/:section', asyncRoute(async (request, response) => {
+    const cursor = z.string().min(1).max(500).optional().parse(request.query.cursor);
+    const reportId = uuid.optional().parse(request.query.reportId);
+    response.json(await desk.listReports(section.parse(request.params.section), cursor, reportId));
+  }));
+  router.put('/reports/:section/:reportId', writeLimiter, asyncRoute(async (request, response) => {
+    const { resolution } = z.object({ resolution: z.enum(['action_taken', 'no_violation']) }).strict().parse(request.body);
+    await desk.resolveReport(section.parse(request.params.section), uuid.parse(request.params.reportId), resolution, request.authenticatedPublicId);
+    response.status(204).end();
+  }));
   router.get('/analytics', asyncRoute(async (_request, response) => { response.json(await analytics.get()); }));
   router.get('/desk', asyncRoute(async (_request, response) => { response.json(await desk.get()); }));
   router.get('/users', asyncRoute(async (request, response) => {

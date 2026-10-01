@@ -1,3 +1,4 @@
+import { queueNotification } from '../notifications/notification-events.js';
 import { createHash } from 'node:crypto';
 
 import { FieldPath, FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore';
@@ -244,6 +245,7 @@ export class FirestoreChatStore implements ChatStore {
         ...message,
         ...(message.expiresAtMs === undefined ? {} : { expiresAt: Timestamp.fromMillis(message.expiresAtMs) }),
       });
+      queueNotification(this.db, this.collectionPrefix, transaction, { type: "chat.message", audience: "recipient", recipientPublicId: recipientPublicId, actorPublicId: message.senderPublicId, scope: "user", category: "messages", title: "g000st", body: "You received a new private message.", path: `/chat?conversationId=${message.conversationId}`, createdAtMs: message.createdAtMs, expiresAtMs: message.expiresAtMs ?? message.createdAtMs + 2 * 60 * 60_000, source: { collection: 'chat_conversations', parentId: message.conversationId, id: message.id } });
       transaction.update(conversationRef, { updatedAtMs: message.createdAtMs });
       transaction.set(
         this.memberConversation(message.senderPublicId, message.conversationId),

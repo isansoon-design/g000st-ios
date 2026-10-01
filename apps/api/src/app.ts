@@ -24,6 +24,7 @@ import { createMarketRouter } from './market/market-router.js';
 import type { MarketService } from './market/market-service.js';
 import { createNotificationRouter } from './notifications/notification-router.js';
 import { NotificationService } from './notifications/notification-service.js';
+import type { NotificationCenter } from './notifications/notification-center.js';
 import { createPresenceRouter } from './presence/presence-router.js';
 import { PresenceService } from './presence/presence-service.js';
 import { createSocialRouter } from './social/social-router.js';
@@ -54,6 +55,7 @@ type CreateAppOptions = Readonly<{
   chatService: ChatService;
   contactsService: ContactsService;
   notificationService: NotificationService;
+  notificationCenter?: NotificationCenter;
   marketService: MarketService;
   presenceService: PresenceService;
   socialService: SocialService;
@@ -70,6 +72,7 @@ export function createApp({
   chatService,
   contactsService,
   notificationService,
+  notificationCenter,
   marketService,
   presenceService,
   socialService,
@@ -126,7 +129,7 @@ export function createApp({
   app.use('/api/v1/media', createMediaRouter(authService, chatService));
   app.use(
     '/api/v1/notifications',
-    createNotificationRouter(authService, notificationService),
+    createNotificationRouter(authService, notificationService, notificationCenter),
   );
 
   app.use('/api/v1', (_request, response) => {

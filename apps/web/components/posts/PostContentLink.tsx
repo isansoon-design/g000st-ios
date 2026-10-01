@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 
+import { LinkifiedText } from "@/components/text/LinkifiedText";
+
 type Props = {
   content: string;
   href?: string;
@@ -42,8 +44,9 @@ export function PostContentLink({ content, href, className = "" }: Props) {
   }
 
   return (
-    <button
-      type="button"
+    <div
+      role={href ? "button" : undefined}
+      tabIndex={href ? 0 : undefined}
       className={`block w-full whitespace-pre-wrap text-left ${href ? "cursor-pointer" : "cursor-text"} ${className}`}
       aria-label={content}
       title={href ? "Open post · long press to copy" : "Long press to copy"}
@@ -67,7 +70,13 @@ export function PostContentLink({ content, href, className = "" }: Props) {
           void copy();
         }
       }}
-      onKeyDown={() => { longPressed.current = false; }}
+      onKeyDown={(event) => {
+        longPressed.current = false;
+        if (href && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          router.push(href);
+        }
+      }}
       onClick={(event) => {
         if (longPressed.current) {
           event.preventDefault();
@@ -76,8 +85,8 @@ export function PostContentLink({ content, href, className = "" }: Props) {
         if (href) router.push(href);
       }}
     >
-      {content}
-    </button>
+      <LinkifiedText content={content} />
+    </div>
   );
 }
 

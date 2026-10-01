@@ -35,9 +35,6 @@ const supportedTypes: Readonly<Record<string, ChatAttachmentKind>> = {
   'image/jpeg': 'image',
   'image/png': 'image',
   'image/webp': 'image',
-  'video/mp4': 'video',
-  'video/quicktime': 'video',
-  'video/webm': 'video',
 };
 
 export type PendingAttachmentInput = Readonly<{
@@ -147,7 +144,7 @@ export class MediaService {
     uploadUrl: string;
   }>> {
     const kind = this.validateFile(input);
-    if (kind !== 'image' && kind !== 'video') throw new ApiError(400, 'UNSUPPORTED_SOCIAL_MEDIA', 'Social posts support images and videos only.');
+    if (kind !== 'image') throw new ApiError(400, 'UNSUPPORTED_SOCIAL_MEDIA', 'Posts support images only.');
     const mediaId = randomUUID();
     const objectKey = `pending-social/${input.publicId}/${input.clientPostId}/${mediaId}`;
     const command = new PutObjectCommand({
@@ -238,7 +235,7 @@ export class MediaService {
 
   async promoteSocialMedia(input: Readonly<{ media: PendingAttachmentInput; postId: string; publicId: string }>): Promise<PendingAttachmentInput & { kind: 'image' | 'video' }> {
     const kind = this.validateFile(input.media);
-    if (kind !== 'image' && kind !== 'video') throw new ApiError(400, 'UNSUPPORTED_SOCIAL_MEDIA', 'Social posts support images and videos only.');
+    if (kind !== 'image') throw new ApiError(400, 'UNSUPPORTED_SOCIAL_MEDIA', 'Posts support images only.');
     const expected = `pending-social/${input.publicId}/${input.postId}/${input.media.id}`;
     if (input.media.objectKey !== expected) throw new ApiError(400, 'INVALID_SOCIAL_MEDIA', 'This media does not belong to this post.');
     const finalKey = `social/${input.postId}/${input.media.id}`;
@@ -273,7 +270,7 @@ export class MediaService {
       throw new ApiError(
         400,
         'INVALID_ATTACHMENT_BATCH',
-        'Audio, videos, and documents must be sent one at a time.',
+        'Audio and documents must be sent one at a time.',
       );
     }
 
@@ -376,7 +373,7 @@ export class MediaService {
     const kind = supportedTypes[input.contentType.toLowerCase()];
     const durationMs = input.durationMs;
     if (!kind || !Number.isSafeInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > MAX_ATTACHMENT_BYTES) {
-      throw new ApiError(400, 'UNSUPPORTED_ATTACHMENT', 'Attachments must be supported audio, image, video, PDF, or Word files up to 5 MB.');
+      throw new ApiError(400, 'UNSUPPORTED_ATTACHMENT', 'Attachments must be supported audio, image, PDF, or Word files up to 5 MB.');
     }
     if (!this.safeFileName(input.fileName)) {
       throw new ApiError(400, 'INVALID_ATTACHMENT', 'Attachment file name is invalid.');

@@ -510,19 +510,19 @@ export function usePrivateChat(initialConversationId?: string) {
     setAttachments: (files: readonly File[]) => {
       const containsNonImage = files.some((file) => !file.type.startsWith("image/"));
       if (containsNonImage && files.length > 1) {
-        setSendError("Videos and documents must be sent one at a time.");
+        setSendError("Documents must be sent one at a time.");
         return;
       }
       const invalid = files.find(
         (file) =>
           file.size > 5 * 1024 * 1024 ||
           ![
-            "image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/quicktime", "video/webm",
+            "image/jpeg", "image/png", "image/webp", "image/gif",
             "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           ].includes(file.type),
       );
       if (invalid) {
-        setSendError("Only images, videos, PDF, and Word files up to 5 MB are allowed.");
+        setSendError("Only images, PDF, and Word files up to 5 MB are allowed.");
         return;
       }
       if (files.length > 3) {

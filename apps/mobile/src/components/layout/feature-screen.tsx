@@ -1,4 +1,5 @@
 import { AppThemeSwitch } from '@/components/navigation/app-theme-switch';
+import { NotificationBell } from '@/features/notifications/notification-bell';
 import { useOpenAppSidebar } from '@/components/navigation/app-sidebar';
 import { useAppTheme } from '@/theme/app-theme';
 import { type PropsWithChildren, type ReactNode } from 'react';
@@ -32,6 +33,7 @@ export function FeatureScreen({ children, rightAction, title, colors, showThemeS
         )}
         </View>
         <View className="flex-row items-center gap-1">
+          <NotificationBell />
           {showThemeSwitch && <AppThemeSwitch />}
           {rightAction}
         </View>

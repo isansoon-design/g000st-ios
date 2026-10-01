@@ -1,3 +1,4 @@
+import { NotificationBell } from '@/features/notifications/notification-bell';
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useRef } from "react";
 import {
@@ -48,7 +49,7 @@ export default function NewBeaconScreen() {
             <Text className="text-xl font-bold text-white">‹</Text>
           </Pressable>
           <View className="absolute right-4 top-4 rounded-full bg-white/80 dark:bg-night-surface">
-            <AppThemeSwitch />
+            <NotificationBell /><AppThemeSwitch />
           </View>
         </View>
         <View className="mx-3 mt-5 gap-3">

@@ -115,6 +115,8 @@ Expected codes include `INVALID_RECOVERY_ID`, `PUBLIC_ID_UNAVAILABLE`, `RATE_LIM
 - Rotate refresh tokens and detect replay of an invalidated token family.
 - Require TLS and reject requests over plaintext HTTP outside local development.
 - Private-chat authorization must be enforced on the server for every read and write.
+- Private-chat file attachments support images, PDF, and Word files up to 5 MB; new video
+  attachments are rejected at upload creation and message submission.
 - Private voice messages are single `audio` attachments with explicit `durationMs`; both upload
   creation and message submission enforce the 5 MB and five-minute limits.
 
@@ -129,7 +131,7 @@ All Social routes require `Authorization: Bearer <accessToken>` and are rooted a
 - `POST /posts/:postId/like`: atomically toggles the current user's reaction.
 - `GET|POST /posts/:postId/comments`: lists or creates comments.
 - `DELETE /posts/:postId/comments/:commentId`: owner-only comment deletion.
-- `POST /uploads`: creates a signed image/video upload for a client-generated post UUID.
+- `POST /uploads`: creates a signed image upload for a client-generated post UUID.
 - `GET /profiles/:publicId`, `PUT /profile`: reads or updates the optional Social profile.
 - `POST /profiles/:publicId/camp`: toggles Camp for an active user.
 - `GET /alerts`, `POST /alerts/read`: lists and marks Social alerts.
@@ -139,7 +141,7 @@ All Social routes require `Authorization: Bearer <accessToken>` and are rooted a
 Public ID and returns `Anonymous`; clients must not infer identity from local state. Images are
 uploaded directly to configured S3-compatible storage with a short-lived signed PUT URL, promoted
 only when the post is created, and returned through short-lived signed download URLs. A post accepts
-up to two images or exactly one video, never a mixed batch; every file is limited to 5 MB in both
+up to two images; new video uploads and attachments are rejected. Every file is limited to 5 MB in both
 the route validation and media service.
 
 For an in-app share, send `sharedPostId` with optional text in `content` and no new media. The

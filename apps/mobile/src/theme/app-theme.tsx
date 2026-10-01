@@ -7,8 +7,8 @@ export type AppThemeMode = 'light' | 'dark';
 export const appColors = {
   light: {
     canvas: '#D8D8D8', header: '#D0D0D0', toolbar: '#D0D0D0', card: '#E2E2E2',
-    text: '#111111', muted: '#666666', border: '#B8B8B8', incoming: '#29292B',
-    outgoing: '#79201D', input: '#FFFFFF', inputText: '#111111', accent: '#C62828',
+    text: '#111111', muted: '#666666', border: '#B8B8B8', incoming: '#79201D',
+    outgoing: '#29292B', input: '#FFFFFF', inputText: '#111111', accent: '#C62828',
     tabBar: '#FFFFFF', tabInactive: '#737373',
   },
   dark: {

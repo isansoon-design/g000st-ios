@@ -1,8 +1,10 @@
 import { useRef } from "react";
-import { Pressable, Text } from "react-native";
+import { Pressable } from "react-native";
 import Toast from "react-native-toast-message";
 
 import { copyText } from "@/services/device/clipboard";
+
+import { LinkifiedText } from "@/components/text/linkified-text";
 
 type Props = {
   content: string;
@@ -49,15 +51,14 @@ export function PostContentText({
           : undefined
       }
     >
-      <Text
+      <LinkifiedText
+        content={content}
         numberOfLines={numberOfLines}
         className={
           className ??
           "text-[15px] leading-6 text-g000st-black dark:text-night-text"
         }
-      >
-        {content}
-      </Text>
+      />
     </Pressable>
   );
 }

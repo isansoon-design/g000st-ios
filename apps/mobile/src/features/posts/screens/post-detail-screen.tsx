@@ -34,6 +34,7 @@ import {
 import { FeatureScreen } from "@/components/layout/feature-screen";
 import { KeyboardAvoidingView } from "@/components/layout/keyboard-avoiding-view";
 import { PostImage } from "@/components/media/post-image";
+import { LinkifiedText } from "@/components/text/linkified-text";
 import { PostContentText } from "@/components/posts/post-content-text";
 import type { MarketComment, MarketPost } from "@/domain/market/types";
 import type {
@@ -521,9 +522,7 @@ export function PostDetailScreen({
                   <Text className="font-black text-g000st-black dark:text-night-text">
                     {item.author.displayName}
                   </Text>
-                  <Text className="mt-1 text-g000st-black dark:text-night-text">
-                    {item.content}
-                  </Text>
+                  <LinkifiedText content={item.content} className="mt-1 text-g000st-black dark:text-night-text" />
                   <Text className="mt-1 text-xs text-black/40 dark:text-night-muted">
                     {new Date(item.createdAtMs).toLocaleString()}
                   </Text>
