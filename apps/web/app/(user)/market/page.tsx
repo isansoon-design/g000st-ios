@@ -8,6 +8,7 @@ import {
   Phone,
   ShoppingBag,
   UserCheck,
+  Video,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -149,13 +150,51 @@ export default function MarketPage() {
   return (
     <div className="flex h-full flex-col bg-[#e7e7e9] dark:bg-night-canvas text-[#171717] dark:text-night-text">
       <UserHeaderPortal>
-        <h1 className="mr-auto flex items-center gap-2 text-sm font-black lg:text-base"><ShoppingBag size={19} aria-hidden="true" className="hidden sm:block" />Market</h1>
-        <nav aria-label="Market navigation" className="hidden items-center gap-1 lg:flex">
-          <button type="button" aria-current={view === "home" ? "page" : undefined} onClick={() => setView("home")} className={`rounded-xl px-3 py-2 text-sm font-bold ${view === "home" ? "bg-[#C62828] text-white" : "text-[#444b56] hover:bg-black/5 dark:text-night-text dark:hover:bg-white/10"}`}>Market</button>
-          <button type="button" aria-current={view === "mine" ? "page" : undefined} onClick={() => setView("mine")} className={`rounded-xl px-3 py-2 text-sm font-bold ${view === "mine" ? "bg-[#C62828] text-white" : "text-[#444b56] hover:bg-black/5 dark:text-night-text dark:hover:bg-white/10"}`}>My Listings</button>
-          <Link href="/chat?kind=market" className="rounded-xl px-3 py-2 text-sm font-bold text-[#444b56] hover:bg-black/5 dark:text-night-text dark:hover:bg-white/10">Market Chats</Link>
+        <h1 className="mr-auto flex items-center gap-2 text-sm font-black lg:text-base">
+          <ShoppingBag
+            size={19}
+            aria-hidden="true"
+            className="hidden sm:block"
+          />
+          Market
+        </h1>
+        <nav
+          aria-label="Market navigation"
+          className="hidden items-center gap-1 lg:flex"
+        >
+          <button
+            type="button"
+            aria-current={view === "home" ? "page" : undefined}
+            onClick={() => setView("home")}
+            className={`rounded-xl px-3 py-2 text-sm font-bold ${view === "home" ? "bg-[#C62828] text-white" : "text-[#444b56] hover:bg-black/5 dark:text-night-text dark:hover:bg-white/10"}`}
+          >
+            Market
+          </button>
+          <button
+            type="button"
+            aria-current={view === "mine" ? "page" : undefined}
+            onClick={() => setView("mine")}
+            className={`rounded-xl px-3 py-2 text-sm font-bold ${view === "mine" ? "bg-[#C62828] text-white" : "text-[#444b56] hover:bg-black/5 dark:text-night-text dark:hover:bg-white/10"}`}
+          >
+            My Listings
+          </button>
+          <Link
+            href="/chat?kind=market"
+            className="rounded-xl px-3 py-2 text-sm font-bold text-[#444b56] hover:bg-black/5 dark:text-night-text dark:hover:bg-white/10"
+          >
+            Market Chats
+          </Link>
         </nav>
-        <select aria-label="Market navigation" value={view} onChange={(event) => event.target.value === "chats" ? router.push("/chat?kind=market") : setView(event.target.value as "home" | "mine")} className="w-[104px] rounded-lg border border-black/15 bg-white px-1 py-2 text-xs font-bold text-[#17191d] dark:border-white/20 dark:bg-night-surface dark:text-night-text sm:w-[140px] lg:hidden">
+        <select
+          aria-label="Market navigation"
+          value={view}
+          onChange={(event) =>
+            event.target.value === "chats"
+              ? router.push("/chat?kind=market")
+              : setView(event.target.value as "home" | "mine")
+          }
+          className="w-[104px] rounded-lg border border-black/15 bg-white px-1 py-2 text-xs font-bold text-[#17191d] dark:border-white/20 dark:bg-night-surface dark:text-night-text sm:w-[140px] lg:hidden"
+        >
           <option value="home">Market</option>
           <option value="mine">My Listings</option>
           <option value="chats">Market Chats</option>
@@ -169,12 +208,23 @@ export default function MarketPage() {
             onClick={() => setIsComposerOpen(true)}
             className="mb-1 flex w-full items-center gap-3 rounded-2xl border border-black/10 bg-white p-4 text-left shadow-sm dark:border-night-border dark:bg-night-surface"
           >
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#c62828] text-2xl font-light text-white">＋</span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-black text-[#17191d] dark:text-night-text">Create a Market post</span>
-              <span className="mt-0.5 block text-xs text-black/50 dark:text-night-muted">Sell something to the community</span>
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#c62828] text-2xl font-light text-white">
+              ＋
             </span>
-            <span aria-hidden="true" className="text-xl font-bold text-[#c62828]">›</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-black text-[#17191d] dark:text-night-text">
+                Create a Market post
+              </span>
+              <span className="mt-0.5 block text-xs text-black/50 dark:text-night-muted">
+                Sell something to the community
+              </span>
+            </span>
+            <span
+              aria-hidden="true"
+              className="text-xl font-bold text-[#c62828]"
+            >
+              ›
+            </span>
           </button>
           {posts.length === 0 && (
             <div className="py-16 text-center font-bold text-black/40 dark:text-night-muted">
@@ -255,7 +305,11 @@ export default function MarketPage() {
                   </button>
                 )}
               </div>
-              <PostContentLink content={post.content} href={`/posts/market/${post.id}`} className="px-4 pb-3 text-[15px] leading-6" />
+              <PostContentLink
+                content={post.content}
+                href={`/posts/market/${post.id}`}
+                className="px-4 pb-3 text-[15px] leading-6"
+              />
               <div className="mx-4 mb-3 flex flex-wrap gap-2">
                 <Badge>
                   <b>
@@ -327,7 +381,11 @@ export default function MarketPage() {
                 </button>
                 {!post.ownedByViewer && (
                   <button
-                    aria-label={post.campedByViewer ? "Following seller. Unfollow" : "Follow seller"}
+                    aria-label={
+                      post.campedByViewer
+                        ? "Following seller. Unfollow"
+                        : "Follow seller"
+                    }
                     onClick={async () => {
                       try {
                         const result = await toggleSocialCamp(
@@ -346,7 +404,13 @@ export default function MarketPage() {
                     }}
                     className={`flex flex-1 items-center justify-center gap-1 rounded-xl py-3 font-black ${post.campedByViewer ? "text-[#c62828]" : ""}`}
                   >
-                    {post.campedByViewer ? <><UserCheck size={28} /> Following</> : "+ Follow"}
+                    {post.campedByViewer ? (
+                      <>
+                        <UserCheck size={28} /> Following
+                      </>
+                    ) : (
+                      "+ Follow"
+                    )}
                   </button>
                 )}
                 {!post.ownedByViewer && post.allowCalls === true && (
@@ -364,13 +428,13 @@ export default function MarketPage() {
                     onClick={() => void callUser(post.ownerPublicId, "video")}
                     className="flex flex-1 justify-center py-3"
                   >
-                    Video
+                    <Video size={19} />
                   </button>
                 )}
                 {!post.ownedByViewer && (
                   <button
                     onClick={() => void openChat(post)}
-                    className="rounded-full bg-black px-6 py-3 font-black text-white"
+                    className="rounded-full bg-black px-2 py-2  text-white text-sm"
                   >
                     Market Chat
                   </button>
@@ -395,7 +459,9 @@ export default function MarketPage() {
             <div className="flex items-center justify-between px-5 pb-4">
               <div>
                 <h2 className="text-xl font-black">New listing</h2>
-                <p className="mt-1 text-xs text-black/50 dark:text-night-muted">Add the details buyers need</p>
+                <p className="mt-1 text-xs text-black/50 dark:text-night-muted">
+                  Add the details buyers need
+                </p>
               </div>
               <button
                 type="button"
@@ -403,9 +469,14 @@ export default function MarketPage() {
                 disabled={busy}
                 onClick={() => setIsComposerOpen(false)}
                 className="grid h-10 w-10 place-items-center rounded-full bg-white text-xl disabled:opacity-40 dark:bg-night-raised"
-              >×</button>
+              >
+                ×
+              </button>
             </div>
-            <div data-admin-part="trading.sell" className="overflow-y-auto px-5 pb-5">
+            <div
+              data-admin-part="trading.sell"
+              className="overflow-y-auto px-5 pb-5"
+            >
               <Composer
                 fields={fields}
                 mediaFiles={mediaFiles}
@@ -500,7 +571,7 @@ function Composer({
       <CallOptions fields={fields} onChange={onChange} />
       <div className="flex justify-between">
         <label className="cursor-pointer rounded-xl border border-black/15 dark:border-night-border px-4 py-3 text-xs font-black">
-          📎 {" "} {mediaFiles.length ? `${mediaFiles.length} selected` : "Media"}
+          📎 {mediaFiles.length ? `${mediaFiles.length} selected` : "Media"}
           <input
             className="hidden"
             type="file"
