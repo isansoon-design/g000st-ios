@@ -205,7 +205,7 @@ export function UserSidebar({
                 </button>
               </div>
               {expanded && (
-                <div className="mt-2 space-y-1 border-t border-black/10 pt-2 dark:border-white/10">
+                <div className="mt-2 space-y-2 border-t border-black/10 pt-2 dark:border-white/10">
                   {actingAsPage && (
                     <div className="flex items-center rounded-xl bg-white dark:bg-night-raised">
                       <Link
@@ -226,6 +226,7 @@ export function UserSidebar({
                       >
                         ⇄
                       </button>
+
                     </div>
                   )}
                   {pages.filter((page) => page.publicId !== activeId).map((page) => (
@@ -257,6 +258,13 @@ export function UserSidebar({
                       </button>
                     </div>
                   ))}
+                  <button
+                    type="button"
+                    onClick={create}
+                    className=" w-full block mt-10 rounded-xl bg-[#C62828] px-3 py-2 text-xs font-black text-white "
+                  >
+                    BUILD YOUR BEACON
+                  </button>
                 </div>
               )}
             </div>
