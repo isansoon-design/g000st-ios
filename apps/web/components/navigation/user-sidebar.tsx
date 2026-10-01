@@ -35,6 +35,20 @@ type Props = {
   pathname: string;
 };
 
+function IdentityAvatar({ avatarUrl, name }: Readonly<{ avatarUrl?: string; name: string }>) {
+  return avatarUrl ? (
+    <img
+      src={avatarUrl}
+      alt=""
+      className="h-9 w-9 shrink-0 rounded-full object-cover"
+    />
+  ) : (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#9A9A9A] font-black text-white">
+      {name[0]}
+    </span>
+  );
+}
+
 export function UserSidebar({
   desktopOpen,
   mobileOpen,
@@ -45,6 +59,7 @@ export function UserSidebar({
   const [expanded, setExpanded] = useState(false);
   const [pages, setPages] = useState<BeaconPage[]>([]);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
+  const [activePageProfile, setActivePageProfile] = useState<SocialProfile | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const ownerId = sessionStorage.get()?.user.publicId;
 
@@ -78,6 +93,19 @@ export function UserSidebar({
   }, [desktopOpen, mobileOpen, ownerId]);
 
   useEffect(() => {
+    if ((!desktopOpen && !mobileOpen) || !activeId || activeId === ownerId) return;
+    let active = true;
+    void getSocialProfile(activeId)
+      .then((pageProfile) => {
+        if (active) setActivePageProfile(pageProfile);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [activeId, desktopOpen, mobileOpen, ownerId]);
+
+  useEffect(() => {
     if (!mobileOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onCloseMobile();
@@ -99,6 +127,15 @@ export function UserSidebar({
     onCloseMobile();
     router.push("/beacons/new");
   };
+
+  const actingAsPage = !!ownerId && !!activeId && activeId !== ownerId;
+  const activePage = pages.find((page) => page.publicId === activeId);
+  const pageProfile = activePageProfile?.publicId === activeId ? activePageProfile : null;
+  const personalName = profile?.displayName || ownerId?.slice(0, 8) || "G";
+  const activeName = actingAsPage
+    ? pageProfile?.displayName || activePage?.displayName || "Untitled beacon"
+    : personalName;
+  const activeAvatarUrl = actingAsPage ? pageProfile?.avatarUrl : profile?.avatarUrl;
 
   return (
     <>
@@ -141,28 +178,18 @@ export function UserSidebar({
             <div className="my-5 rounded-2xl border border-black/10 bg-[#f5f6f8] p-2 dark:border-white/10 dark:bg-night-surface">
               <div className="flex items-center">
                 <Link
-                  href={`/users/${ownerId}`}
+                  href={`/users/${actingAsPage ? activeId : ownerId}`}
                   onClick={onCloseMobile}
                   className="flex min-w-0 flex-1 items-center gap-2"
                 >
-                  {profile?.avatarUrl ? (
-                    <img
-                      src={profile.avatarUrl}
-                      alt=""
-                      className="h-9 w-9 shrink-0 rounded-full object-cover"
-                    />
-                  ) : (
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#9A9A9A] font-black text-white">
-                      {(profile?.displayName || "G")[0]}
-                    </span>
-                  )}
+                  <IdentityAvatar avatarUrl={activeAvatarUrl} name={activeName} />
                   <span className="truncate text-xs font-black">
-                    {profile?.displayName || ownerId.slice(0, 8)}
+                    {activeName}
                   </span>
                 </Link>
                 <button
                   type="button"
-                  aria-label="Show my pages"
+                  aria-label="Show profiles"
                   aria-expanded={expanded}
                   onClick={() => setExpanded((value) => !value)}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
@@ -179,7 +206,29 @@ export function UserSidebar({
               </div>
               {expanded && (
                 <div className="mt-2 space-y-1 border-t border-black/10 pt-2 dark:border-white/10">
-                  {pages.map((page) => (
+                  {actingAsPage && (
+                    <div className="flex items-center rounded-xl bg-white dark:bg-night-raised">
+                      <Link
+                        href={`/users/${ownerId}`}
+                        onClick={onCloseMobile}
+                        className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-xs font-bold"
+                      >
+                        <IdentityAvatar avatarUrl={profile?.avatarUrl} name={personalName} />
+                        <span className="truncate">{personalName}</span>
+                      </Link>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={false}
+                        aria-label={`Switch to ${personalName}`}
+                        onClick={() => switchTo(ownerId, personalName)}
+                        className="flex h-9 w-10 shrink-0 items-center justify-center border-l border-black/10 text-lg hover:text-[#C62828] dark:border-white/15"
+                      >
+                        ⇄
+                      </button>
+                    </div>
+                  )}
+                  {pages.filter((page) => page.publicId !== activeId).map((page) => (
                     <div
                       key={page.publicId}
                       className="flex items-center rounded-xl bg-white dark:bg-night-raised"
@@ -208,7 +257,6 @@ export function UserSidebar({
                       </button>
                     </div>
                   ))}
-
                 </div>
               )}
             </div>

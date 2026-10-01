@@ -7,10 +7,11 @@ import {
   updatePeerPreferences,
   type PeerPreferences,
 } from "@/app/api/contacts";
+import { getMarketPost } from "@/app/api/market";
 import { getSocialProfile, toggleSocialCamp } from "@/app/api/social";
-import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { UserHeaderPortal } from "@/components/navigation/header-portal";
-import { Mic, Send, Square, Trash2, UserRound } from "lucide-react";
+import { useConfirmModal } from "@/context/ConfirmModalContext";
+import { Mic, Send, Trash2, UserRound } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -472,10 +473,24 @@ export default function PrivateChatPage() {
   const requestedConversationId =
     searchParams.get("conversationId") ?? undefined;
   const chat = usePrivateChat(requestedConversationId);
-  const activeIsMarket =
-    chat.conversations.find(
-      (item) => item.conversationId === chat.activeConversation?.conversationId,
-    )?.kind === "market";
+  const activeSummary = chat.conversations.find(
+    (item) => item.conversationId === chat.activeConversation?.conversationId,
+  );
+  const activeIsMarket = activeSummary?.kind === "market";
+  const activeMarketPostId = activeIsMarket ? activeSummary.marketPostId : undefined;
+  const [marketCallPermissions, setMarketCallPermissions] = useState<{
+    postId: string;
+    allowCalls: boolean;
+    allowVideoCalls: boolean;
+  } | null>(null);
+  const canCallMarket = activeSummary?.kind === "private" ||
+    (activeIsMarket && !!activeMarketPostId &&
+      marketCallPermissions?.postId === activeMarketPostId &&
+      marketCallPermissions?.allowCalls === true);
+  const canVideoCallMarket = activeSummary?.kind === "private" ||
+    (activeIsMarket && !!activeMarketPostId &&
+      marketCallPermissions?.postId === activeMarketPostId &&
+      marketCallPermissions?.allowVideoCalls === true);
   const [blurMessages, setBlurMessages] = useState(false);
   const [isWindowBlurred, setIsWindowBlurred] = useState(false);
   const [fontSize, setFontSize] = useState(14);
@@ -548,6 +563,23 @@ export default function PrivateChatPage() {
   }, []);
 
   const peerPublicId = chat.activeConversation?.participantPublicId;
+  useEffect(() => {
+    let active = true;
+    setMarketCallPermissions(null);
+    if (activeMarketPostId) {
+      void getMarketPost(activeMarketPostId)
+        .then((post) => {
+          if (active) setMarketCallPermissions({
+            postId: activeMarketPostId,
+            allowCalls: post.allowCalls === true,
+            allowVideoCalls: post.allowVideoCalls === true,
+          });
+        })
+        .catch(() => undefined);
+    }
+    return () => { active = false; };
+  }, [activeMarketPostId]);
+
   useEffect(() => {
     let active = true;
     setPeerPreferences(null);
@@ -857,7 +889,7 @@ export default function PrivateChatPage() {
             </div>
             {!participantDeleted ? (
               <div className="flex shrink-0 items-center gap-1">
-                <button
+                {canCallMarket && <button
                   data-admin-part="whisper.call"
                   aria-label="Call"
                   className="flex h-9 w-9 items-center justify-center rounded-full text-base hover:bg-black/5"
@@ -871,8 +903,8 @@ export default function PrivateChatPage() {
                   type="button"
                 >
                   📞
-                </button>
-                <button
+                </button>}
+                {canVideoCallMarket && <button
                   data-admin-part="whisper.call"
                   aria-label="Video call"
                   className="flex h-9 w-9 items-center justify-center rounded-full text-base hover:bg-black/5"
@@ -886,7 +918,7 @@ export default function PrivateChatPage() {
                   type="button"
                 >
                   🎥
-                </button>
+                </button>}
               </div>
             ) : null}
             {!participantDeleted ? (
@@ -1309,12 +1341,13 @@ export default function PrivateChatPage() {
                 )}
                 {voiceRecorder.isRecording ? (
                   <button
-                    aria-label="Stop recording"
-                    className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-[#C62828] text-white shadow-md"
-                    onClick={() => void voiceRecorder.stop()}
+                    aria-label="Send voice message"
+                    className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-[#111] text-white shadow-md disabled:opacity-50"
+                    disabled={chat.isSending}
+                    onClick={() => void sendVoiceMessage()}
                     type="button"
                   >
-                    <Square fill="currentColor" size={15} />
+                    <Send size={18} />
                   </button>
                 ) : voiceRecorder.recording ? (
                   <button

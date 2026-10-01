@@ -161,7 +161,16 @@ export class FirestoreMarketStore implements MarketStore {
       this.camps(viewerId).doc(post.ownerPublicId).get(),
       this.author(post.ownerPublicId),
     ]);
-    return { ...post, id, author, likedByViewer: liked.exists, campedByViewer: camped.exists, ownedByViewer: post.ownerPublicId === viewerId };
+    return {
+      ...post,
+      allowCalls: post.allowCalls === true,
+      allowVideoCalls: post.allowVideoCalls === true,
+      id,
+      author,
+      likedByViewer: liked.exists,
+      campedByViewer: camped.exists,
+      ownedByViewer: post.ownerPublicId === viewerId,
+    };
   }
 
   private async toComment(viewerId: string, postId: string, id: string, comment: StoredComment): Promise<MarketComment> {

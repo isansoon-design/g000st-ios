@@ -349,7 +349,7 @@ export default function MarketPage() {
                     {post.campedByViewer ? <><UserCheck size={28} /> Following</> : "+ Follow"}
                   </button>
                 )}
-                {!post.ownedByViewer && (post.allowCalls ?? true) && (
+                {!post.ownedByViewer && post.allowCalls === true && (
                   <button
                     aria-label="Call seller"
                     onClick={() => void callUser(post.ownerPublicId, "audio")}
@@ -358,7 +358,7 @@ export default function MarketPage() {
                     <Phone size={19} />
                   </button>
                 )}
-                {!post.ownedByViewer && post.allowVideoCalls && (
+                {!post.ownedByViewer && post.allowVideoCalls === true && (
                   <button
                     aria-label="Video call seller"
                     onClick={() => void callUser(post.ownerPublicId, "video")}
@@ -553,8 +553,8 @@ function EditModal({
         currency: post.currency,
         quantity: post.quantity,
         city: post.city,
-        allowCalls: post.allowCalls ?? true,
-        allowVideoCalls: post.allowVideoCalls ?? false,
+        allowCalls: post.allowCalls === true,
+        allowVideoCalls: post.allowVideoCalls === true,
       });
   }, [post]);
   if (!post) return null;
