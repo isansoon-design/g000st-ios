@@ -35,8 +35,8 @@ import {
 } from "@/api/market";
 import { toggleSocialCamp } from "@/api/social";
 import { FeatureScreen } from "@/components/layout/feature-screen";
-import { useTabBarScroll } from "@/components/navigation/tab-bar-scroll";
 import { PostImage } from "@/components/media/post-image";
+import { useTabBarScroll } from "@/components/navigation/tab-bar-scroll";
 import { PostContentText } from "@/components/posts/post-content-text";
 import type {
   MarketPost,
@@ -247,7 +247,8 @@ export function MarketScreen() {
                   <Text className="text-2xl font-light text-white">＋</Text>
                 </View>
                 <View className="min-w-0 flex-1">
-                  <Text className="text-[15px] font-black text-[#17191D] dark:text-night-text">Create a Market post</Text>
+                  <Text className="text-[15px] font-black text-[#17191D] dark:text-night-text">List item
+                  </Text>
                   <Text className="mt-0.5 text-xs text-black/50 dark:text-night-muted">Sell something to the community</Text>
                 </View>
                 <Text className="text-xl font-bold text-[#C62828]">›</Text>

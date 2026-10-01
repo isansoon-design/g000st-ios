@@ -485,8 +485,8 @@ export function PostDetailScreen({
                       >
                         {post.campedByViewer ? (
                           <View className="flex-row items-center gap-1">
-                            <Text className="text-[26px] font-black leading-[28px] text-g000st-red">✓</Text>
-                            <Text className="font-black text-g000st-black dark:text-night-text">Following</Text>
+                            <Text className="text-[32px] font-black leading-[28px] text-g000st-red">✓</Text>
+                            {/* <Text className="font-black text-g000st-black dark:text-night-text">Following</Text> */}
                           </View>
                         ) : (
                           <Text className="font-black text-g000st-black dark:text-night-text">+ Follow</Text>

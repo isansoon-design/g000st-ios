@@ -2,8 +2,8 @@
 
 import {
   Bell,
-  Loader2,
   Heart,
+  Loader2,
   MessageCircle,
   Share2,
   UserCheck,
@@ -577,7 +577,7 @@ export default function SocialPage() {
                       className={`flex flex-1 items-center justify-center rounded-xl py-3 font-black ${post.campedByViewer ? "text-[#c62828]" : ""}`}
                     >
                       {post.campedByViewer ? (
-                        <UserCheck size={28} />
+                        <UserCheck size={22} />
                       ) : (
                         <UserPlus size={18} />
                       )}

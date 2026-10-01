@@ -327,7 +327,7 @@ function IdentityScreenContentComponent({
             </Text>
           </Pressable>
           <Text className="mt-2 text-[11px] font-semibold leading-[16px] text-black/45 dark:text-night-muted">
-            Safe to share. People use it to find and message you.
+            Share your ID and start chatting.
           </Text>
         </View>
 
@@ -370,11 +370,10 @@ function IdentityScreenContentComponent({
                 {(["male", "female"] as const).map((option) => (
                   <Pressable
                     accessibilityRole="button"
-                    className={`h-11 flex-1 items-center justify-center rounded-field border ${
-                      fields.sex === option
-                        ? "border-g000st-black dark:border-night-border bg-g000st-black"
-                        : "border-black/15 dark:border-night-border bg-white dark:bg-night-surface"
-                    }`}
+                    className={`h-11 flex-1 items-center justify-center rounded-field border ${fields.sex === option
+                      ? "border-g000st-black dark:border-night-border bg-g000st-black"
+                      : "border-black/15 dark:border-night-border bg-white dark:bg-night-surface"
+                      }`}
                     key={option}
                     onPress={() =>
                       onSetField("sex", fields.sex === option ? "" : option)

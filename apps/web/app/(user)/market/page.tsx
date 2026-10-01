@@ -213,7 +213,8 @@ export default function MarketPage() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[15px] font-black text-[#17191d] dark:text-night-text">
-                Create a Market post
+                List item
+
               </span>
               <span className="mt-0.5 block text-xs text-black/50 dark:text-night-muted">
                 Sell something to the community
@@ -406,7 +407,7 @@ export default function MarketPage() {
                   >
                     {post.campedByViewer ? (
                       <>
-                        <UserCheck size={28} /> Following
+                        <UserCheck size={34} />
                       </>
                     ) : (
                       "+ Follow"
