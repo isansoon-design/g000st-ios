@@ -1,6 +1,8 @@
 import axios from './axios';
+import { resolvePostAuthors } from '@/lib/post-authors';
+import { getSocialProfile } from './social';
 
-export type MarketAuthor = { publicId: string; displayName: string; avatarUrl?: string };
+export type MarketAuthor = { publicId: string; displayName: string; avatarUrl?: string; isPage?: boolean };
 export type MarketMedia = { id: string; kind: 'image' | 'video'; url: string; fileName: string; contentType: string; byteSize: number };
 export type MarketPost = { id: string; ownerPublicId: string; author: MarketAuthor; content: string; price: number; currency: string; quantity: number; city: string; allowCalls?: boolean; allowVideoCalls?: boolean; media?: MarketMedia[]; createdAtMs: number; updatedAtMs: number; editedAtMs?: number; likeCount: number; commentCount: number; likedByViewer: boolean; campedByViewer: boolean; ownedByViewer: boolean };
 export type MarketComment = { id: string; postId: string; ownerPublicId: string; author: MarketAuthor; content: string; createdAtMs: number; ownedByViewer: boolean };
@@ -8,10 +10,10 @@ export type MarketPage<T> = { items: T[]; nextCursor?: string };
 export type MarketPostFields = Pick<MarketPost, 'content' | 'price' | 'currency' | 'quantity' | 'city'> & { allowCalls: boolean; allowVideoCalls: boolean };
 export type PendingMarketMedia = { byteSize: number; contentType: string; fileName: string; id: string; objectKey: string };
 
-export async function listMarketPosts(cursor?: string, ownerId?: string) { const { data } = await axios.get<MarketPage<MarketPost>>('/market/posts', { params: { cursor, ownerId, limit: 10 } }); return data; }
-export async function getMarketPost(postId: string) { const { data } = await axios.get<{ post: MarketPost }>(`/market/posts/${postId}`); return data.post; }
-export async function createMarketPost(clientPostId: string, fields: MarketPostFields, media?: PendingMarketMedia[]) { const { data } = await axios.post<{ post: MarketPost }>('/market/posts', { clientPostId, ...fields, ...(media?.length ? { media } : {}) }); return data.post; }
-export async function updateMarketPost(postId: string, fields: MarketPostFields) { const { data } = await axios.patch<{ post: MarketPost }>(`/market/posts/${postId}`, fields); return data.post; }
+export async function listMarketPosts(cursor?: string, ownerId?: string) { const { data } = await axios.get<MarketPage<MarketPost>>('/market/posts', { params: { cursor, ownerId, limit: 10 } }); return { ...data, items: await resolvePostAuthors(data.items, getSocialProfile) }; }
+export async function getMarketPost(postId: string) { const { data } = await axios.get<{ post: MarketPost }>(`/market/posts/${postId}`); return (await resolvePostAuthors([data.post], getSocialProfile))[0]; }
+export async function createMarketPost(clientPostId: string, fields: MarketPostFields, media?: PendingMarketMedia[]) { const { data } = await axios.post<{ post: MarketPost }>('/market/posts', { clientPostId, ...fields, ...(media?.length ? { media } : {}) }); return (await resolvePostAuthors([data.post], getSocialProfile))[0]; }
+export async function updateMarketPost(postId: string, fields: MarketPostFields) { const { data } = await axios.patch<{ post: MarketPost }>(`/market/posts/${postId}`, fields); return (await resolvePostAuthors([data.post], getSocialProfile))[0]; }
 export async function deleteMarketPost(postId: string) { await axios.delete(`/market/posts/${postId}`); }
 export async function reportMarketPost(postId: string) { await axios.post('/market/reports', { postId, reason: 'other' }); }
 export async function toggleMarketLike(postId: string) { const { data } = await axios.post<{ liked: boolean; likeCount: number }>(`/market/posts/${postId}/like`); return data; }

@@ -1,3 +1,4 @@
+import { contentVisibility } from '../social/content-visibility.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { FieldPath, type DocumentData, type DocumentReference, type Firestore } from 'firebase-admin/firestore';
 import { NotificationCenter } from './notification-center.js';
@@ -120,6 +121,7 @@ export class NotificationWorker {
   }
 
   private async eligible(publicId: string, event: NotificationEvent): Promise<boolean> {
+    if (!await contentVisibility(this.db, this.prefix).notification(event)) return false;
     const user = (await this.collection('users').doc(publicId).get()).data();
     if (!user || (user.status !== 'active' && !(user.status === 'suspended' && event.type === 'account.status_changed'))) return false;
     if (event.scope === 'admin' && (user.role !== 'admin' || user.ownerPublicId)) return false;

@@ -1,3 +1,4 @@
+import { contentVisibility, visibleDocuments } from '../social/content-visibility.js';
 import { FieldPath, type Firestore, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 import { encodeCallingCursor, type CallingCursor } from './calling-cursor.js';
@@ -86,14 +87,18 @@ export class FirestoreCallingStore implements CallingStore {
       .orderBy(FieldPath.documentId(), 'desc');
     if (cursor) query = query.startAfter(cursor.createdAtMs, cursor.id);
 
-    const snapshot = await query.limit(limit + 1).get();
-    const documents = snapshot.docs.slice(0, limit);
+    const visibility = contentVisibility(this.db, this.prefix);
+    const visible = await visibleDocuments(query, limit, async (document) => {
+      const data = document.data() as StoredCall;
+      return await visibility.account(data.callerPublicId) && await visibility.account(data.calleePublicId);
+    });
+    const documents = visible.slice(0, limit);
     const items = documents.map((document) => this.toEntry(document));
     const last = documents.at(-1);
 
     return {
       items,
-      ...(snapshot.size > limit && last
+      ...(visible.length > limit && last
         ? { nextCursor: encodeCallingCursor({ createdAtMs: (last.data() as StoredCall).startedAtMs, id: last.id }) }
         : {}),
     };

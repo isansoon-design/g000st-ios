@@ -588,7 +588,7 @@ export default function PublicUserPage() {
                 {social.map((post) => (
                   <article
                     key={post.id}
-                    className="overflow-hidden rounded-3xl border border-white bg-white dark:bg-night-surface shadow-[0_10px_35px_rgba(20,24,34,.06)]"
+                    className={`overflow-hidden rounded-3xl border border-white bg-white dark:bg-night-surface ${post.author.isPage ? "shadow-[0_10px_35px_rgba(198,40,40,.06)]" : "shadow-[0_10px_35px_rgba(20,24,34,.06)]"}`}
                   >
                     <div className="flex items-center gap-3 p-4">
                       <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-full bg-[#202530] text-white">

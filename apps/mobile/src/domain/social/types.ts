@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const socialVisibilitySchema = z.enum(['anonymous', 'public']);
-const authorSchema = z.object({ publicId: z.string().optional(), displayName: z.string(), avatarUrl: z.url().optional() });
+const authorSchema = z.object({ publicId: z.string().optional(), displayName: z.string(), avatarUrl: z.url().optional(), isPage: z.boolean().optional() });
 const socialMediaSchema = z.object({ byteSize: z.number().int().positive(), contentType: z.string(), fileName: z.string(), id: z.uuid(), kind: z.enum(['image', 'video']), url: z.url() });
 const sharedPostSchema = z.object({ id: z.uuid(), author: authorSchema, content: z.string(), media: z.array(socialMediaSchema).max(2).optional(), createdAtMs: z.number() });
 export const socialPostSchema = z.object({ id: z.uuid(), ownerPublicId: z.string().optional(), author: authorSchema, content: z.string(), sharedPostId: z.uuid().optional(), sharedPost: sharedPostSchema.optional(), media: z.array(socialMediaSchema).max(2).optional(), visibility: socialVisibilitySchema, sharedToSocial: z.boolean().default(true), createdAtMs: z.number(), updatedAtMs: z.number(), editedAtMs: z.number().optional(), likeCount: z.number().int(), commentCount: z.number().int(), likedByViewer: z.boolean(), campedByViewer: z.boolean(), ownedByViewer: z.boolean() });

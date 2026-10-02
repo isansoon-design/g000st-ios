@@ -1,3 +1,4 @@
+import { contentVisibility } from '../social/content-visibility.js';
 import { queueNotification } from '../notifications/notification-events.js';
 import { createHash } from 'node:crypto';
 
@@ -85,7 +86,10 @@ export class FirestoreChatStore implements ChatStore {
 
   async findConversation(conversationId: string): Promise<ChatConversation | null> {
     const snapshot = await this.conversations().doc(conversationId).get();
-    return snapshot.exists ? this.toConversation(snapshot.id, snapshot.data()) : null;
+    if (!snapshot.exists) return null;
+    const conversation = this.toConversation(snapshot.id, snapshot.data());
+    const visibility = contentVisibility(this.db, this.collectionPrefix);
+    return (await Promise.all(conversation.participants.map((id) => visibility.account(id)))).every(Boolean) ? conversation : null;
   }
 
   async findConversationMember(
@@ -93,7 +97,7 @@ export class FirestoreChatStore implements ChatStore {
     conversationId: string,
   ): Promise<ChatConversationMemberSummary | null> {
     const snapshot = await this.memberConversation(publicId, conversationId).get();
-    return snapshot.exists
+    return snapshot.exists && await contentVisibility(this.db, this.collectionPrefix).account(snapshot.data()!.participantPublicId)
       ? {
           ...(snapshot.data() as StoredConversationSummary),
           conversationId,
@@ -122,6 +126,7 @@ export class FirestoreChatStore implements ChatStore {
   }
 
   async findMessage(conversationId: string, messageId: string): Promise<ChatMessage | null> {
+    if (!await this.findConversation(conversationId)) return null;
     const snapshot = await this.messages(conversationId).doc(messageId).get();
     return snapshot.exists ? this.toMessage(snapshot.id, snapshot.data()) : null;
   }
@@ -132,6 +137,7 @@ export class FirestoreChatStore implements ChatStore {
     nowMs: number,
   ): Promise<readonly ChatConversationMemberSummary[]> {
     const visible: ChatConversationMemberSummary[] = [];
+    const visibility = contentVisibility(this.db, this.collectionPrefix);
     let cursor: FirebaseFirestore.QueryDocumentSnapshot | undefined;
     while (visible.length < limit) {
       let query = this.memberConversations(publicId).orderBy('updatedAtMs', 'desc');
@@ -139,7 +145,7 @@ export class FirestoreChatStore implements ChatStore {
       const snapshot = await query.limit(Math.max(limit, 50)).get();
       for (const document of snapshot.docs) {
         const { hiddenAtMs, ...summary } = document.data() as StoredConversationSummary;
-        if (hiddenAtMs !== undefined) continue;
+        if (hiddenAtMs !== undefined || !await visibility.account(summary.participantPublicId)) continue;
         visible.push({
           ...summary,
           conversationId: document.id,
@@ -160,6 +166,7 @@ export class FirestoreChatStore implements ChatStore {
     cursor?: ChatMessageCursor,
     visibleAfterMs?: number,
   ): Promise<ChatMessagePage> {
+    if (!await this.findConversation(conversationId)) return { messages: [] };
     const visible: ChatMessage[] = [];
     const batchSize = Math.min(Math.max(limit * 2, 50), 200);
     let scanCursor = cursor;

@@ -137,6 +137,7 @@ test('deleted content suppresses delayed push; a read item suppresses a pending 
 test('anonymous comment alerts hide actor identity, including legacy records', async () => {
   const db = new MemoryDb();
   db.data.set(`test_social_alerts/${recipient}/items/alert`, { actorPublicId: actor, kind: 'comment', postId: 'post', commentId: 'comment', createdAtMs: now });
+  db.data.set('test_social_posts/post', { ownerPublicId: recipient, visibility: 'public' });
   db.data.set('test_social_posts/post/comments/comment', { visibility: 'anonymous' });
   db.data.set(`test_social_profiles/${actor}`, { displayName: 'Secret name', showDisplayName: true });
   const store = new FirestoreSocialStore(db.firestore(), 'test');
@@ -187,4 +188,19 @@ test('suspended accounts receive their suspension notice but no social activity 
   enqueue(db, 'status', event({ type: 'account.status_changed', category: 'administration' }));
   await worker.sweep();
   assert.equal(sent.length, 1); assert.equal(sent[0]!.message.data.type, 'account.status_changed');
+});
+
+test('deleting an actor suppresses queued pushes and hides existing inbox items', async () => {
+  const { db, sent, worker } = setup();
+  enqueue(db, 'deleted-actor', event({ pushAfterMs: now + 1000 }));
+  await worker.sweep();
+  db.data.set(`test_users/${actor}`, { status: 'deleted' });
+  const laterWorker = new NotificationWorker(db.firestore(), 'test', {
+    sendTo: async (id: string, message: PushMessage) => { sent.push({ id, message }); },
+  } as unknown as NotificationService, () => now + 2000);
+  await laterWorker.sweep();
+  assert.equal(sent.length, 0);
+  const inbox = await new NotificationCenter(db.firestore(), 'test').list(recipient, 'user', 20);
+  assert.equal(inbox.items.length, 0);
+  assert.equal(inbox.unreadCount, 0);
 });

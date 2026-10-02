@@ -2,6 +2,7 @@ import { File, UploadType } from "expo-file-system";
 import { z } from "zod";
 
 import axiosInstance from "@/api/axios";
+import { resolvePostAuthors } from "@/api/post-authors";
 import { parseApiPayload } from "@/api/parse-api-payload";
 import {
     socialAlertPageSchema,
@@ -21,11 +22,12 @@ export async function listSocialPosts(ownerId?: string, cursor?: string, publicO
   const response = await axiosInstance.get("/social/posts", {
     params: { cursor, limit: 10, ownerId, ...(publicOnly ? { publicOnly: 'true' } : {}) },
   });
-  return parseApiPayload(socialPostPageSchema, response.data);
+  const page = parseApiPayload(socialPostPageSchema, response.data);
+  return { ...page, items: await resolvePostAuthors(page.items, getSocialProfile) };
 }
 export async function getSocialPost(postId: string) {
   const response = await axiosInstance.get(`/social/posts/${postId}`);
-  return parseApiPayload(socialPostResultSchema, response.data).post;
+  return (await resolvePostAuthors([parseApiPayload(socialPostResultSchema, response.data).post], getSocialProfile))[0];
 }
 const pendingSocialMediaSchema = z.object({
   byteSize: z.number().int().positive(),
@@ -59,13 +61,13 @@ export async function createSocialPost(
     ...(media?.length ? { media } : {}),
     ...(sharedPostId ? { sharedPostId } : {}),
   }, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined });
-  return parseApiPayload(socialPostResultSchema, response.data).post;
+  return (await resolvePostAuthors([parseApiPayload(socialPostResultSchema, response.data).post], getSocialProfile))[0];
 }
 export async function shareSocialPostToSocial(postId: string, actingPublicId?: string) {
   const response = await axiosInstance.post(`/social/posts/${postId}/share-to-social`, undefined, {
     headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined,
   });
-  return parseApiPayload(socialPostResultSchema, response.data).post;
+  return (await resolvePostAuthors([parseApiPayload(socialPostResultSchema, response.data).post], getSocialProfile))[0];
 }
 export async function uploadSocialMedia(
   input: Readonly<{
@@ -100,7 +102,7 @@ export async function updateSocialPost(postId: string, content: string) {
   const response = await axiosInstance.patch(`/social/posts/${postId}`, {
     content,
   });
-  return parseApiPayload(socialPostResultSchema, response.data).post;
+  return (await resolvePostAuthors([parseApiPayload(socialPostResultSchema, response.data).post], getSocialProfile))[0];
 }
 export async function toggleSocialLike(postId: string) {
   const response = await axiosInstance.post(`/social/posts/${postId}/like`);

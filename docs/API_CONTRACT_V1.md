@@ -125,6 +125,11 @@ Expected codes include `INVALID_RECOVERY_ID`, `PUBLIC_ID_UNAVAILABLE`, `RATE_LIM
 All Social routes require `Authorization: Bearer <accessToken>` and are rooted at
 `/api/v1/social`. The server, not the client, enforces ownership and anonymous-author privacy.
 
+Social and Market author objects include optional `isPage: boolean` to distinguish page publishers
+from users. For older API responses that omit this field, clients resolve `isPage` through
+`GET /social/profiles/:publicId` using only the visible author ID. Explicit booleans require no
+profile lookup. Anonymous authors omit this field and are never looked up through a private owner ID.
+
 - `GET /posts?limit=20&cursor=...&ownerId=...`: cursor-paginated feed or one user's posts.
 - `POST /posts`: creates a post from `{ clientPostId, content, visibility, media?, sharedPostId? }`.
 - `GET|PATCH|DELETE /posts/:postId`: reads or changes a post; mutation requires ownership.

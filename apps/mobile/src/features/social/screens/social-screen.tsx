@@ -925,7 +925,7 @@ function PostCard({
   const router = useRouter();
   const { confirm } = useConfirmModal();
   return (
-    <View className="overflow-hidden rounded-2xl border-2 border-black dark:border-night-border bg-white dark:bg-night-surface shadow-sm">
+    <View className="overflow-hidden rounded-2xl border-2 border-black dark:border-night-border bg-white dark:bg-night-surface shadow-sm" style={{ shadowColor: post.author.isPage ? "#c62828" : "#000000" }}>
       <View className="flex-row items-center gap-3 p-4">
         <View className="h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-black">
           {post.author.avatarUrl ? (

@@ -1,3 +1,4 @@
+import { contentVisibility } from '../social/content-visibility.js';
 import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 
 import type { ContactsStore } from './contacts-store.js';
@@ -15,7 +16,9 @@ export class FirestoreContactsStore implements ContactsStore {
 
   async listContacts(ownerPublicId: string): Promise<readonly Contact[]> {
     const snapshot = await this.contacts(ownerPublicId).get();
-    return snapshot.docs.map((document) => ({
+    const visibility = contentVisibility(this.db, this.prefix);
+    const allowed = await Promise.all(snapshot.docs.map((document) => visibility.account(document.id)));
+    return snapshot.docs.filter((_, index) => allowed[index]).map((document) => ({
       addedAtMs: (document.data().addedAtMs as number | undefined) ?? 0,
       contactPublicId: document.id,
       ...(document.data().nickname ? { nickname: document.data().nickname as string } : {}),

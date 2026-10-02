@@ -1,7 +1,8 @@
+import { contentVisibility, visibleDocuments } from '../social/content-visibility.js';
 import { queueNotification } from '../notifications/notification-events.js';
 import { randomUUID } from 'node:crypto';
 
-import { FieldPath, FieldValue, type DocumentData, type Firestore, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
+import { FieldPath, FieldValue, type DocumentData, type Firestore } from 'firebase-admin/firestore';
 
 import type { MediaService } from '../media/media-service.js';
 import { encodeSocialCursor, type SocialCursor } from '../social/social-cursor.js';
@@ -23,20 +24,8 @@ export class FirestoreMarketStore implements MarketStore {
     let documents;
     let hasMore: boolean;
     try {
-      const visible: QueryDocumentSnapshot<DocumentData>[] = [];
-      const batchSize = Math.max(limit + 1, 30);
-      let scan = query;
-      while (visible.length <= limit) {
-        const snapshot = await scan.limit(batchSize).get();
-        for (const document of snapshot.docs) {
-          if (document.data().hidden !== true && !document.data().deletedAtMs) visible.push(document);
-          if (visible.length > limit) break;
-        }
-        if (visible.length > limit || snapshot.empty || snapshot.size < batchSize) break;
-        const last = snapshot.docs.at(-1);
-        if (!last) break;
-        scan = scan.startAfter(last);
-      }
+      const visibility = contentVisibility(this.db, this.prefix);
+      const visible = await visibleDocuments(query, limit, (document) => visibility.content(document.data()));
       documents = visible.slice(0, limit);
       hasMore = visible.length > limit;
     } catch (error) {
@@ -46,7 +35,9 @@ export class FirestoreMarketStore implements MarketStore {
       // the same deterministic cursor locally. Firestore resumes the indexed path above
       // automatically as soon as the index is ready.
       const snapshot = await this.posts().where('ownerPublicId', '==', ownerId).get();
-      const ordered = [...snapshot.docs]
+      const visibility = contentVisibility(this.db, this.prefix);
+      const allowed = await Promise.all(snapshot.docs.map((document) => visibility.content(document.data())));
+      const ordered = snapshot.docs.filter((_, index) => allowed[index])
         .sort((left, right) => comparePostDocuments(right, left))
         .filter((document) => document.data().hidden !== true && !document.data().deletedAtMs)
         .filter((document) => !cursor || isAfterCursor(document.id, document.data() as StoredPost, cursor));
@@ -60,7 +51,7 @@ export class FirestoreMarketStore implements MarketStore {
 
   async findPost(viewerId: string, postId: string) {
     const snapshot = await this.posts().doc(postId).get();
-    return snapshot.exists && snapshot.data()?.hidden !== true && !snapshot.data()?.deletedAtMs
+    return snapshot.exists && await contentVisibility(this.db, this.prefix).content(snapshot.data())
       ? this.toPost(viewerId, snapshot.id, snapshot.data() as StoredPost) : null;
   }
 
@@ -109,6 +100,7 @@ export class FirestoreMarketStore implements MarketStore {
   }
 
   async toggleLike(viewerId: string, postId: string, nowMs: number) {
+    if (!await this.findPost(viewerId, postId)) return null;
     const postRef = this.posts().doc(postId);
     const reactionRef = this.reactions(postId).doc(viewerId);
     return this.db.runTransaction(async (transaction) => {
@@ -128,17 +120,19 @@ export class FirestoreMarketStore implements MarketStore {
   }
 
   async listComments(viewerId: string, postId: string, limit: number, cursor?: SocialCursor) {
-    if (!(await this.posts().doc(postId).get()).exists) return null;
+    if (!await this.findPost(viewerId, postId)) return null;
     let query = this.comments(postId).orderBy('createdAtMs', 'asc').orderBy(FieldPath.documentId(), 'asc');
     if (cursor) query = query.startAfter(cursor.createdAtMs, cursor.id);
-    const snapshot = await query.limit(limit + 1).get();
-    const documents = snapshot.docs.slice(0, limit);
+    const visibility = contentVisibility(this.db, this.prefix);
+    const visible = await visibleDocuments(query, limit, (document) => visibility.content(document.data()));
+    const documents = visible.slice(0, limit);
     const items = await Promise.all(documents.map((document) => this.toComment(viewerId, postId, document.id, document.data() as StoredComment)));
     const last = documents.at(-1);
-    return { items, ...(snapshot.size > limit && last ? { nextCursor: encodeSocialCursor({ createdAtMs: (last.data() as StoredComment).createdAtMs, id: last.id }) } : {}) };
+    return { items, ...(visible.length > limit && last ? { nextCursor: encodeSocialCursor({ createdAtMs: (last.data() as StoredComment).createdAtMs, id: last.id }) } : {}) };
   }
 
   async createComment(viewerId: string, postId: string, content: string, nowMs: number) {
+    if (!await this.findPost(viewerId, postId)) return null;
     const postRef = this.posts().doc(postId);
     const id = randomUUID();
     const comment: StoredComment = { ownerPublicId: viewerId, content, createdAtMs: nowMs };
@@ -189,7 +183,10 @@ export class FirestoreMarketStore implements MarketStore {
   }
 
   private async author(publicId: string): Promise<SocialAuthor> {
-    const profile = await this.profiles().doc(publicId).get();
+    const [profile, account] = await Promise.all([
+      this.profiles().doc(publicId).get(),
+      this.collection('users').doc(publicId).get(),
+    ]);
     const data = profile.data();
     const deletedAtMs = data?.deletedAtMs as number | undefined;
     const avatarObjectKey = data?.avatarObjectKey as string | undefined;
@@ -197,7 +194,7 @@ export class FirestoreMarketStore implements MarketStore {
     if (deletedAtMs === undefined && avatarObjectKey && this.mediaService) {
       avatarUrl = (await this.mediaService.getDownloadUrl({ byteSize: 0, contentType: 'image/*', fileName: 'avatar', id: 'avatar', kind: 'image', objectKey: avatarObjectKey }, 30 * 60)).downloadUrl;
     }
-    return { publicId, displayName: publicDisplayName(publicId, { deletedAtMs, displayName: data?.displayName as string | undefined, showDisplayName: data?.showDisplayName === true }), ...(avatarUrl ? { avatarUrl } : {}) };
+    return { publicId, isPage: typeof account.data()?.ownerPublicId === 'string', displayName: publicDisplayName(publicId, { deletedAtMs, displayName: data?.displayName as string | undefined, showDisplayName: data?.showDisplayName === true }), ...(avatarUrl ? { avatarUrl } : {}) };
   }
 
   private collection(name: string) { return this.db.collection(`${this.prefix}_${name}`); }

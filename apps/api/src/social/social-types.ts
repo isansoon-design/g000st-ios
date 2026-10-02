@@ -54,6 +54,7 @@ export type PendingAvatarMedia = Readonly<{
 
 export type SocialAuthor = Readonly<{
   publicId?: string;
+  isPage?: boolean;
   displayName: string;
   avatarUrl?: string;
 }>;

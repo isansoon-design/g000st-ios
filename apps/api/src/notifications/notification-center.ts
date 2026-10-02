@@ -1,3 +1,4 @@
+import { contentVisibility, visibleDocuments } from '../social/content-visibility.js';
 import { FieldPath, type Firestore } from 'firebase-admin/firestore';
 import { ApiError } from '../http/api-error.js';
 import type { InboxNotification, NotificationPreferences, NotificationScope } from './notification-types.js';
@@ -21,11 +22,13 @@ export class NotificationCenter {
       } catch { throw new ApiError(400, 'INVALID_CURSOR', 'Invalid notification cursor.'); }
       query = query.startAfter(parsed.time, parsed.id);
     }
-    const [snapshot, unread] = await Promise.all([
-      query.limit(limit + 1).get(),
-      this.inbox(publicId, scope).where('readAtMs', '==', null).count().get(),
+    const visibility = contentVisibility(this.db, this.prefix);
+    const [visible, unread] = await Promise.all([
+      visibleDocuments(query, limit, (doc) => visibility.notification(doc.data())),
+      this.inbox(publicId, scope).where('readAtMs', '==', null).get(),
     ]);
-    const docs = snapshot.docs.slice(0, limit);
+    const unreadVisibility = await Promise.all(unread.docs.map((doc) => visibility.notification(doc.data())));
+    const docs = visible.slice(0, limit);
     const last = docs.at(-1);
     // Do not expose internal audience, actor identifiers, source paths or delivery metadata.
     const items = docs.map((doc) => {
@@ -33,8 +36,8 @@ export class NotificationCenter {
       return { id: doc.id, type: data.type, category: data.category, title: data.title, body: data.body,
         path: data.path, createdAtMs: data.createdAtMs, expiresAtMs: data.expiresAtMs, readAtMs: data.readAtMs };
     });
-    return { version: 1 as const, items, unreadCount: unread.data().count,
-      ...(snapshot.size > limit && last ? { nextCursor: Buffer.from(JSON.stringify({ time: last.data().createdAtMs, id: last.id })).toString('base64url') } : {}) };
+    return { version: 1 as const, items, unreadCount: unreadVisibility.filter(Boolean).length,
+      ...(visible.length > limit && last ? { nextCursor: Buffer.from(JSON.stringify({ time: last.data().createdAtMs, id: last.id })).toString('base64url') } : {}) };
   }
 
   async markRead(publicId: string, scope: NotificationScope, ids: readonly string[], nowMs: number) {

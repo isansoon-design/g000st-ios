@@ -236,7 +236,7 @@ export default function MarketPage() {
             <article
               data-admin-part="trading.list"
               key={post.id}
-              className="overflow-hidden rounded-2xl border-2 border-black dark:border-night-border bg-white dark:bg-night-surface shadow-[5px_6px_0_#111]"
+              className={`overflow-hidden rounded-2xl border-2 border-black dark:border-night-border bg-white dark:bg-night-surface ${post.author.isPage ? "shadow-[5px_6px_0_#c62828]" : "shadow-[5px_6px_0_#111]"}`}
             >
               <div className="flex items-center gap-3 p-4">
                 <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-black text-white">
