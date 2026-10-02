@@ -21,7 +21,7 @@ export default function AdminLayout({
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-night-canvas">
       <PushBootstrap />
       {/* Header */}
-      <header className="bg-white dark:bg-night-surface border-b border-gray-200 dark:border-night-border px-2 sm:px-6 py-4 flex items-center justify-between gap-1">
+      <header className="relative z-[60] shrink-0 bg-white dark:bg-night-surface border-b border-gray-200 dark:border-night-border px-2 sm:px-6 py-4 flex items-center justify-between gap-1">
         <div className="flex shrink-0 items-center gap-1 sm:gap-4">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}

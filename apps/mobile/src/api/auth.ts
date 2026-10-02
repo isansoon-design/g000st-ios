@@ -29,6 +29,13 @@ export async function deleteAccount(): Promise<void> {
 const pageSchema = z.object({ publicId: z.string(), displayName: z.string(), bio: z.string() });
 export type BeaconPage = z.infer<typeof pageSchema>;
 
+const pageCreatedListeners = new Set<(page: BeaconPage) => void>();
+
+export function subscribeToBeaconPageCreated(listener: (page: BeaconPage) => void): () => void {
+  pageCreatedListeners.add(listener);
+  return () => { pageCreatedListeners.delete(listener); };
+}
+
 export async function listBeaconPages(): Promise<BeaconPage[]> {
   const response = await axiosInstance.get('/auth/pages');
   return parseApiPayload(z.object({ pages: z.array(pageSchema) }), response.data).pages;
@@ -36,5 +43,7 @@ export async function listBeaconPages(): Promise<BeaconPage[]> {
 
 export async function createBeaconPage(input: Readonly<{ displayName: string; bio?: string }>): Promise<BeaconPage> {
   const response = await axiosInstance.post('/auth/pages', input);
-  return parseApiPayload(z.object({ page: pageSchema }), response.data).page;
+  const page = parseApiPayload(z.object({ page: pageSchema }), response.data).page;
+  pageCreatedListeners.forEach((listener) => listener(page));
+  return page;
 }

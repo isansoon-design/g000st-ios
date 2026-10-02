@@ -46,7 +46,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
       <PresenceHeartbeat />
       <PushBootstrap />
       <div className="relative mx-auto flex h-full w-full max-w-[1720px] flex-col bg-[#e6e8eb] shadow-[0_0_60px_rgba(18,24,36,.18)] dark:bg-night-canvas">
-        <header className="flex h-14 shrink-0 items-center justify-between gap-1 border-b border-black/10 bg-white/90 px-2 backdrop-blur dark:border-white/10 dark:bg-night-header/95 sm:px-4 lg:h-16 lg:px-6">
+        <header className="relative z-[60] flex h-14 shrink-0 items-center justify-between gap-1 border-b border-black/10 bg-white/90 px-2 backdrop-blur dark:border-white/10 dark:bg-night-header/95 sm:px-4 lg:h-16 lg:px-6">
           <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
             <button type="button" aria-label={mobileSidebarOpen ? "Close navigation" : "Open navigation"} aria-controls="user-navigation" aria-expanded={mobileSidebarOpen} onClick={() => setMobileSidebarOpen((open) => !open)} className="mr-2 flex h-9 w-9 items-center justify-center rounded-lg text-[#111] hover:bg-black/10 dark:text-white dark:hover:bg-white/10 lg:hidden"><Menu size={21} /></button>
             <button type="button" aria-label={desktopSidebarOpen ? "Close navigation" : "Open navigation"} aria-controls="user-navigation" aria-expanded={desktopSidebarOpen} onClick={() => setDesktopSidebarOpen((open) => !open)} className="mr-2 hidden h-9 w-9 items-center justify-center rounded-lg text-[#111] hover:bg-black/10 dark:text-white dark:hover:bg-white/10 lg:flex"><Menu size={21} /></button>

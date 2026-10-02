@@ -5,6 +5,7 @@ import {
   use,
   useCallback,
   useEffect,
+  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
@@ -13,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import Toast from "react-native-toast-message";
 
-import { listBeaconPages, type BeaconPage } from "@/api/auth";
+import { listBeaconPages, subscribeToBeaconPageCreated, type BeaconPage } from "@/api/auth";
 import { getSocialProfile } from "@/api/social";
 import type { SocialProfile } from "@/domain/social/types";
 import { useAuth } from "@/features/auth/hooks/use-auth";
@@ -102,6 +103,14 @@ function SidebarLinkIcon({
   );
 }
 
+function ActiveIdentityCheck() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Path d="M5 12l4 4L19 6" stroke="#C62828" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 export function useOpenAppSidebar() {
   return use(SidebarContext);
 }
@@ -115,14 +124,22 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
   const { colors, isDark } = useAppTheme();
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const [pages, setPages] = useState<BeaconPage[]>([]);
+  const pagesRevision = useRef(0);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
   const [editor, setEditor] = useState<{
     publicId?: string;
     onSaved?: (profile: SocialProfile) => void;
   } | null>(null);
   const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    if (!user) return;
+    return subscribeToBeaconPageCreated((page) => {
+      pagesRevision.current += 1;
+      setPages((items) => [page, ...items.filter((item) => item.publicId !== page.publicId)]);
+    });
+  }, [user]);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -132,9 +149,11 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
         if (active) setProfile(person);
       })
       .catch(() => undefined);
+    const revision = pagesRevision.current;
     void listBeaconPages()
       .then((items) => {
-        if (active) setPages(items);
+        // A list requested before creation must not remove the new page.
+        if (active && revision === pagesRevision.current) setPages(items);
       })
       .catch(() => {
         if (active)
@@ -250,19 +269,21 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
                       </Text>
                     </Pressable>
                     <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Show my pages"
-                      accessibilityState={{ expanded }}
-                      onPress={() => setExpanded((value) => !value)}
+                      accessibilityRole="switch"
+                      accessibilityLabel={(activePublicId ?? user.publicId) === user.publicId ? "Interacting as my profile" : "Switch to my profile"}
+                      accessibilityState={{ checked: (activePublicId ?? user.publicId) === user.publicId }}
+                      onPress={() => switchTo(user.publicId)}
                       className="h-11 w-11 items-center justify-center"
                     >
-                      <Text className="text-xl" style={{ color: colors.text }}>
-                        {expanded ? "⌃" : "⌄"}
-                      </Text>
+                      {(activePublicId ?? user.publicId) === user.publicId ? (
+                        <ActiveIdentityCheck />
+                      ) : (
+                        <Text className="text-xl" style={{ color: colors.text }}>⇄</Text>
+                      )}
                     </Pressable>
                   </View>
                 )}
-                {expanded && (
+                {user && (
                   <View className="mb-5 gap-2">
                     {pages.map((page) => (
                       <View
@@ -286,24 +307,18 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
                         </Pressable>
                         <Pressable
                           accessibilityRole="switch"
-                          accessibilityLabel={`Switch to ${page.displayName || "page"}`}
+                          accessibilityLabel={activePublicId === page.publicId ? `Interacting as ${page.displayName || "page"}` : `Switch to ${page.displayName || "page"}`}
                           accessibilityState={{
                             checked: activePublicId === page.publicId,
                           }}
                           onPress={() => switchTo(page.publicId)}
                           className="h-12 w-14 items-center justify-center"
                         >
-                          <Text
-                            className="text-xl font-black"
-                            style={{
-                              color:
-                                activePublicId === page.publicId
-                                  ? "#C62828"
-                                  : colors.text,
-                            }}
-                          >
-                            ⇄
-                          </Text>
+                          {activePublicId === page.publicId ? (
+                            <ActiveIdentityCheck />
+                          ) : (
+                            <Text className="text-xl font-black" style={{ color: colors.text }}>⇄</Text>
+                          )}
                         </Pressable>
                       </View>
                     ))}

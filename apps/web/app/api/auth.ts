@@ -38,6 +38,13 @@ export async function deleteAccount(): Promise<void> {
 
 export type BeaconPage = Readonly<{ publicId: string; displayName: string; bio: string }>;
 
+const pageCreatedListeners = new Set<(page: BeaconPage) => void>();
+
+export function subscribeToBeaconPageCreated(listener: (page: BeaconPage) => void): () => void {
+  pageCreatedListeners.add(listener);
+  return () => { pageCreatedListeners.delete(listener); };
+}
+
 export async function listBeaconPages(): Promise<BeaconPage[]> {
   const { data } = await axiosInstance.get<{ pages: BeaconPage[] }>('/auth/pages');
   return data.pages;
@@ -45,6 +52,7 @@ export async function listBeaconPages(): Promise<BeaconPage[]> {
 
 export async function createBeaconPage(input: Readonly<{ displayName: string; bio?: string }>): Promise<BeaconPage> {
   const { data } = await axiosInstance.post<{ page: BeaconPage }>('/auth/pages', input);
+  pageCreatedListeners.forEach((listener) => listener(data.page));
   return data.page;
 }
 

@@ -2,7 +2,6 @@
 
 import {
   Check,
-  ChevronDown,
   Globe2,
   IdCard,
   MessageCircle,
@@ -12,10 +11,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { listBeaconPages, type BeaconPage } from "@/app/api/auth";
+import { listBeaconPages, subscribeToBeaconPageCreated, type BeaconPage } from "@/app/api/auth";
 import { sessionStorage } from "@/app/api/session-storage";
 import { getSocialProfile, type SocialProfile } from "@/app/api/social";
 
@@ -56,12 +55,20 @@ export function UserSidebar({
   pathname,
 }: Props) {
   const router = useRouter();
-  const [expanded, setExpanded] = useState(false);
   const [pages, setPages] = useState<BeaconPage[]>([]);
+  const pagesRevision = useRef(0);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
   const [activePageProfile, setActivePageProfile] = useState<SocialProfile | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const ownerId = sessionStorage.get()?.user.publicId;
+
+  useEffect(() => {
+    if (!ownerId) return;
+    return subscribeToBeaconPageCreated((page) => {
+      pagesRevision.current += 1;
+      setPages((items) => [page, ...items.filter((item) => item.publicId !== page.publicId)]);
+    });
+  }, [ownerId]);
 
   useEffect(() => {
     setActiveId(sessionStorage.getActingPublicId());
@@ -75,9 +82,11 @@ export function UserSidebar({
         if (active) setProfile(person);
       })
       .catch(() => undefined);
+    const revision = pagesRevision.current;
     void listBeaconPages()
       .then((items) => {
-        if (active) setPages(items);
+        // A list requested before creation must not remove the new page.
+        if (active && revision === pagesRevision.current) setPages(items);
       })
       .catch((error) => {
         if (active)
@@ -128,14 +137,21 @@ export function UserSidebar({
     router.push("/beacons/new");
   };
 
-  const actingAsPage = !!ownerId && !!activeId && activeId !== ownerId;
-  const activePage = pages.find((page) => page.publicId === activeId);
-  const pageProfile = activePageProfile?.publicId === activeId ? activePageProfile : null;
   const personalName = profile?.displayName || ownerId?.slice(0, 8) || "G";
-  const activeName = actingAsPage
-    ? pageProfile?.displayName || activePage?.displayName || "Untitled beacon"
-    : personalName;
-  const activeAvatarUrl = actingAsPage ? pageProfile?.avatarUrl : profile?.avatarUrl;
+  const identities = ownerId
+    ? [
+        { publicId: ownerId, displayName: personalName, avatarUrl: profile?.avatarUrl },
+        ...pages.map((page) => ({
+          publicId: page.publicId,
+          displayName: (activePageProfile?.publicId === page.publicId
+            ? activePageProfile.displayName
+            : page.displayName) || "Untitled beacon",
+          avatarUrl: activePageProfile?.publicId === page.publicId
+            ? activePageProfile.avatarUrl
+            : undefined,
+        })),
+      ]
+    : [];
 
   return (
     <>
@@ -175,99 +191,33 @@ export function UserSidebar({
             BUILD YOUR BEACON
           </button>
           {ownerId && (
-            <div className="my-5 rounded-2xl border border-black/10 bg-[#f5f6f8] p-2 dark:border-white/10 dark:bg-night-surface">
-              <div className="flex items-center">
-                <Link
-                  href={`/users/${actingAsPage ? activeId : ownerId}`}
-                  onClick={onCloseMobile}
-                  className="flex min-w-0 flex-1 items-center gap-2"
-                >
-                  <IdentityAvatar avatarUrl={activeAvatarUrl} name={activeName} />
-                  <span className="truncate text-xs font-black">
-                    {activeName}
-                  </span>
-                </Link>
-                <button
-                  type="button"
-                  aria-label="Show profiles"
-                  aria-expanded={expanded}
-                  onClick={() => setExpanded((value) => !value)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
-                >
-                  <ChevronDown
-                    size={18}
-                    className={
-                      expanded
-                        ? "rotate-180 transition-transform"
-                        : "transition-transform"
-                    }
-                  />
-                </button>
-              </div>
-              {expanded && (
-                <div className="mt-2 space-y-2 border-t border-black/10 pt-2 dark:border-white/10">
-                  {actingAsPage && (
-                    <div className="flex items-center rounded-xl bg-white dark:bg-night-raised">
-                      <Link
-                        href={`/users/${ownerId}`}
-                        onClick={onCloseMobile}
-                        className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-xs font-bold"
-                      >
-                        <IdentityAvatar avatarUrl={profile?.avatarUrl} name={personalName} />
-                        <span className="truncate">{personalName}</span>
-                      </Link>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={false}
-                        aria-label={`Switch to ${personalName}`}
-                        onClick={() => switchTo(ownerId, personalName)}
-                        className="flex h-9 w-10 shrink-0 items-center justify-center border-l border-black/10 text-lg hover:text-[#C62828] dark:border-white/15"
-                      >
-                        ⇄
-                      </button>
-
-                    </div>
-                  )}
-                  {pages.filter((page) => page.publicId !== activeId).map((page) => (
-                    <div
-                      key={page.publicId}
-                      className="flex items-center rounded-xl bg-white dark:bg-night-raised"
+            <ul aria-label="Your profiles and pages" className="my-5 space-y-2 rounded-2xl border border-black/10 bg-[#f5f6f8] p-2 dark:border-white/10 dark:bg-night-surface">
+              {identities.map((identity) => {
+                const selected = (activeId ?? ownerId) === identity.publicId;
+                return (
+                  <li key={identity.publicId} className="flex items-center rounded-xl bg-white dark:bg-night-raised">
+                    <Link
+                      href={`/users/${identity.publicId}`}
+                      onClick={onCloseMobile}
+                      className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-xs font-bold"
                     >
-                      <Link
-                        href={`/users/${page.publicId}`}
-                        onClick={onCloseMobile}
-                        className="min-w-0 flex-1 truncate px-3 py-2 text-xs font-bold"
-                      >
-                        {page.displayName || "Untitled beacon"}
-                      </Link>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={activeId === page.publicId}
-                        aria-label={`Switch to ${page.displayName || "page"}`}
-                        onClick={() =>
-                          switchTo(
-                            page.publicId,
-                            page.displayName || "Untitled page",
-                          )
-                        }
-                        className="flex h-9 w-10 shrink-0 items-center justify-center border-l border-black/10 text-lg hover:text-[#C62828] dark:border-white/15"
-                      >
-                        ⇄{activeId === page.publicId && <Check size={12} />}
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={create}
-                    className=" w-full block rounded-xl bg-[#C62828] px-3 py-2 text-xs font-black text-white "
-                  >
-                    BUILD YOUR BEACON
-                  </button>
-                </div>
-              )}
-            </div>
+                      <IdentityAvatar avatarUrl={identity.avatarUrl} name={identity.displayName} />
+                      <span className="truncate">{identity.displayName}</span>
+                    </Link>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={selected}
+                      aria-label={selected ? `Interacting as ${identity.displayName}` : `Switch to ${identity.displayName}`}
+                      onClick={() => switchTo(identity.publicId, identity.displayName)}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center border-l border-black/10 text-lg hover:text-[#C62828] dark:border-white/15"
+                    >
+                      {selected ? <Check size={20} className="text-[#C62828]" aria-hidden="true" /> : "⇄"}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
           <div className="flex items-center justify-between px-3 pb-3">
             <p className="text-[10px] font-black uppercase tracking-[.22em] text-black/35 dark:text-night-muted">
