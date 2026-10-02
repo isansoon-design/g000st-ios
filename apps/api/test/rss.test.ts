@@ -141,6 +141,23 @@ test('missing accounts are rejected and suspended accounts cannot publish', asyn
   assert.equal(f.posts().length, 0);
 });
 
+test('account validation explains the actionable reason without creating a source', async () => {
+  for (const [account, message] of [
+    [undefined, /No account with this Public ID exists in this environment/],
+    [{ status: 'suspended' }, /suspended.*Reactivate/],
+    [{ status: 'deleted' }, /has been deleted/],
+    [{ status: 'active', deletedAtMs: 123 }, /has been deleted/],
+    [{ status: 'pending' }, /not active/],
+  ] as const) {
+    const f = fixture();
+    const path = `test_users/${input.accountPublicId}`;
+    if (account) f.rows.set(path, account);
+    else f.rows.delete(path);
+    await assert.rejects(() => f.service.save(undefined, input, 'admin'), { code: 'RSS_ACCOUNT_UNAVAILABLE', message });
+    assert.equal([...f.rows.keys()].some((key) => key.startsWith('test_rss_sources/')), false);
+  }
+});
+
 test('fetch failures are recorded without leaking remote errors and do not produce posts', async () => {
   const f = fixture(async () => { throw new Error('Sensitive remote response'); });
   const id = await f.service.save(undefined, input, 'admin');

@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Menu } from "lucide-react";
+import { LayoutDashboard, Menu } from "lucide-react";
 
 import axios from "@/app/api/axios";
+import { sessionStorage } from "@/app/api/session-storage";
 import { ThemeToggle } from "@/context/ThemeContext";
 import { NoticeBanner } from "@/features/admin/notice-banner";
 import { PresenceHeartbeat } from "@/features/presence/presence-heartbeat";
@@ -19,6 +20,10 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     || pathname.startsWith("/posts/");
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    setIsAdmin(sessionStorage.get()?.user.role === "admin");
+  }, [pathname]);
   const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
   useEffect(() => { closeMobileSidebar(); }, [pathname, closeMobileSidebar]);
   useEffect(() => {
@@ -54,7 +59,18 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
             <span className="ml-3 hidden border-l border-black/10 pl-4 text-xs font-bold uppercase tracking-[.22em] text-black/35 dark:border-white/15 dark:text-night-muted xl:inline">Your space to connect</span>
           </div>
           <div id="user-page-header-slot" className="flex min-w-0 flex-1 items-center justify-end gap-2" />
-          <div className="flex min-w-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
+            {isAdmin && (
+              <Link
+                href="/dashboard"
+                aria-label="Dashboard"
+                title="Dashboard"
+                className="flex items-center gap-2 rounded-lg p-2 text-sm font-semibold hover:bg-black/10 dark:hover:bg-white/10"
+              >
+                <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </Link>
+            )}
             <NotificationBell />
             <ThemeToggle />
           </div>

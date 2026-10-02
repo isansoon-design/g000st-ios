@@ -38,7 +38,10 @@ export class RssService {
   }
   private async requireAccount(transaction: Transaction, publicId: string) {
     const user = (await transaction.get(this.collection('users').doc(publicId))).data();
-    if (!user || user.status !== 'active' || user.deletedAtMs != null) throw new ApiError(400, 'RSS_ACCOUNT_UNAVAILABLE', 'Choose an existing active account Public ID.');
+    if (!user) throw new ApiError(400, 'RSS_ACCOUNT_UNAVAILABLE', 'No account with this Public ID exists in this environment. Use the Public ID from Users or select your current account in RSS. Do not enter the Recovery ID used to sign in.');
+    if (user.status === 'deleted' || user.deletedAtMs != null) throw new ApiError(400, 'RSS_ACCOUNT_UNAVAILABLE', 'This publishing account has been deleted. Choose another account.');
+    if (user.status === 'suspended') throw new ApiError(400, 'RSS_ACCOUNT_UNAVAILABLE', 'This publishing account is suspended. Reactivate it in Users before using it for RSS.');
+    if (user.status !== 'active') throw new ApiError(400, 'RSS_ACCOUNT_UNAVAILABLE', 'This publishing account is not active. Choose an active account from Users in this dashboard.');
     if (user.ownerPublicId) {
       const owner = (await transaction.get(this.collection('users').doc(user.ownerPublicId))).data();
       if (!owner || owner.status !== 'active' || owner.deletedAtMs != null) throw new ApiError(400, 'RSS_ACCOUNT_UNAVAILABLE', 'The page owner must be active.');

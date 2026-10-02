@@ -195,7 +195,10 @@ export function UserSidebar({
               {identities.map((identity) => {
                 const selected = (activeId ?? ownerId) === identity.publicId;
                 return (
-                  <li key={identity.publicId} className="flex items-center rounded-xl bg-white dark:bg-night-raised">
+                  <li
+                    key={identity.publicId}
+                    className={`flex items-center rounded-xl border-2 bg-white dark:bg-night-raised ${selected ? "border-[#C62828]" : "border-transparent"}`}
+                  >
                     <Link
                       href={`/users/${identity.publicId}`}
                       onClick={onCloseMobile}

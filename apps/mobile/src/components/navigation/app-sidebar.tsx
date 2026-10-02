@@ -240,7 +240,11 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
                 {user && (
                   <View
                     className="mb-5 flex-row items-center rounded-2xl p-2"
-                    style={{ backgroundColor: colors.card }}
+                    style={{
+                      backgroundColor: colors.card,
+                      borderWidth: 2,
+                      borderColor: (activePublicId ?? user.publicId) === user.publicId ? "#C62828" : "transparent",
+                    }}
                   >
                     <Pressable
                       accessibilityRole="button"
@@ -289,7 +293,11 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
                       <View
                         key={page.publicId}
                         className="flex-row items-center rounded-xl"
-                        style={{ backgroundColor: colors.card }}
+                        style={{
+                          backgroundColor: colors.card,
+                          borderWidth: 2,
+                          borderColor: activePublicId === page.publicId ? "#C62828" : "transparent",
+                        }}
                       >
                         <Pressable
                           accessibilityRole="button"
