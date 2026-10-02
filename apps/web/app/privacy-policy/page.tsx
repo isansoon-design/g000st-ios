@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | g000st",
-  description: "Privacy Policy for g000st Application",
+  description: "Privacy policy and child safety standards for g000st, including reporting child sexual abuse and exploitation.",
 };
 
 export default function PrivacyPolicyPage() {
@@ -19,7 +19,10 @@ export default function PrivacyPolicyPage() {
         <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>
         
         <div className="prose prose-blue max-w-none text-gray-700 dark:text-night-muted space-y-6">
-          <p className="text-sm text-gray-500 dark:text-night-muted">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+          <p className="text-sm text-gray-500 dark:text-night-muted">Last updated: <time dateTime="2026-10-03">October 3, 2026</time></p>
+          <p>
+            <a href="#child-safety" className="text-blue-600 dark:text-blue-300 hover:underline">Read g000st&apos;s Child Safety Standards</a>
+          </p>
           
           <section>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-night-text mb-3">1. Introduction</h2>
@@ -78,6 +81,29 @@ export default function PrivacyPolicyPage() {
             <h2 className="text-xl font-semibold text-gray-900 dark:text-night-text mb-3">7. Contact Us</h2>
             <p>
               If you have any questions about this privacy policy or our privacy practices, please contact us at: <a href="mailto:Bakrisabagh@hotmail.com" className="text-blue-600 dark:text-blue-300 hover:underline">Bakrisabagh@hotmail.com</a>
+            </p>
+          </section>
+
+          <section id="child-safety" className="scroll-mt-8 space-y-4" aria-labelledby="child-safety-heading">
+            <h2 id="child-safety-heading" className="text-xl font-semibold text-gray-900 dark:text-night-text mb-3">8. g000st Child Safety Standards</h2>
+            <p>
+              g000st strictly prohibits child sexual abuse and exploitation (CSAE) across its service, including posts, listings, profiles, and private communications. These standards apply to all users, regardless of the service&apos;s intended age audience. For these standards, a child is anyone under 18.
+            </p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-night-text">Prohibited content and conduct</h3>
+            <p>
+              Users must not create, upload, request, distribute, or facilitate child sexual abuse material (CSAM), including sexual imagery of children and computer-generated depictions. Grooming, sexual solicitation of children, sexual extortion, trafficking for sexual purposes, and any other conduct that sexually abuses, exploits, or endangers children are prohibited.
+            </p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-night-text">How to report a concern</h3>
+            <p>
+              Use the <strong>Report</strong> action on a social post in the g000st app to flag concerning content for review. For other child safety concerns, including concerns about an account or private communication, email <a href="mailto:Bakrisabagh@hotmail.com?subject=g000st%20child%20safety%20report" className="text-blue-600 dark:text-blue-300 hover:underline">Bakrisabagh@hotmail.com</a>. Include relevant account identifiers or links and a description of your concern. Do not attach, download, or forward suspected CSAM. If a child is in immediate danger, contact local emergency services or law enforcement.
+            </p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-night-text">Review, enforcement, and reporting to authorities</h3>
+            <p>
+              g000st will review child safety reports and take appropriate action when it becomes aware of violations, including removing confirmed CSAM and restricting or terminating offending accounts. We will handle relevant information in accordance with applicable law and report confirmed CSAM to the National Center for Missing &amp; Exploited Children (NCMEC) or the appropriate regional or national authority, as required by applicable reporting obligations. We will cooperate with lawful requests from competent authorities.
+            </p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-night-text">Child safety contact</h3>
+            <p>
+              For child safety reports and inquiries about these standards, contact g000st at <a href="mailto:Bakrisabagh@hotmail.com" className="text-blue-600 dark:text-blue-300 hover:underline">Bakrisabagh@hotmail.com</a>.
             </p>
           </section>
         </div>
