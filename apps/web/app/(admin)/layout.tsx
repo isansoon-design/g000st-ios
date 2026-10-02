@@ -54,6 +54,7 @@ export default function AdminLayout({
           className={`${isSidebarOpen ? "absolute inset-y-0 left-0 z-20 w-64" : "hidden"} lg:relative lg:block lg:w-64 shrink-0 bg-white dark:bg-night-surface border-r border-gray-200 dark:border-night-border overflow-y-auto`}
         >
           <div className="p-6 space-y-4">
+            <Link href="/rss" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 rounded-lg px-4 py-2 text-gray-700 hover:bg-gray-100 dark:text-night-muted dark:hover:bg-white/10">RSS publishing</Link>
             <Link href="/reports" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-3 rounded-lg px-4 py-2 text-gray-700 hover:bg-gray-100 dark:text-night-muted dark:hover:bg-white/10">Reports</Link>
             <Link
               href="/dashboard"

@@ -37,12 +37,14 @@ import { SocialService } from './social/social-service.js';
 import { FirestoreTelephonyStore } from './telephony/firestore-telephony-store.js';
 import { TelephonyService } from './telephony/telephony-service.js';
 import { TelnyxClient } from './telephony/telnyx-client.js';
+import { RssService } from './rss/rss-service.js';
 
 async function main(): Promise<void> {
   const environment = readEnvironment();
   const firestore = await createFirestore(environment.firebaseServiceAccountPath);
   const store = new FirestoreAuthStore(firestore, environment.collectionPrefix);
   const adminDesk = new AdminDeskService(firestore, environment.collectionPrefix);
+  const rssService = new RssService(firestore, environment.collectionPrefix);
   const authService = new AuthService(store, environment.recoveryPepper, Date.now, async () => (await adminDesk.getExperienceConfig()).pages.login !== false);
   const chatStore = new FirestoreChatStore(firestore, environment.collectionPrefix);
   const notificationStore = new FirestoreNotificationStore(
@@ -141,6 +143,7 @@ async function main(): Promise<void> {
   const app = createApp({
     adminAnalytics: new AdminAnalyticsService(firestore, environment.collectionPrefix),
     adminDesk,
+    rssService,
     allowedOrigins: environment.allowedOrigins,
     authService,
     billing,
@@ -157,6 +160,7 @@ async function main(): Promise<void> {
   const server = app.listen(environment.port, environment.host, () => {
     expirationWorker.start();
     notificationWorker.start();
+    rssService.start();
     console.log(`g000st API listening on ${environment.host}:${environment.port}`);
   });
   server.on('upgrade', (request, socket, head) => {
@@ -166,6 +170,7 @@ async function main(): Promise<void> {
   const close = () => {
     expirationWorker.stop();
     notificationWorker.stop();
+    rssService.stop();
     server.close((error) => {
       if (error) {
         console.error('g000st API shutdown failed');

@@ -16,7 +16,7 @@ const protectedRoutes = [
   "/notifications",
   "/users/",
 ];
-const adminRoutes = ["/dashboard", "/client-desk", "/analytics", "/billing", "/admin-notifications", "/reports"];
+const adminRoutes = ["/dashboard", "/client-desk", "/analytics", "/billing", "/admin-notifications", "/reports", "/rss"];
 
 // Routes for unauthenticated users only
 const authRoutes = ["/login", "/register"];

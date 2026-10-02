@@ -7,6 +7,7 @@ import { requireAdminRole } from '../auth/require-admin-role.js';
 import { asyncRoute } from '../http/async-route.js';
 import { AdminAnalyticsService } from './admin-analytics.js';
 import { AdminDeskService } from './admin-desk.js';
+import { RssService, rssInput } from '../rss/rss-service.js';
 
 const exactId = z.string().length(50).regex(/^[A-Za-z0-9]+$/);
 const uuid = z.string().uuid();
@@ -24,7 +25,7 @@ function bearerToken(request: Request): string {
 
 const writeLimiter = rateLimit({ legacyHeaders: false, limit: 30, standardHeaders: 'draft-8', windowMs: 60_000 });
 
-export function createAdminRouter(auth: AuthService, analytics: AdminAnalyticsService, desk: AdminDeskService): Router {
+export function createAdminRouter(auth: AuthService, analytics: AdminAnalyticsService, desk: AdminDeskService, rss?: RssService): Router {
   const router = Router();
   router.use(asyncRoute(async (request, _response, next) => {
     const actor = await auth.getUser(bearerToken(request));
@@ -33,6 +34,22 @@ export function createAdminRouter(auth: AuthService, analytics: AdminAnalyticsSe
     next();
   }));
   router.use(requireAdminRole);
+
+  if (rss) {
+    router.get('/rss', asyncRoute(async (_request, response) => { response.json(await rss.list()); }));
+    router.post('/rss', writeLimiter, asyncRoute(async (request, response) => {
+      const id = await rss.save(undefined, rssInput.parse(request.body), request.authenticatedPublicId);
+      response.status(201).json({ version: 1, id });
+    }));
+    router.put('/rss/:id', writeLimiter, asyncRoute(async (request, response) => {
+      const id = await rss.save(uuid.parse(request.params.id), rssInput.parse(request.body), request.authenticatedPublicId);
+      response.json({ version: 1, id });
+    }));
+    router.delete('/rss/:id', writeLimiter, asyncRoute(async (request, response) => {
+      await rss.remove(uuid.parse(request.params.id));
+      response.status(204).end();
+    }));
+  }
 
   router.get('/reports/:section', asyncRoute(async (request, response) => {
     const cursor = z.string().min(1).max(500).optional().parse(request.query.cursor);

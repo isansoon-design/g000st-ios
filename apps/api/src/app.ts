@@ -8,6 +8,7 @@ import { createAdminRouter } from './admin/admin-router.js';
 import { createCommunicationRouter } from './admin/communication-router.js';
 import type { AdminAnalyticsService } from './admin/admin-analytics.js';
 import type { AdminDeskService } from './admin/admin-desk.js';
+import type { RssService } from './rss/rss-service.js';
 import { createBillingRouter } from './billing/billing-router.js';
 import { createBillingStripeWebhookRouter } from './billing/billing-stripe-webhook-router.js';
 import type { BillingService } from './billing/billing-service.js';
@@ -44,6 +45,7 @@ declare global {
 type CreateAppOptions = Readonly<{
   adminAnalytics?: AdminAnalyticsService;
   adminDesk?: AdminDeskService;
+  rssService?: RssService;
   allowedOrigins: readonly string[];
   authService: AuthService;
   billing?: Readonly<{
@@ -65,6 +67,7 @@ type CreateAppOptions = Readonly<{
 export function createApp({
   adminAnalytics,
   adminDesk,
+  rssService,
   allowedOrigins,
   authService,
   billing,
@@ -123,7 +126,7 @@ export function createApp({
     response.status(200).json({ ok: true });
   });
   app.use('/api/v1/auth', createAuthRouter(authService));
-  if (adminAnalytics && adminDesk) app.use('/api/v1/admin', createAdminRouter(authService, adminAnalytics, adminDesk));
+  if (adminAnalytics && adminDesk) app.use('/api/v1/admin', createAdminRouter(authService, adminAnalytics, adminDesk, rssService));
   if (adminDesk) app.use('/api/v1/communication', createCommunicationRouter(authService, adminDesk));
   app.use('/api/v1/chat', createChatRouter(authService, chatService));
   app.use('/api/v1/media', createMediaRouter(authService, chatService));
