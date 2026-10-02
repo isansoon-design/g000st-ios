@@ -36,6 +36,7 @@ export type AdminUserV1 = Readonly<{
   role: string;
   createdAtMs: number;
   lastActiveAtMs: number;
+  geography?: Readonly<{ country: string; city?: string; recordedAtMs: number }> | null;
 }>;
 
 export type AdminUsersPageV1 = Readonly<{

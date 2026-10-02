@@ -12,8 +12,8 @@ export class PresenceService {
   heartbeat(publicId: string, headers?: Readonly<{ country?: string; city?: string }>): Promise<void> {
     const country = headers?.country?.trim().toUpperCase();
     const rawCity = headers?.city?.trim();
-    const geo = this.trustGeoHeaders && country && /^[A-Z]{2}$/.test(country)
-      ? { country, ...(rawCity && rawCity.length <= 100 && !/[\u0000-\u001F<>]/.test(rawCity) ? { city: rawCity } : {}) }
+    const geo = this.trustGeoHeaders && country && /^[A-Z]{2}$/.test(country) && country !== 'XX' && country !== 'ZZ'
+      ? { country, ...(rawCity && rawCity.length <= 100 && !/[\u0000-\u001F\u007F<>]/.test(rawCity) ? { city: rawCity } : {}) }
       : undefined;
     return this.store.setLastActive(publicId, this.now(), geo);
   }

@@ -26,14 +26,16 @@ test('admin user pages skip page accounts and deleted accounts without losing th
       orderBy: () => userQuery(),
       doc: (id: string) => ({ name, id }),
     }),
-    getAll: async (...refs: { name: string; id: string }[]) => refs.map((ref) => ({ data: () => ref.name.endsWith('social_profiles') ? { displayName: ref.id.slice(0, 1) } : { lastActiveAtMs: 123 } })),
+    getAll: async (...refs: { name: string; id: string }[]) => refs.map((ref) => ({ data: () => ref.name.endsWith('social_profiles') ? { displayName: ref.id.slice(0, 1) } : { lastActiveAtMs: 123, ...(ref.id === ids[0] ? { country: 'SY', city: 'Damascus', geoRecordedAtMs: 123 } : {}) } })),
   } as unknown as Firestore;
-  const service = new AdminDeskService(db, 'staging');
+  const service = new AdminDeskService(db, 'staging', () => 123);
 
   const first = await service.listUsers(2);
   assert.deepEqual(first.users.map((user) => user.publicId), [ids[0], ids[3]]);
   assert.equal(first.users[0]?.displayName, 'A');
   assert.equal(first.users[0]?.lastActiveAtMs, 123);
+  assert.deepEqual(first.users[0]?.geography, { country: 'SY', city: 'Damascus', recordedAtMs: 123 });
+  assert.equal(first.users[1]?.geography, null);
   assert.ok(first.nextCursor);
 
   const second = await service.listUsers(2, first.nextCursor);

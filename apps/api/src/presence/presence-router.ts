@@ -14,6 +14,13 @@ function limiter(limit: number) {
   return rateLimit({ legacyHeaders: false, limit, standardHeaders: 'draft-8', windowMs: 60_000 });
 }
 
+// Node parses HTTP header bytes as Latin-1; nginx's MMDB city names use UTF-8.
+export function decodeGeoCityHeader(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(Buffer.from(value, 'latin1')); }
+  catch { return undefined; }
+}
+
 export function createPresenceRouter(authService: AuthService, service: PresenceService): Router {
   const router = Router();
   router.use(asyncRoute(async (request, _response, next) => {
@@ -24,7 +31,7 @@ export function createPresenceRouter(authService: AuthService, service: Presence
   router.post('/heartbeat', limiter(40), asyncRoute(async (request, response) => {
     await service.heartbeat(request.authenticatedPublicId, {
       country: request.header('x-geo-country') ?? undefined,
-      city: request.header('x-geo-city') ?? undefined,
+      city: decodeGeoCityHeader(request.header('x-geo-city')),
     });
     response.status(204).send();
   }));

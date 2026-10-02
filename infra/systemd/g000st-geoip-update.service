@@ -1,0 +1,8 @@
+[Unit]
+Description=Update g000st local DB-IP City Lite geolocation database
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/g000st-update-geoip

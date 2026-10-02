@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { FieldPath, type Firestore, type QueryDocumentSnapshot, type WriteBatch } from 'firebase-admin/firestore';
 
 import { ApiError } from '../http/api-error.js';
+import { recentGeography } from '../presence/presence-geography.js';
 
 export const ADMIN_PAGES = [
   ['site', 'Whole website'], ['login', 'Login / paste ID'], ['mypage', 'My Page'],
@@ -60,6 +61,7 @@ export class AdminDeskService {
       role: String(document.data().role ?? 'user'),
       createdAtMs: Number(document.data().createdAtMs ?? 0),
       lastActiveAtMs: Number(presence[index]?.data()?.lastActiveAtMs ?? 0),
+      geography: recentGeography(presence[index]?.data(), this.now()) ?? null,
     }));
   }
 

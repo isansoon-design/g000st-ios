@@ -1,4 +1,5 @@
 import type { Firestore } from "firebase-admin/firestore";
+import { recentGeography } from '../presence/presence-geography.js';
 
 export type AdminAnalyticsV1 = Readonly<{
   version: 1;
@@ -114,16 +115,12 @@ export function summarizeUsers(
     const activeDay = new Date(seen.lastActiveAtMs).toISOString().slice(0, 10);
     if (activeDay === today) activeToday += 1;
     if (activeDay.startsWith(month)) activeThisMonth += 1;
-    if (
-      seen.country &&
-      typeof seen.geoRecordedAtMs === "number" &&
-      seen.geoRecordedAtMs <= nowMs &&
-      nowMs - seen.geoRecordedAtMs <= 30 * 86_400_000
-    ) {
+    const geo = recentGeography(seen, nowMs);
+    if (geo) {
       coveredUsers += 1;
-      countries.set(seen.country, (countries.get(seen.country) ?? 0) + 1);
-      if (seen.city) {
-        const key = `${seen.country}\u0000${seen.city}`;
+      countries.set(geo.country, (countries.get(geo.country) ?? 0) + 1);
+      if (geo.city) {
+        const key = `${geo.country}\u0000${geo.city}`;
         cities.set(key, (cities.get(key) ?? 0) + 1);
       }
     }
