@@ -48,7 +48,11 @@ class MemoryAuthStore implements AuthStore {
     this.saveSession(publicId, material);
   }
 
-  async deleteAccount(publicId: string): Promise<void> {
+  async deleteAccount(publicId: string, _deletedAtMs?: number, adminActor?: string): Promise<void> {
+    if (adminActor) {
+      if (!this.users.has(publicId) || this.pages.has(publicId)) throw new ApiError(404, 'USER_NOT_FOUND', 'Account not found.');
+      if (publicId === adminActor || this.users.get(publicId) === 'admin') throw new ApiError(403, 'ADMIN_PROTECTED', 'Administrator accounts cannot be deleted here.');
+    }
     this.users.delete(publicId);
     for (const [pageId, page] of this.pages) if (page.ownerPublicId === publicId) { this.pages.delete(pageId); this.users.delete(pageId); }
     for (const [lookupHash, credential] of this.recoveries) {
@@ -265,6 +269,43 @@ describe('AuthService', () => {
       () => service.restore(registered.recoveryId),
       expectApiError('INVALID_RECOVERY_ID'),
     );
+  });
+
+  it('allows an admin to delete a user and their pages, invalidating all credentials', async () => {
+    const store = new MemoryAuthStore();
+    const service = new AuthService(store, PEPPER, () => NOW);
+    const admin = await service.register();
+    store.setRole(admin.user.publicId, 'admin');
+    const user = await service.register();
+    const page = await service.createPage(user.session.accessToken);
+
+    await service.deleteAccountByAdmin(admin.session.accessToken, user.user.publicId);
+
+    await assert.rejects(() => service.getUser(user.session.accessToken), expectApiError('SESSION_EXPIRED'));
+    await assert.rejects(() => service.refresh(user.session.refreshToken), expectApiError('SESSION_EXPIRED'));
+    await assert.rejects(() => service.restore(user.recoveryId), expectApiError('INVALID_RECOVERY_ID'));
+    assert.equal(await store.getPageOwner(page.publicId), null);
+    assert.equal((await service.getUser(admin.session.accessToken)).role, 'admin');
+  });
+
+  it('rejects non-admin deletion, protected admins, pages and invalid target IDs', async () => {
+    const store = new MemoryAuthStore();
+    const service = new AuthService(store, PEPPER, () => NOW);
+    const admin = await service.register();
+    const otherAdmin = await service.register();
+    const user = await service.register();
+    store.setRole(admin.user.publicId, 'admin');
+    store.setRole(otherAdmin.user.publicId, 'admin');
+    const page = await service.createPage(user.session.accessToken);
+
+    await assert.rejects(() => service.deleteAccountByAdmin(user.session.accessToken, admin.user.publicId), expectApiError('ADMIN_REQUIRED'));
+    await assert.rejects(() => service.deleteAccountByAdmin('', user.user.publicId), expectApiError('UNAUTHENTICATED'));
+    for (const target of [admin.user.publicId, otherAdmin.user.publicId]) {
+      await assert.rejects(() => service.deleteAccountByAdmin(admin.session.accessToken, target), expectApiError('ADMIN_PROTECTED'));
+    }
+    await assert.rejects(() => service.deleteAccountByAdmin(admin.session.accessToken, page.publicId), expectApiError('USER_NOT_FOUND'));
+    await assert.rejects(() => service.deleteAccountByAdmin(admin.session.accessToken, 'invalid'), expectApiError('VALIDATION_ERROR'));
+    assert.equal((await service.getUser(user.session.accessToken)).publicId, user.user.publicId);
   });
 
   it('lets only the owner act as a page and never issues the page its own session', async () => {

@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Pencil, RefreshCw, Search, UserCheck, UserX } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Pencil, RefreshCw, Search, Trash2, UserCheck, UserX } from "lucide-react";
 import toast from "react-hot-toast";
 
-import { getAdminAnalytics, getAdminUsersPage, setAdminUserName, setAdminUserStatus, type AdminUserV1 } from "@/app/api/admin-desk";
+import { deleteAdminUser, getAdminAnalytics, getAdminUsersPage, setAdminUserName, setAdminUserStatus, type AdminUserV1 } from "@/app/api/admin-desk";
 import { toApiError } from "@/app/api/api-error";
 
 const date = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
@@ -23,6 +23,7 @@ export default function UsersPage() {
   const [searching, setSearching] = useState(false);
   const [moreLoading, setMoreLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const deletedIds = useRef(new Set<string>());
   const [error, setError] = useState("");
 
   const loadFirst = useCallback(async () => {
@@ -30,7 +31,7 @@ export default function UsersPage() {
     try {
       const [page, analytics] = await Promise.allSettled([getAdminUsersPage(), getAdminAnalytics()]);
       if (page.status === "rejected") throw page.reason;
-      setUsers(page.value.users);
+      setUsers(page.value.users.filter((user) => !deletedIds.current.has(user.publicId)));
       setCursor(page.value.nextCursor);
       setTotal(analytics.status === "fulfilled" ? analytics.value.users.total : null);
       setError("");
@@ -48,7 +49,7 @@ export default function UsersPage() {
     setSearchCursor(undefined);
     const timer = setTimeout(() => {
       void getAdminUsersPage(undefined, trimmed)
-        .then((page) => { if (!cancelled) { setResults(page.users); setSearchCursor(page.nextCursor); setError(""); } })
+        .then((page) => { if (!cancelled) { setResults(page.users.filter((user) => !deletedIds.current.has(user.publicId))); setSearchCursor(page.nextCursor); setError(""); } })
         .catch((cause) => { if (!cancelled) setError(toApiError(cause).message); })
         .finally(() => { if (!cancelled) setSearching(false); });
     }, 350);
@@ -61,8 +62,8 @@ export default function UsersPage() {
     setMoreLoading(true);
     try {
       const page = await getAdminUsersPage(activeCursor, query.trim());
-      if (query.trim()) { setResults((current) => [...(current ?? []), ...page.users]); setSearchCursor(page.nextCursor); }
-      else { setUsers((current) => [...current, ...page.users]); setCursor(page.nextCursor); }
+      if (query.trim()) { setResults((current) => [...(current ?? []), ...page.users.filter((user) => !deletedIds.current.has(user.publicId))]); setSearchCursor(page.nextCursor); }
+      else { setUsers((current) => [...current, ...page.users.filter((user) => !deletedIds.current.has(user.publicId))]); setCursor(page.nextCursor); }
       setError("");
     } catch (cause) { setError(toApiError(cause).message); }
     finally { setMoreLoading(false); }
@@ -74,12 +75,18 @@ export default function UsersPage() {
   }
 
   async function changeStatus(user: AdminUserV1) {
+    if (busyId || user.role === "admin") return;
     const status = user.status === "suspended" ? "active" : "suspended";
+    const action = status === "suspended" ? "Block" : "Unblock";
+    const explanation = status === "suspended"
+      ? "They will be unable to sign in or use their account until you unblock them. Their account data will be preserved."
+      : "They will be able to sign in and use their account again.";
+    if (!window.confirm(`${action} ${user.displayName || "this user"}?\nPublic ID: ${user.publicId}\n\n${explanation}`)) return;
     setBusyId(user.publicId);
     try {
       await setAdminUserStatus(user.publicId, status);
       updateRow(user.publicId, { status });
-      toast.success(status === "active" ? "Account reactivated" : "Account suspended");
+      toast.success(status === "active" ? "Account unblocked" : "Account blocked");
     } catch (cause) { toast.error(toApiError(cause).message); }
     finally { setBusyId(null); }
   }
@@ -96,12 +103,27 @@ export default function UsersPage() {
     finally { setBusyId(null); }
   }
 
+  async function removeUser(user: AdminUserV1) {
+    if (busyId || user.role === "admin") return;
+    if (!window.confirm(`Permanently delete ${user.displayName || "this user"}?\nPublic ID: ${user.publicId}\n\nTheir account and owned pages will be deleted, and they will no longer be able to sign in or recover the account. This cannot be undone.`)) return;
+    setBusyId(user.publicId);
+    try {
+      await deleteAdminUser(user.publicId);
+      deletedIds.current.add(user.publicId);
+      setUsers((current) => current.filter((row) => row.publicId !== user.publicId));
+      setResults((current) => current?.filter((row) => row.publicId !== user.publicId) ?? null);
+      setTotal((current) => current === null ? null : Math.max(0, current - 1));
+      toast.success("Account deleted");
+    } catch (cause) { toast.error(toApiError(cause).message); }
+    finally { setBusyId(null); }
+  }
+
   const visible = results ?? users;
   return <div className="min-h-full bg-gray-50 p-4 text-gray-900 dark:bg-night-canvas dark:text-night-text sm:p-7"><div className="mx-auto max-w-7xl space-y-5">
     <header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-3xl font-black">User management</h1><p className="mt-1 text-sm text-gray-500 dark:text-night-muted">Real database accounts · search by name or Public ID · dates in UTC</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-white px-4 py-2 text-sm font-bold shadow-sm dark:bg-night-surface">{total === null ? "—" : number.format(total)} users</span><button onClick={() => void loadFirst()} disabled={loading} className="rounded-full border border-gray-300 bg-white p-2 disabled:opacity-50 dark:border-night-border dark:bg-night-surface" aria-label="Refresh"><RefreshCw size={18} className={loading ? "animate-spin" : ""} /></button></div></header>
     <div className="relative"><Search className="absolute left-4 top-3 text-gray-400" size={20} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name or Public ID" className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-12 pr-4 outline-none focus:border-red-500 dark:border-night-border dark:bg-night-surface" /></div>
     {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-    <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-night-border dark:bg-night-surface"><table className="w-full min-w-[1000px] text-left text-sm"><thead className="border-b bg-gray-50 text-xs text-gray-500 dark:border-night-border dark:bg-night-control dark:text-night-muted"><tr><th className="p-4">User</th><th className="p-4">Status</th><th className="p-4">Role</th><th className="p-4">Country · city</th><th className="p-4">Registered</th><th className="p-4">Last recorded activity</th><th className="p-4">Actions</th></tr></thead><tbody className="divide-y divide-gray-100 dark:divide-night-border">{visible.map((user) => <tr key={user.publicId}><td className="p-4"><div className="font-bold">{user.displayName || "No display name"}</div><code dir="ltr" className="block max-w-[220px] truncate text-xs text-gray-500" title={user.publicId}>{user.publicId}</code></td><td className="p-4"><span className={`rounded-full px-3 py-1 text-xs font-bold ${user.status === "suspended" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>{user.status === "suspended" ? "Suspended" : "Active"}</span></td><td className="p-4">{user.role === "admin" ? "Admin" : "users"}</td><td className="p-4">{user.geography ? <div title={`Recorded ${dateTime.format(user.geography.recordedAtMs)} UTC`}><div className="font-bold">{countries.of(user.geography.country) ?? user.geography.country}</div><div className="text-xs text-gray-500 dark:text-night-muted">{user.geography.city || "City unavailable"}</div></div> : <span className="text-gray-500">Unavailable</span>}</td><td className="p-4">{user.createdAtMs ? date.format(user.createdAtMs) : "—"}</td><td className="p-4">{user.lastActiveAtMs ? dateTime.format(user.lastActiveAtMs) : "No recorded activity"}</td><td className="p-4"><div className="flex gap-2"><button disabled={busyId === user.publicId} onClick={() => void changeName(user)} className="rounded-lg border border-gray-200 p-2 disabled:opacity-50 dark:border-night-border" title="Edit display name"><Pencil size={17} /></button><button disabled={busyId === user.publicId || user.role === "admin"} onClick={() => void changeStatus(user)} className="rounded-lg border border-gray-200 p-2 disabled:opacity-50 dark:border-night-border" title={user.status === "suspended" ? "Reactivate" : "Suspend account"}>{user.status === "suspended" ? <UserCheck size={17} /> : <UserX size={17} />}</button></div></td></tr>)}</tbody></table>{(loading || searching) && <p className="p-5 text-sm text-gray-500">Loading…</p>}{!loading && !searching && !visible.length && <p className="p-5 text-sm text-gray-500">No matching accounts.</p>}</div>
+    <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-night-border dark:bg-night-surface"><table className="w-full min-w-[1000px] text-left text-sm"><thead className="border-b bg-gray-50 text-xs text-gray-500 dark:border-night-border dark:bg-night-control dark:text-night-muted"><tr><th className="p-4">User</th><th className="p-4">Status</th><th className="p-4">Role</th><th className="p-4">Country · city</th><th className="p-4">Registered</th><th className="p-4">Last recorded activity</th><th className="p-4">Actions</th></tr></thead><tbody className="divide-y divide-gray-100 dark:divide-night-border">{visible.map((user) => <tr key={user.publicId}><td className="p-4"><div className="font-bold">{user.displayName || "No display name"}</div><code dir="ltr" className="block max-w-[220px] truncate text-xs text-gray-500" title={user.publicId}>{user.publicId}</code></td><td className="p-4"><span className={`rounded-full px-3 py-1 text-xs font-bold ${user.status === "suspended" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>{user.status === "suspended" ? "Blocked" : "Active"}</span></td><td className="p-4">{user.role === "admin" ? "Admin" : "users"}</td><td className="p-4">{user.geography ? <div title={`Recorded ${dateTime.format(user.geography.recordedAtMs)} UTC`}><div className="font-bold">{countries.of(user.geography.country) ?? user.geography.country}</div><div className="text-xs text-gray-500 dark:text-night-muted">{user.geography.city || "City unavailable"}</div></div> : <span className="text-gray-500">Unavailable</span>}</td><td className="p-4">{user.createdAtMs ? date.format(user.createdAtMs) : "—"}</td><td className="p-4">{user.lastActiveAtMs ? dateTime.format(user.lastActiveAtMs) : "No recorded activity"}</td><td className="p-4"><div className="flex gap-2"><button disabled={busyId !== null} onClick={() => void changeName(user)} className="rounded-lg border border-gray-200 p-2 disabled:opacity-50 dark:border-night-border" title="Edit display name"><Pencil size={17} /></button><button disabled={busyId !== null || user.role === "admin"} onClick={() => void changeStatus(user)} className={`flex items-center gap-1.5 rounded-lg border p-2 text-xs font-bold disabled:opacity-50 dark:border-night-border ${user.status === "suspended" ? "border-green-200 text-green-700 dark:text-green-400" : "border-red-200 text-red-700 dark:text-red-400"}`} title={user.role === "admin" ? "Administrator accounts are protected" : user.status === "suspended" ? "Unblock account" : "Block account"} aria-label={`${user.status === "suspended" ? "Unblock" : "Block"} account ${user.displayName || user.publicId}`}>{user.status === "suspended" ? <UserCheck size={17} /> : <UserX size={17} />}{user.status === "suspended" ? "Unblock" : "Block"}</button><button disabled={busyId !== null || user.role === "admin"} onClick={() => void removeUser(user)} className="rounded-lg border border-red-200 p-2 text-red-700 disabled:opacity-50 dark:border-night-border dark:text-red-400" title={user.role === "admin" ? "Administrator accounts are protected" : "Delete account"} aria-label={`Delete account ${user.displayName || user.publicId}`}><Trash2 size={17} /></button></div></td></tr>)}</tbody></table>{(loading || searching) && <p className="p-5 text-sm text-gray-500">Loading…</p>}{!loading && !searching && !visible.length && <p className="p-5 text-sm text-gray-500">No matching accounts.</p>}</div>
     <p className="text-xs text-gray-500 dark:text-night-muted">Approximate connection location recorded in the last 30 days. VPNs and mobile networks can affect accuracy. <a href="https://db-ip.com" target="_blank" rel="noreferrer" className="underline">IP Geolocation by DB-IP</a></p>
     {(query.trim() ? searchCursor : cursor) && <div className="text-center"><button onClick={() => void loadMore()} disabled={moreLoading || searching} className="rounded-full bg-gray-900 px-6 py-3 text-sm font-bold text-white disabled:opacity-50">{moreLoading ? "Loading…" : "Load more"}</button></div>}
   </div></div>;

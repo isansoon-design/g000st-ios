@@ -67,6 +67,10 @@ export function createAdminRouter(auth: AuthService, analytics: AdminAnalyticsSe
     const query = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50), cursor: z.string().min(1).max(256).optional(), q: z.string().trim().min(1).max(100).optional() }).parse(request.query);
     response.json(query.q ? await desk.listSearchedUsers(query.limit, query.q, query.cursor) : await desk.listUsers(query.limit, query.cursor));
   }));
+  router.delete('/users/:publicId', writeLimiter, asyncRoute(async (request, response) => {
+    await auth.deleteAccountByAdmin(bearerToken(request), exactId.parse(request.params.publicId));
+    response.status(204).end();
+  }));
   router.get('/desk/posts/:section', asyncRoute(async (request, response) => {
     const kind = section.parse(request.params.section);
     const query = z.object({ limit: z.coerce.number().int().min(1).max(100).default(20), cursor: z.string().min(1).max(256).optional() }).parse(request.query);

@@ -13,6 +13,8 @@ import type {
   SessionMaterial,
 } from './auth-store.js';
 
+import { ApiError } from '../http/api-error.js';
+
 const DEFAULT_ROLE: AccountRole = 'user';
 
 type StoredAccessSession = Readonly<{
@@ -125,34 +127,44 @@ export class FirestoreAuthStore implements AuthStore {
     await batch.commit();
   }
 
-  async deleteAccount(publicId: string, deletedAtMs: number): Promise<void> {
-    const userRef = this.collection('users').doc(publicId);
-    const profileRef = this.collection('social_profiles').doc(publicId);
-    const recoveryCredentials = await this.collection('recovery_credentials')
-      .where('publicId', '==', publicId)
-      .get();
-    const pushDevices = await this.collection('push_devices')
-      .where('publicId', '==', publicId)
-      .get();
-    const pages = await this.collection('users').where('ownerPublicId', '==', publicId).get();
-    const pageDevices = await Promise.all(pages.docs.map((page) => this.collection('push_devices').where('publicId', '==', page.id).get()));
-
-    const batch = this.db.batch();
-    batch.update(userRef, { deletedAtMs, status: 'deleted' });
-    batch.set(profileRef, {
-      deletedAtMs,
-      displayName: 'Deleted account',
-      showDisplayName: true,
-      updatedAtMs: deletedAtMs,
+  async deleteAccount(publicId: string, deletedAtMs: number, adminActor?: string): Promise<void> {
+    await this.db.runTransaction(async (transaction) => {
+      const userRef = this.collection('users').doc(publicId);
+      const user = await transaction.get(userRef);
+      if (!user.exists || user.data()?.status === 'deleted' || (adminActor && user.data()?.ownerPublicId)) {
+        throw new ApiError(404, 'USER_NOT_FOUND', 'Account not found.');
+      }
+      if (adminActor && (publicId === adminActor || user.data()?.role === 'admin')) {
+        throw new ApiError(403, 'ADMIN_PROTECTED', 'Administrator accounts cannot be deleted here.');
+      }
+      const [recoveryCredentials, pushDevices, pages] = await Promise.all([
+        transaction.get(this.collection('recovery_credentials').where('publicId', '==', publicId)),
+        transaction.get(this.collection('push_devices').where('publicId', '==', publicId)),
+        transaction.get(this.collection('users').where('ownerPublicId', '==', publicId)),
+      ]);
+      const pageDevices = await Promise.all(pages.docs.map((page) =>
+        transaction.get(this.collection('push_devices').where('publicId', '==', page.id))));
+      const deletedProfile = {
+        deletedAtMs,
+        displayName: 'Deleted account',
+        showDisplayName: true,
+        updatedAtMs: deletedAtMs,
+      };
+      transaction.update(userRef, { deletedAtMs, status: 'deleted' });
+      transaction.set(this.collection('social_profiles').doc(publicId), deletedProfile);
+      for (const credential of recoveryCredentials.docs) transaction.delete(credential.ref);
+      for (const device of pushDevices.docs) transaction.delete(device.ref);
+      for (const devices of pageDevices) for (const device of devices.docs) transaction.delete(device.ref);
+      for (const page of pages.docs) {
+        transaction.update(page.ref, { deletedAtMs, status: 'deleted' });
+        transaction.set(this.collection('social_profiles').doc(page.id), deletedProfile);
+      }
+      if (adminActor) {
+        transaction.create(this.collection('admin_audit').doc(randomUUID()), {
+          actor: adminActor, action: 'user.delete', target: publicId, createdAtMs: deletedAtMs,
+        });
+      }
     });
-    for (const credential of recoveryCredentials.docs) batch.delete(credential.ref);
-    for (const device of pushDevices.docs) batch.delete(device.ref);
-    for (const devices of pageDevices) for (const device of devices.docs) batch.delete(device.ref);
-    for (const page of pages.docs) {
-      batch.update(page.ref, { deletedAtMs, status: 'deleted' });
-      batch.set(this.collection('social_profiles').doc(page.id), { deletedAtMs, displayName: 'Deleted account', showDisplayName: true, updatedAtMs: deletedAtMs });
-    }
-    await batch.commit();
   }
 
   async findActivePublicIdByAccessHash(

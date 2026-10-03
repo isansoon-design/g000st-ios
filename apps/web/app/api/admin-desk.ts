@@ -105,6 +105,10 @@ export async function setAdminUserName(publicId: string, displayName: string): P
   await axios.put(`/admin/desk/users/${publicId}/name`, { displayName });
 }
 
+export async function deleteAdminUser(publicId: string): Promise<void> {
+  await axios.delete(`/admin/users/${publicId}`);
+}
+
 export async function setAdminPostVisible(section: 'social' | 'market', id: string, enabled: boolean): Promise<void> {
   await axios.put(`/admin/desk/posts/${section}/${id}/visibility`, { enabled });
 }

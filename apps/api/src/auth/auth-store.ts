@@ -40,7 +40,7 @@ export interface AuthStore {
   getPageDisplayName?(pagePublicId: string): Promise<string>;
   createAccount(reservation: AccountReservation): Promise<ReserveAccountResult>;
   createSession(publicId: string, material: SessionMaterial, createdAtMs: number): Promise<void>;
-  deleteAccount(publicId: string, deletedAtMs: number): Promise<void>;
+  deleteAccount(publicId: string, deletedAtMs: number, adminActor?: string): Promise<void>;
   findActivePublicIdByAccessHash(accessHash: string, nowMs: number): Promise<ActiveAccount | null>;
   findRecoveryCredential(lookupHash: string): Promise<RecoveryCredentialRecord | null>;
   getAccountRole(publicId: string): Promise<AccountRole>;

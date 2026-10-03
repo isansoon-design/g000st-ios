@@ -181,6 +181,14 @@ export class AuthService {
     await this.store.deleteAccount(account.publicId, this.now());
   }
 
+  async deleteAccountByAdmin(accessToken: string, publicId: string): Promise<void> {
+    const actor = await this.getUser(accessToken);
+    if (actor.role !== 'admin') throw new ApiError(403, 'ADMIN_REQUIRED', 'Administrator access is required.');
+    if (!isValidG000stId(publicId)) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid Public ID.');
+    if (publicId === actor.publicId) throw new ApiError(403, 'ADMIN_PROTECTED', 'Administrator accounts cannot be deleted here.');
+    await this.store.deleteAccount(publicId, this.now(), actor.publicId);
+  }
+
   private generateDistinctRecoveryId(publicId: string): string {
     let recoveryId = generateG000stId();
     while (recoveryId === publicId) recoveryId = generateG000stId();
