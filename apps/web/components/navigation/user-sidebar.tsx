@@ -132,25 +132,25 @@ export function UserSidebar({
     router.refresh();
   };
 
-  const create = () => {
-    onCloseMobile();
-    router.push("/beacons/new");
-  };
+  // const create = () => {
+  //   onCloseMobile();
+  //   router.push("/beacons/new");
+  // };
 
   const personalName = profile?.displayName || ownerId?.slice(0, 8) || "G";
   const identities = ownerId
     ? [
-        { publicId: ownerId, displayName: personalName, avatarUrl: profile?.avatarUrl },
-        ...pages.map((page) => ({
-          publicId: page.publicId,
-          displayName: (activePageProfile?.publicId === page.publicId
-            ? activePageProfile.displayName
-            : page.displayName) || "Untitled beacon",
-          avatarUrl: activePageProfile?.publicId === page.publicId
-            ? activePageProfile.avatarUrl
-            : undefined,
-        })),
-      ]
+      { publicId: ownerId, displayName: personalName, avatarUrl: profile?.avatarUrl },
+      ...pages.map((page) => ({
+        publicId: page.publicId,
+        displayName: (activePageProfile?.publicId === page.publicId
+          ? activePageProfile.displayName
+          : page.displayName) || "Untitled beacon",
+        avatarUrl: activePageProfile?.publicId === page.publicId
+          ? activePageProfile.avatarUrl
+          : undefined,
+      })),
+    ]
     : [];
 
   return (
@@ -183,13 +183,13 @@ export function UserSidebar({
               <X size={19} />
             </button>
           </div> */}
-          <button
+          {/* <button
             type="button"
             onClick={create}
             className=" w-full rounded-xl bg-[#C62828] px-3 py-2 text-xs font-black text-white "
           >
             BUILD YOUR BEACON
-          </button>
+          </button> */}
           {ownerId && (
             <ul aria-label="Your profiles and pages" className="my-5 space-y-2 rounded-2xl border border-black/10 bg-[#f5f6f8] p-2 dark:border-white/10 dark:bg-night-surface">
               {identities.map((identity) => {
