@@ -9,9 +9,7 @@ import {
   ActivityIndicator,
   AppState,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -45,6 +43,7 @@ import {
   uploadSocialMedia,
 } from "@/api/social";
 import { FeatureScreen } from "@/components/layout/feature-screen";
+import { KeyboardAvoidingView } from "@/components/layout/keyboard-avoiding-view";
 import { PostImage } from "@/components/media/post-image";
 import { useTabBarScroll } from "@/components/navigation/tab-bar-scroll";
 import { PostContentText } from "@/components/posts/post-content-text";
@@ -417,6 +416,8 @@ export function SocialScreen() {
         <Modal
           visible={isComposerOpen}
           transparent
+          statusBarTranslucent
+          navigationBarTranslucent
           animationType="slide"
           onRequestClose={() => {
             if (!posting) {
@@ -426,7 +427,7 @@ export function SocialScreen() {
           }}
         >
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior="padding"
             className="flex-1 justify-end bg-black/50"
           >
             <View className="max-h-[92%] mb-7 rounded-t-[28px] bg-[#F7F7F8] dark:bg-night-surface pt-5">
@@ -724,11 +725,13 @@ export function SocialScreen() {
       <Modal
         visible={!!sharingPost}
         transparent
+        statusBarTranslucent
+        navigationBarTranslucent
         animationType="slide"
         onRequestClose={() => setSharingPost(undefined)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior="padding"
           className="flex-1 justify-end bg-black/50"
         >
           <View className="gap-3 rounded-t-[28px] bg-white dark:bg-night-surface p-5 pb-12">
