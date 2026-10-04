@@ -48,6 +48,14 @@ describe('Social in-app sharing', () => {
     assert.equal(share?.sharedPost?.content, 'Original content');
   });
 
+  it('keeps RSS preview metadata when a post is shared', async () => {
+    const { service, posts } = fixture();
+    const linkPreview = { url: 'https://example.com/story', siteName: 'Publisher', title: 'Story', description: 'Excerpt', imageUrl: 'https://example.com/photo.jpg' };
+    posts.set(originalId, { ...posts.get(originalId)!, linkPreview });
+    const share = await service.createPost(viewerId, { content: '', sharedPostId: originalId, visibility: 'public' }, shareId);
+    assert.deepEqual(share.sharedPost?.linkPreview, linkPreview);
+  });
+
   it('resolves shares of shares and handles deleted originals', async () => {
     const { service, posts } = fixture();
     await service.createPost(viewerId, { content: 'First share', sharedPostId: originalId, visibility: 'public' }, shareId);

@@ -410,7 +410,8 @@ export function PostDetailScreen({
                   </Pressable>
                   {!!post.content && (
                     <PostContentText
-                      linkPreview={"linkPreview" in post ? post.linkPreview : undefined} content={post.content}
+                      linkPreview={"linkPreview" in post ? post.linkPreview : undefined}
+                      content={post.content}
                       className="px-4 pb-4 text-[15px] leading-6 text-g000st-black dark:text-night-text"
                     />
                   )}
@@ -424,7 +425,8 @@ export function PostDetailScreen({
                               {post.sharedPost.author.displayName}
                             </Text>
                             <PostContentText
-                              linkPreview={post.sharedPost.linkPreview} content={post.sharedPost.content}
+                              linkPreview={post.sharedPost.linkPreview}
+                              content={post.sharedPost.content}
                               onOpen={() =>
                                 router.push(
                                   `/posts/social/${post.sharedPost!.id}` as Href,

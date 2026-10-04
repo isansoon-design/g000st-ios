@@ -4,7 +4,15 @@ Admins manage sources at `/rss` in the web dashboard. Each source has a name,
 public HTTP(S) feed URL, active publishing account's 50-character Public ID,
 interval in minutes (1–43,200), and enabled flag. RSS 2.0, RSS 1.0 and Atom are
 supported. Posts contain plain-text title/summary and an HTTP(S) article link,
-up to the existing 4,000-character social limit. Images are not imported.
+up to the existing 4,000-character social limit. New posts also contain an optional
+`linkPreview` with article URL, publisher name, title, excerpt and image URL.
+Images come from Media RSS thumbnails/content, image enclosures, Atom enclosures,
+or embedded HTML. If the feed has no image, the next unpublished article is
+fetched once for Open Graph/Twitter image metadata and publisher name. This uses
+the same public-address/DNS/redirect/body protections, with a five-second deadline.
+Metadata fetch failure never prevents publication. Images are displayed from the
+publisher's URL; unavailable images fall back to a text card. Existing posts are
+not backfilled. Web and mobile render previews in feeds, profiles, details and shares.
 Public author names and avatars follow the account's existing profile settings.
 
 ## Contract

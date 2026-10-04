@@ -263,3 +263,15 @@ completely separate, always-free capability that never touches billing.
 - A purchase only ever credits a balance after a signature-verified Stripe webhook confirms payment; a successful Checkout redirect on its own grants nothing.
 - In-app calling never calls into the billing service under any code path — the module boundary between `calling` and `billing` is the enforcement mechanism for "in-app is always free," not a policy flag that could be toggled incorrectly.
 - New error codes: `UNKNOWN_SKU`, `INVALID_SIGNATURE`, `BILLING_UNAVAILABLE`, `INSUFFICIENT_BALANCE`, `PROVIDER_ERROR`, `CALL_NOT_FOUND`, `ADMIN_REQUIRED`.
+
+
+### RSS article previews in Social API v1
+
+Social posts and embedded `sharedPost` objects may include `linkPreview`:
+`{ url: string, siteName: string, title: string, description: string, imageUrl?: string }`.
+This additive field is populated by RSS publishing; ordinary and older posts may
+omit it. URLs use HTTP(S), publisher names are bounded to 100 characters, titles
+to 300, and descriptions to 1,000. The original post `content` remains available
+for copying and sharing. The card opens `url`; image failure falls back to the
+publisher/title/excerpt. Preview metadata is server generated and is not accepted
+by the create/update post inputs.

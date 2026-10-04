@@ -1017,7 +1017,8 @@ function PostCard({
       </View>
       {!!post.content && (
         <PostContentText
-          linkPreview={post.linkPreview} content={post.content}
+          linkPreview={post.linkPreview}
+          content={post.content}
           onOpen={() => router.push(`/posts/social/${post.id}` as Href)}
           className="px-4 pb-3 text-[15px] text-black dark:text-night-text leading-6"
         />
@@ -1091,7 +1092,8 @@ function SharedPostPreview({
           {sharedPost.author.displayName}
         </Text>
         <PostContentText
-          linkPreview={sharedPost.linkPreview} content={sharedPost.content}
+          linkPreview={sharedPost.linkPreview}
+          content={sharedPost.content}
           onOpen={() => router.push(`/posts/social/${sharedPost.id}` as Href)}
           numberOfLines={compact ? 3 : undefined}
           className="mt-1 text-sm leading-5 text-g000st-black dark:text-night-text"
