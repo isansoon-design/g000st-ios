@@ -6,7 +6,11 @@ import { copyText } from "@/services/device/clipboard";
 
 import { LinkifiedText } from "@/components/text/linkified-text";
 
+import type { SocialLinkPreviewV1 } from "@/domain/social/types";
+import { LinkPreviewCard } from "./link-preview-card";
+
 type Props = {
+  linkPreview?: SocialLinkPreviewV1;
   content: string;
   onOpen?: () => void;
   className?: string;
@@ -15,12 +19,14 @@ type Props = {
 
 export function PostContentText({
   content,
+  linkPreview,
   onOpen,
   className,
   numberOfLines,
 }: Props) {
   const longPressed = useRef(false);
   return (
+    <>
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={content}
@@ -52,7 +58,7 @@ export function PostContentText({
       }
     >
       <LinkifiedText
-        content={content}
+        content={linkPreview && content.endsWith(linkPreview.url) ? content.slice(0, -linkPreview.url.length).trimEnd() : content}
         numberOfLines={numberOfLines}
         className={
           className ??
@@ -60,5 +66,7 @@ export function PostContentText({
         }
       />
     </Pressable>
+    {linkPreview && <LinkPreviewCard preview={linkPreview} />}
+    </>
   );
 }

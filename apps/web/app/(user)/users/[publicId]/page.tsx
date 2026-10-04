@@ -30,6 +30,7 @@ import {
 import { PostContentLink } from "@/components/posts/PostContentLink";
 import { useCalling } from "@/features/calling/use-calling";
 import { startChatConversation } from "@/features/chat/api";
+import { PageAddress } from "@/features/profile/page-address";
 import { PageContactLinks } from "@/features/profile/page-contact-links";
 import { ProfilePostComposer } from "@/features/profile/profile-post-composer";
 
@@ -38,6 +39,10 @@ type ProfileDraft = {
   bio: string;
   showDisplayName: boolean;
   country: string;
+  city: string;
+  postCode: string;
+  street1: string;
+  street2: string;
   age: string;
   sex: "" | "male" | "female";
   hobby: string;
@@ -56,6 +61,10 @@ function profileDraft(profile: SocialProfile): ProfileDraft {
     bio: profile.bio ?? "",
     showDisplayName: profile.showDisplayName,
     country: profile.country ?? "",
+    city: profile.city ?? "",
+    postCode: profile.postCode ?? "",
+    street1: profile.street1 ?? "",
+    street2: profile.street2 ?? "",
     age: profile.age ? String(profile.age) : "",
     sex: profile.sex ?? "",
     hobby: profile.hobby ?? "",
@@ -140,10 +149,14 @@ export default function PublicUserPage() {
             ? { displayName: draft.displayName.trim() }
             : {}),
           bio: draft.bio.trim(),
-          ...(draft.country.trim() ? { country: draft.country.trim() } : {}),
+          ...(!profile?.isPage && draft.country.trim() ? { country: draft.country.trim() } : {}),
           ...(draft.hobby.trim() ? { hobby: draft.hobby.trim() } : {}),
           ...(profile?.isPage
             ? {
+              city: draft.city.trim(),
+              postCode: draft.postCode.trim(),
+              street1: draft.street1.trim(),
+              street2: draft.street2.trim(),
               whatsappNumber: draft.whatsappNumber,
               landlineNumber: draft.landlineNumber,
               contactEmail: draft.contactEmail,
@@ -452,7 +465,9 @@ export default function PublicUserPage() {
                     </label>
                     {(
                       [
-                        ["country", "Country"],
+                        ...(profile.isPage
+                          ? [["city", "City (optional)"], ["postCode", "Post code number (optional)"], ["street1", "Street (line 1, optional)"], ["street2", "Street (line 2, optional)"]]
+                          : [["country", "Country"]]),
                         ["hobby", "Hobby"],
                         ...(!profile.isPage ? [["age", "Age"]] : []),
                         ...(profile.isPage
@@ -562,7 +577,10 @@ export default function PublicUserPage() {
                   </div>
                 )}
                 {!editing && profile.isPage && (
-                  <PageContactLinks profile={profile} />
+                  <>
+                    <PageAddress profile={profile} />
+                    <PageContactLinks profile={profile} />
+                  </>
                 )}
               </section>
 
@@ -605,12 +623,12 @@ export default function PublicUserPage() {
                         </p>
                       </div>
                     </div>
-                    {!!post.content && <PostContentLink content={post.content} href={`/posts/social/${post.id}`} className="px-4 pb-4 text-sm leading-6" />}
+                    {!!post.content && <PostContentLink linkPreview={post.linkPreview} content={post.content} href={`/posts/social/${post.id}`} className="px-4 pb-4 text-sm leading-6" />}
                     {post.sharedPost && (
                       <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/10 dark:border-night-border bg-[#f7f7f8] dark:bg-night-surface text-sm">
                         <div className="p-4">
                           <b>{post.sharedPost.author.displayName}</b>
-                          <PostContentLink content={post.sharedPost.content} href={`/posts/social/${post.sharedPost.id}`} className="mt-1" />
+                          <PostContentLink linkPreview={post.sharedPost.linkPreview} content={post.sharedPost.content} href={`/posts/social/${post.sharedPost.id}`} className="mt-1" />
                         </div>
                         <PostMedia media={post.sharedPost.media} />
                       </div>

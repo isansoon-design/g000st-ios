@@ -21,6 +21,10 @@ type ProfileFields = {
   displayName: string;
   showDisplayName: boolean;
   country: string;
+  city: string;
+  postCode: string;
+  street1: string;
+  street2: string;
   age: string;
   sex: "male" | "female" | "";
   hobby: string;
@@ -38,6 +42,10 @@ const EMPTY_FIELDS: ProfileFields = {
   age: "",
   bio: "",
   country: "",
+  city: "",
+  postCode: "",
+  street1: "",
+  street2: "",
   displayName: "",
   hobby: "",
   sex: "",
@@ -57,6 +65,10 @@ function toFields(profile: SocialProfile | null): ProfileFields {
     age: profile.age ? String(profile.age) : "",
     bio: profile.bio ?? "",
     country: profile.country ?? "",
+    city: profile.city ?? "",
+    postCode: profile.postCode ?? "",
+    street1: profile.street1 ?? "",
+    street2: profile.street2 ?? "",
     displayName: profile.displayName ?? "",
     showDisplayName: profile.showDisplayName ?? false,
     hobby: profile.hobby ?? "",
@@ -226,7 +238,7 @@ export default function ProfilePage() {
         showDisplayName: isPage ? true : fields.showDisplayName,
         ...(isPage
           ? {
-            whatsappNumber: fields.whatsappNumber,
+            city: fields.city.trim(), postCode: fields.postCode.trim(), street1: fields.street1.trim(), street2: fields.street2.trim(), whatsappNumber: fields.whatsappNumber,
             landlineNumber: fields.landlineNumber,
             contactEmail: fields.contactEmail,
             facebookUrl: fields.facebookUrl,
@@ -617,6 +629,17 @@ export default function ProfilePage() {
                     </p>
                   )}
                 </div>
+
+                {isPage && (
+                  <div className={cardClass}>
+                    {([['city', 'City'], ['postCode', 'Post code number'], ['street1', 'Street (line 1)'], ['street2', 'Street (line 2)']] as const).map(([key, label]) => (
+                      <label key={key} className="mb-3 block">
+                        <span className={labelClass}>{label} (optional)</span>
+                        <input className={fieldClass} value={fields[key]} maxLength={key === 'city' ? 100 : key === 'postCode' ? 32 : 200} onChange={(event) => setField(key, event.target.value)} />
+                      </label>
+                    ))}
+                  </div>
+                )}
 
                 {isPage && (
                   <div className="mb-3 w-full rounded-[22px] border border-white/70 bg-white p-5 dark:border-white/20 dark:bg-night-header">

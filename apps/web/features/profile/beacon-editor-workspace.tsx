@@ -1,5 +1,7 @@
 "use client";
 
+import { PageAddress } from "@/features/profile/page-address";
+
 import { LinkifiedText } from "@/components/text/LinkifiedText";
 
 import {
@@ -33,7 +35,10 @@ import {
 type Field =
   | "displayName"
   | "bio"
-  | "country"
+  | "city"
+  | "postCode"
+  | "street1"
+  | "street2"
   | "hobby"
   | "whatsappNumber"
   | "landlineNumber"
@@ -64,10 +69,28 @@ const fields: readonly FieldMeta[] = [
     maxLength: 500,
   },
   {
-    key: "country",
-    label: "Country",
-    placeholder: "Where are you based?",
-    maxLength: 80,
+    key: "city",
+    label: "City (optional)",
+    placeholder: "Your city",
+    maxLength: 100,
+  },
+  {
+    key: "postCode",
+    label: "Post code number (optional)",
+    placeholder: "Your postal code",
+    maxLength: 32,
+  },
+  {
+    key: "street1",
+    label: "Street (line 1) (optional)",
+    placeholder: "Street address",
+    maxLength: 200,
+  },
+  {
+    key: "street2",
+    label: "Street (line 2) (optional)",
+    placeholder: "Apartment, suite or additional address",
+    maxLength: 200,
   },
   {
     key: "hobby",
@@ -290,7 +313,10 @@ export function BeaconEditorWorkspace({
         {
           displayName,
           bio: draft.bio.trim(),
-          ...(draft.country.trim() ? { country: draft.country.trim() } : {}),
+          city: draft.city.trim(),
+          postCode: draft.postCode.trim(),
+          street1: draft.street1.trim(),
+          street2: draft.street2.trim(),
           ...(draft.hobby.trim() ? { hobby: draft.hobby.trim() } : {}),
           whatsappNumber: draft.whatsappNumber.trim(),
           landlineNumber: draft.landlineNumber.trim(),
@@ -490,7 +516,7 @@ export function BeaconEditorWorkspace({
                   <p className="flex items-center gap-2">
                     <UsersRound size={15} /> Your space on g000st
                   </p>
-                  {draft.country.trim() && <p>📍 {draft.country.trim()}</p>}
+                  <PageAddress profile={draft} />
                   {draft.hobby.trim() && <p>✦ {draft.hobby.trim()}</p>}
                   {draft.contactEmail.trim() && (
                     <p className="break-all">✉ {draft.contactEmail.trim()}</p>
@@ -588,7 +614,7 @@ export function BeaconEditorWorkspace({
                   Identity
                 </h3>
                 {fields
-                  .slice(0, 4)
+                  .slice(0, 7)
                   .map(({ key, label, placeholder, maxLength, type }) => (
                     <label key={key} className="block text-xs font-black">
                       {label}
@@ -632,7 +658,7 @@ export function BeaconEditorWorkspace({
                   Contact & social links
                 </h3>
                 {fields
-                  .slice(4)
+                  .slice(7)
                   .map(({ key, label, placeholder, maxLength, type }) => (
                     <label key={key} className="block text-xs font-black">
                       {label}

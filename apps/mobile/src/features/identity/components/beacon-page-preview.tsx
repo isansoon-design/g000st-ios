@@ -1,7 +1,9 @@
 import { Image } from "expo-image";
 import { Pressable, Text, View } from "react-native";
+import { PageAddress, type PageAddressFields } from "./page-address";
 
 type Props = Readonly<{
+  address?: PageAddressFields;
   avatarUrl?: string;
   bio?: string;
   compact?: boolean;
@@ -12,6 +14,7 @@ type Props = Readonly<{
 }>;
 
 export function BeaconPagePreview({
+  address,
   avatarUrl,
   bio,
   compact,
@@ -90,6 +93,7 @@ export function BeaconPagePreview({
             {bio.trim()}
           </Text>
         )}
+        {address && <PageAddress profile={address} />}
         {onChangeAvatar && (
           <Pressable
             accessibilityRole="button"

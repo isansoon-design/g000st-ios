@@ -13,6 +13,7 @@ import type {
   CreateSocialPostInput,
   CreateSocialReportInput,
   SocialMedia,
+  SocialLinkPreviewV1,
   SocialAlert,
   SocialAuthor,
   SocialComment,
@@ -25,6 +26,7 @@ import type {
 type StoredPost = Readonly<{
   ownerPublicId: string;
   content: string;
+  linkPreview?: SocialLinkPreviewV1;
   sharedPostId?: string;
   media?: readonly SocialMedia[];
   visibility: 'anonymous' | 'public';
@@ -312,7 +314,7 @@ export class FirestoreSocialStore implements SocialStore {
   private async toPost(viewerId: string, id: string, post: StoredPost): Promise<SocialPost> {
     const [liked, camped, author] = await Promise.all([this.reactions(id).doc(viewerId).get(), this.camps(viewerId).doc(post.ownerPublicId).get(), this.author(post.ownerPublicId, post.visibility === 'public' || post.ownerPublicId === viewerId)]);
     const ownedByViewer = post.ownerPublicId === viewerId;
-    return { id, ...(ownedByViewer || post.visibility === 'public' ? { ownerPublicId: post.ownerPublicId } : {}), author, content: post.content, ...(post.sharedPostId ? { sharedPostId: post.sharedPostId } : {}), ...(post.media?.length ? { media: post.media } : {}), visibility: post.visibility, sharedToSocial: post.sharedToSocial !== false, createdAtMs: post.createdAtMs, updatedAtMs: post.updatedAtMs, ...(post.editedAtMs ? { editedAtMs: post.editedAtMs } : {}), likeCount: post.likeCount, commentCount: post.commentCount, likedByViewer: liked.exists, campedByViewer: camped.exists, ownedByViewer };
+    return { id, ...(ownedByViewer || post.visibility === 'public' ? { ownerPublicId: post.ownerPublicId } : {}), author, content: post.content, ...(post.linkPreview ? { linkPreview: post.linkPreview } : {}), ...(post.sharedPostId ? { sharedPostId: post.sharedPostId } : {}), ...(post.media?.length ? { media: post.media } : {}), visibility: post.visibility, sharedToSocial: post.sharedToSocial !== false, createdAtMs: post.createdAtMs, updatedAtMs: post.updatedAtMs, ...(post.editedAtMs ? { editedAtMs: post.editedAtMs } : {}), likeCount: post.likeCount, commentCount: post.commentCount, likedByViewer: liked.exists, campedByViewer: camped.exists, ownedByViewer };
   }
 
   private async toComment(viewerId: string, postId: string, id: string, comment: StoredComment): Promise<SocialComment> {

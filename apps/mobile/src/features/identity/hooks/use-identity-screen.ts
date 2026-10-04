@@ -23,6 +23,10 @@ export type IdentityProfileFields = Readonly<{
   displayName: string;
   showDisplayName: boolean;
   country: string;
+  city: string;
+  postCode: string;
+  street1: string;
+  street2: string;
   age: string;
   sex: "male" | "female" | "";
   hobby: string;
@@ -40,6 +44,10 @@ const EMPTY_FIELDS: IdentityProfileFields = {
   age: "",
   bio: "",
   country: "",
+  city: "",
+  postCode: "",
+  street1: "",
+  street2: "",
   displayName: "",
   showDisplayName: false,
   hobby: "",
@@ -59,6 +67,10 @@ function toFields(profile: SocialProfile | null): IdentityProfileFields {
     age: profile.age ? String(profile.age) : "",
     bio: profile.bio ?? "",
     country: profile.country ?? "",
+    city: profile.city ?? "",
+    postCode: profile.postCode ?? "",
+    street1: profile.street1 ?? "",
+    street2: profile.street2 ?? "",
     displayName: profile.displayName ?? "",
     showDisplayName: profile.showDisplayName,
     hobby: profile.hobby ?? "",
@@ -308,7 +320,7 @@ export function useIdentityScreen() {
         ...(!isPage && fields.country.trim() ? { country: fields.country.trim() } : {}),
         displayName: fields.displayName.trim() || undefined,
         showDisplayName: isPage ? true : fields.showDisplayName,
-        ...(isPage ? { whatsappNumber: fields.whatsappNumber, landlineNumber: fields.landlineNumber, contactEmail: fields.contactEmail, facebookUrl: fields.facebookUrl, instagramUrl: fields.instagramUrl, tiktokUrl: fields.tiktokUrl, linkedinUrl: fields.linkedinUrl } : {}),
+        ...(isPage ? { city: fields.city.trim(), postCode: fields.postCode.trim(), street1: fields.street1.trim(), street2: fields.street2.trim(), whatsappNumber: fields.whatsappNumber, landlineNumber: fields.landlineNumber, contactEmail: fields.contactEmail, facebookUrl: fields.facebookUrl, instagramUrl: fields.instagramUrl, tiktokUrl: fields.tiktokUrl, linkedinUrl: fields.linkedinUrl } : {}),
         ...(!isPage && fields.hobby.trim() ? { hobby: fields.hobby.trim() } : {}),
         ...(!isPage && fields.sex ? { sex: fields.sex } : {}),
       });

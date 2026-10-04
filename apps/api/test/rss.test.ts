@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Firestore } from 'firebase-admin/firestore';
 import { downloadFeed, feedUrl, parseFeed, publicAddress } from '../src/rss/rss-feed.js';
+import { articlePreview } from '../src/rss/rss-article-preview.js';
 import { RssService, rssInput } from '../src/rss/rss-service.js';
 
 const url = 'https://example.com/feed';
@@ -41,12 +42,12 @@ test('RSS input validates account IDs, intervals and unknown fields', () => {
 // Serialized atomic transactions model commit/rollback, including competing workers.
 function fixture(download: (url: string) => Promise<string> = async () => xml) {
   type Row = Record<string, unknown>;
-  type Ref = { path: string; id: string; delete(): Promise<void> };
+  type Ref = { path: string; id: string; get(): Promise<{ exists: boolean }>; delete(): Promise<void> };
   const rows = new Map<string, Row>();
   let now = 1_000;
   let tail = Promise.resolve();
   let failPostCommit = false;
-  const ref = (path: string): Ref => ({ path, id: path.split('/').at(-1)!, async delete() { rows.delete(path); } });
+  const ref = (path: string): Ref => ({ path, id: path.split('/').at(-1)!, async get() { return { exists: rows.has(path) }; }, async delete() { rows.delete(path); } });
   const snapshot = (reference: Ref) => ({ exists: rows.has(reference.path), data: () => rows.get(reference.path) });
   const db = {
     collection: (name: string) => ({ doc: (id: string) => ref(`${name}/${id}`) }),
@@ -74,8 +75,8 @@ function fixture(download: (url: string) => Promise<string> = async () => xml) {
   } as unknown as Firestore;
   rows.set(`test_users/${input.accountPublicId}`, { status: 'active' });
   return {
-    rows, service: new RssService(db, 'test', () => now, download),
-    secondWorker: () => new RssService(db, 'test', () => now, download),
+    rows, service: new RssService(db, 'test', () => now, download, async (preview) => preview),
+    secondWorker: () => new RssService(db, 'test', () => now, download, async (preview) => preview),
     advance: (ms = 60_000) => { now += ms; },
     failCommit: () => { failPostCommit = true; },
     posts: () => [...rows.entries()].filter(([key]) => key.startsWith('test_social_posts/')),
@@ -164,4 +165,42 @@ test('fetch failures are recorded without leaking remote errors and do not produ
   f.advance(); await f.service.run(id);
   assert.equal(f.posts().length, 0);
   assert.match(String(f.rows.get(`test_rss_sources/${id}`)!.lastError), /Could not fetch/);
+});
+
+
+test('RSS previews retain publisher, excerpt and image from Media RSS, enclosures and HTML', () => {
+  for (const image of [
+    '<media:content xmlns:media="http://search.yahoo.com/mrss/" url="/photo.jpg" medium="image"/>',
+    '<media:group xmlns:media="http://search.yahoo.com/mrss/"><media:thumbnail url="/photo.jpg"/></media:group>',
+    '<enclosure url="/photo.jpg" type="image/jpeg"/>',
+    '<content:encoded xmlns:content="http://purl.org/rss/1.0/modules/content/"><![CDATA[<img src="/photo.jpg">]]></content:encoded>',
+  ]) {
+    const feed = `<rss><channel><title>Publisher</title><item><title>Story</title><description>Excerpt</description><link>/story</link>${image}</item></channel></rss>`;
+    assert.deepEqual(parseFeed(feed, url)[0]!.linkPreview, { url: 'https://example.com/story', siteName: 'Publisher', title: 'Story', description: 'Excerpt', imageUrl: 'https://example.com/photo.jpg' });
+  }
+  const atom = '<feed><title>Atom publisher</title><entry><title>Story</title><link href="/story"/><link rel="enclosure" href="/photo.jpg" type="image/jpeg"/></entry></feed>';
+  assert.equal(parseFeed(atom, url)[0]!.linkPreview?.imageUrl, 'https://example.com/photo.jpg');
+});
+
+test('preview images reject unsafe links and non-image enclosures', () => {
+  for (const image of ['javascript:alert(1)', 'http://127.0.0.1/private', 'http://[::1]/private', 'https://user:secret@example.com/image', 'http://localhost/image']) {
+    const entry = parseFeed(`<rss><channel><item><title>Story</title><link>/story</link><enclosure type="image/jpeg" url="${image}"/></item></channel></rss>`, url)[0]!;
+    assert.equal(entry.linkPreview?.imageUrl, undefined);
+  }
+  assert.equal(parseFeed('<rss><channel><item><title>Story</title><link>/story</link><enclosure type="audio/mpeg" url="/audio.mp3"/></item></channel></rss>', url)[0]!.linkPreview?.imageUrl, undefined);
+});
+
+test('article metadata adds a safe image and publisher without replacing feed text', () => {
+  const preview = { url: 'https://example.com/story', title: 'Feed title', description: 'Feed excerpt', siteName: 'example.com' };
+  assert.deepEqual(articlePreview(`<html><head><meta content="/photo.jpg?a=1&amp;b=2" property="og:image"><meta property='og:site_name' content='News &amp; Culture'></head></html>`, preview), { ...preview, siteName: 'News & Culture', imageUrl: 'https://example.com/photo.jpg?a=1&b=2' });
+  assert.deepEqual(articlePreview('<meta property="og:image" content="http://127.0.0.1/secret">', preview), preview);
+  assert.deepEqual(articlePreview('<html>No metadata</html>', preview), preview);
+});
+
+test('RSS publishing stores preview data with the post', async () => {
+  const f = fixture(async () => '<rss><channel><title>Publisher</title><item><title>Story</title><link>/story</link><enclosure type="image/jpeg" url="/photo.jpg"/></item></channel></rss>');
+  const id = await f.service.save(undefined, input, 'admin');
+  f.advance();
+  await f.service.run(id);
+  assert.deepEqual(f.posts()[0]![1].linkPreview, { url: 'https://example.com/story', siteName: 'Publisher', title: 'Story', description: '', imageUrl: 'https://example.com/photo.jpg' });
 });

@@ -138,6 +138,14 @@ profile lookup. Anonymous authors omit this field and are never looked up throug
 - `DELETE /posts/:postId/comments/:commentId`: owner-only comment deletion.
 - `POST /uploads`: creates a signed image upload for a client-generated post UUID.
 - `GET /profiles/:publicId`, `PUT /profile`: reads or updates the optional Social profile.
+  Page addresses use four optional string fields: `city` (100 characters), `postCode`
+  (32 characters), `street1` and `street2` (200 characters each). Values are trimmed;
+  omitted fields stay unchanged and empty strings clear saved values. Postal codes
+  remain strings to preserve leading zeros, letters and spaces. Address fields are
+  accepted only for page identities and returned in public page profiles. Web and
+  mobile page forms replace `country` with these fields and display each nonempty
+  value on its own line in city, postal code, street line 1, street line 2 order.
+  The existing `country` field remains supported for personal profiles and older clients.
 - `POST /profiles/:publicId/camp`: toggles Camp for an active user.
 - `GET /alerts`, `POST /alerts/read`: lists and marks Social alerts.
 - `POST /reports`: creates a moderation report without exposing it to other users.

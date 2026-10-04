@@ -419,6 +419,17 @@ function IdentityScreenContentComponent({
         </View>
 
         {isPage && (
+          <View className="mb-3 w-full gap-3 rounded-[22px] bg-white p-4 dark:bg-night-header">
+            {([['city', 'City'], ['postCode', 'Post code number'], ['street1', 'Street (line 1)'], ['street2', 'Street (line 2)']] as const).map(([key, label]) => (
+              <View key={key} className="gap-1">
+                <Text className="text-xs font-bold text-black/60 dark:text-night-muted">{label} (optional)</Text>
+                <TextInput accessibilityLabel={label} value={fields[key]} maxLength={key === 'city' ? 100 : key === 'postCode' ? 32 : 200} onChangeText={(value) => onSetField(key, value)} className="rounded-field border border-black/10 bg-white px-3 py-2 text-g000st-black dark:border-night-border dark:bg-night-surface dark:text-night-text" />
+              </View>
+            ))}
+          </View>
+        )}
+
+        {isPage && (
           <View className="mb-3 w-full rounded-[22px] border border-white/70 bg-white p-4 dark:border-white/20 dark:bg-night-header">
             <Text className="text-[10px] font-black uppercase tracking-[2px] text-g000st-red">
               CONTACT & SOCIAL

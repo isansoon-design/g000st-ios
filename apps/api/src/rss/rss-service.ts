@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Firestore, Transaction } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { ApiError } from '../http/api-error.js';
+import { enrichArticlePreview } from './rss-article-preview.js';
 import { downloadFeed, feedUrl, parseFeed } from './rss-feed.js';
 
 export const rssInput = z.object({
@@ -26,7 +27,8 @@ export class RssService {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
   constructor(private readonly db: Firestore, private readonly prefix: string, private readonly now = Date.now,
-    private readonly download = downloadFeed) {}
+    private readonly download = downloadFeed,
+    private readonly enrichPreview = enrichArticlePreview) {}
   private collection(name: string) { return this.db.collection(`${this.prefix}_${name}`); }
   private sources() { return this.collection('rss_sources'); }
   async list(): Promise<{ version: 1; sources: RssSourceV1[] }> {
@@ -94,6 +96,10 @@ export class RssService {
       const xml = await this.download(claimed.url);
       failure = 'Invalid or unsupported RSS/Atom feed (maximum 2 MB).';
       const entries = parseFeed(xml, claimed.url);
+      // Enrich just the next unpublished article, outside retryable transactions.
+      const published = await Promise.all(entries.map((entry) => this.collection('rss_published').doc(entry.key).get()));
+      const candidate = entries.find((_entry, index) => !published[index]!.exists);
+      const enrichedPreview = candidate?.linkPreview ? await this.enrichPreview(candidate.linkPreview) : undefined;
       failure = 'Could not publish. Check the publishing account and try again.';
       await this.db.runTransaction(async (transaction) => {
         const source = (await transaction.get(ref)).data() as StoredSource | undefined;
@@ -109,6 +115,7 @@ export class RssService {
             ownerPublicId: source.accountPublicId, content: entry.content, visibility: 'public', sharedToSocial: true,
             createdAtMs: now, updatedAtMs: now, likeCount: 0, commentCount: 0,
             rssSourceId: id, rssEntryKey: entry.key,
+            ...(entry.linkPreview ? { linkPreview: entry.key === candidate?.key && enrichedPreview ? enrichedPreview : entry.linkPreview } : {}),
           });
           transaction.create(this.collection('rss_published').doc(entry.key), { postId, sourceId: id, publishedAtMs: now });
         }

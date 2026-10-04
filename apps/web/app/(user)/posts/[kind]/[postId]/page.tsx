@@ -354,7 +354,7 @@ function PostDetailContent({ kind, postId }: { kind: string; postId: string }) {
                 </button>
                 {!!post.content && (
                   <PostContentLink
-                    content={post.content}
+                    linkPreview={"linkPreview" in post ? post.linkPreview : undefined} content={post.content}
                     className="px-4 pb-4 text-[15px] leading-6"
                   />
                 )}
@@ -368,7 +368,7 @@ function PostDetailContent({ kind, postId }: { kind: string; postId: string }) {
                             {post.sharedPost.author.displayName}
                           </p>
                           <PostContentLink
-                            content={post.sharedPost.content}
+                            linkPreview={post.sharedPost.linkPreview} content={post.sharedPost.content}
                             href={`/posts/social/${post.sharedPost.id}`}
                             className="p-3 text-sm leading-5"
                           />

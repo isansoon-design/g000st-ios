@@ -1,3 +1,4 @@
+import { PageAddress } from "@/features/identity/components/page-address";
 import { randomUUID } from "expo-crypto";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -1016,7 +1017,7 @@ function PostCard({
       </View>
       {!!post.content && (
         <PostContentText
-          content={post.content}
+          linkPreview={post.linkPreview} content={post.content}
           onOpen={() => router.push(`/posts/social/${post.id}` as Href)}
           className="px-4 pb-3 text-[15px] text-black dark:text-night-text leading-6"
         />
@@ -1090,7 +1091,7 @@ function SharedPostPreview({
           {sharedPost.author.displayName}
         </Text>
         <PostContentText
-          content={sharedPost.content}
+          linkPreview={sharedPost.linkPreview} content={sharedPost.content}
           onOpen={() => router.push(`/posts/social/${sharedPost.id}` as Href)}
           numberOfLines={compact ? 3 : undefined}
           className="mt-1 text-sm leading-5 text-g000st-black dark:text-night-text"
@@ -1190,6 +1191,7 @@ function ProfileEditor({
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(profile.displayName ?? "");
   const [country, setCountry] = useState(profile.country ?? "");
+  const [address, setAddress] = useState({ city: profile.city ?? "", postCode: profile.postCode ?? "", street1: profile.street1 ?? "", street2: profile.street2 ?? "" });
   const [hobby, setHobby] = useState(profile.hobby ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
   if (!editing)
@@ -1202,10 +1204,11 @@ function ProfileEditor({
           {profile.displayName || profile.publicId.slice(0, 8)}
         </Text>
         <Text className="mt-1 text-xs text-black/45 dark:text-night-muted">
-          {profile.country ||
+          {(profile.isPage ? undefined : profile.country) ||
             profile.hobby ||
             "Tap to complete your optional profile"}
         </Text>
+        {profile.isPage && <PageAddress profile={profile} />}
       </Pressable>
     );
   return (
@@ -1219,12 +1222,16 @@ function ProfileEditor({
         placeholder="Display name"
         className="rounded-xl border border-black/15 dark:border-night-border px-3 py-2 text-g000st-black dark:text-night-text"
       />
+      {profile.isPage ? (['city', 'postCode', 'street1', 'street2'] as const).map((key, index) => (
+        <TextInput key={key} accessibilityLabel={['City', 'Post code number', 'Street (line 1)', 'Street (line 2)'][index]} placeholder={['City (optional)', 'Post code number (optional)', 'Street (line 1, optional)', 'Street (line 2, optional)'][index]} value={address[key]} maxLength={key === 'city' ? 100 : key === 'postCode' ? 32 : 200} onChangeText={(value) => setAddress({ ...address, [key]: value })} className="rounded-xl border border-black/15 px-3 py-2 text-g000st-black dark:border-night-border dark:text-night-text" />
+      )) : (
       <TextInput
         value={country}
         onChangeText={setCountry}
         placeholder="Country"
         className="rounded-xl border border-black/15 dark:border-night-border px-3 py-2 text-g000st-black dark:text-night-text"
       />
+      )}
       <TextInput
         value={hobby}
         onChangeText={setHobby}
@@ -1252,7 +1259,7 @@ function ProfileEditor({
           onPress={() =>
             void onSave({
               displayName: displayName.trim() || undefined,
-              country: country.trim() || undefined,
+              ...(profile.isPage ? { city: address.city.trim(), postCode: address.postCode.trim(), street1: address.street1.trim(), street2: address.street2.trim() } : { country: country.trim() || undefined }),
               hobby: hobby.trim() || undefined,
               bio: bio.trim() || undefined,
             }).then(() => setEditing(false))

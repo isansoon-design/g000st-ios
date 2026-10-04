@@ -6,8 +6,10 @@ import { get as httpsGet } from 'node:https';
 import ipaddr from 'ipaddr.js';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 
+import type { SocialLinkPreviewV1 } from '../social/social-types.js';
+
 const MAX_BYTES = 2 * 1024 * 1024;
-export type FeedEntry = Readonly<{ key: string; content: string }>;
+export type FeedEntry = Readonly<{ key: string; content: string; linkPreview?: SocialLinkPreviewV1 }>;
 export function feedUrl(value: string): URL {
   const url = new URL(value);
   if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || (url.port && !['80', '443'].includes(url.port))) {
@@ -22,7 +24,7 @@ export function publicAddress(address: string): boolean {
 }
 
 /** Pin each connection to validated DNS results, including every redirect. */
-export async function downloadFeed(value: string, signal = AbortSignal.timeout(20_000), redirects = 0): Promise<string> {
+export async function downloadFeed(value: string, signal = AbortSignal.timeout(20_000), redirects = 0, accept = 'application/rss+xml, application/atom+xml, application/xml, text/xml'): Promise<string> {
   const url = feedUrl(value);
   const hostname = url.hostname.replace(/^\[|\]$/g, '');
   signal.throwIfAborted();
@@ -40,13 +42,13 @@ export async function downloadFeed(value: string, signal = AbortSignal.timeout(2
       agent: false,
       family: address.family,
       lookup: (_host, _options, callback) => callback(null, address.address, address.family),
-      headers: { Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml', 'Accept-Encoding': 'identity', 'User-Agent': 'g000st-RSS/1.0' },
+      headers: { Accept: accept, 'Accept-Encoding': 'identity', 'User-Agent': 'g000st-RSS/1.0' },
     }, (response) => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode ?? 0)) {
         const location = response.headers.location;
         response.destroy();
         if (!location || redirects >= 3) return reject(new Error('Feed redirect limit reached.'));
-        try { void downloadFeed(new URL(location, url).href, signal, redirects + 1).then(resolve, reject); }
+        try { void downloadFeed(new URL(location, url).href, signal, redirects + 1, accept).then(resolve, reject); }
         catch { reject(new Error('Feed returned an invalid redirect URL.')); }
         return;
       }
@@ -77,6 +79,33 @@ function array(value: unknown): Record<string, unknown>[] {
   return (Array.isArray(value) ? value : value ? [value] : []).filter((item) => item && typeof item === 'object');
 }
 
+export function safeUrl(value: unknown, base: string): string | undefined {
+  const raw = text(value).trim();
+  if (!raw || raw.length > 2048) return undefined;
+  try {
+    const url = feedUrl(new URL(raw, base).href);
+    const host = url.hostname.replace(/^\[|\]$/g, '');
+    if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || (ipaddr.isValid(host) && !publicAddress(host))) return undefined;
+    return url.href;
+  } catch { return undefined; }
+}
+
+function entryImage(entry: Record<string, unknown>, base: string): string | undefined {
+  const media = [...array(entry.thumbnail), ...array(entry.content), ...array(entry.group).flatMap((group) => [...array(group.thumbnail), ...array(group.content)]), ...array(entry.enclosure), ...array(entry.link).filter((link) => link['@_rel'] === 'enclosure')];
+  for (const item of media) {
+    const type = text(item['@_type']);
+    if ((type && !type.startsWith('image/')) || item['@_medium'] === 'video' || item['@_medium'] === 'audio') continue;
+    const url = safeUrl(item['@_url'] ?? item['@_href'], base);
+    if (url) return url;
+  }
+  const html = text(entry.encoded ?? entry.description ?? entry.content ?? entry.summary);
+  for (const match of html.matchAll(/<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']/gi)) {
+    const url = safeUrl(match[1]?.replace(/&amp;/g, '&'), base);
+    if (url) return url;
+  }
+  return undefined;
+}
+
 export function parseFeed(xml: string, sourceUrl: string): FeedEntry[] {
   if (Buffer.byteLength(xml) > MAX_BYTES || /<!DOCTYPE|<!ENTITY/i.test(xml) || XMLValidator.validate(xml) !== true) throw new Error('Feed must contain valid RSS or Atom XML without a DTD.');
   const parsed = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true, parseTagValue: false, processEntities: true }).parse(xml);
@@ -87,8 +116,7 @@ export function parseFeed(xml: string, sourceUrl: string): FeedEntry[] {
   return entries.flatMap((entry) => {
     const atomLink = array(entry.link).find((link) => !link['@_rel'] || link['@_rel'] === 'alternate');
     const rawLink = text(entry.link) || text(atomLink?.['@_href']);
-    let link = '';
-    try { if (rawLink) link = feedUrl(new URL(rawLink, sourceUrl).href).href; } catch { /* Skip unsafe article links. */ }
+    const link = safeUrl(rawLink, sourceUrl) ?? '';
     const title = plain(entry.title);
     const summary = plain(entry.description ?? entry.summary ?? entry.encoded ?? entry.content);
     if (!title && !summary) return [];
@@ -98,6 +126,14 @@ export function parseFeed(xml: string, sourceUrl: string): FeedEntry[] {
     seen.add(key);
     const suffix = link && link.length <= 2000 ? `\n\n${link}` : '';
     const content = [title, summary].filter(Boolean).join('\n\n').slice(0, 4000 - suffix.length) + suffix;
-    return [{ key, content }];
+    const imageUrl = entryImage(entry, link || sourceUrl);
+    const linkPreview: SocialLinkPreviewV1 | undefined = link ? {
+      url: link,
+      siteName: plain(root.title ?? parsed.RDF?.channel?.title).slice(0, 100) || new URL(link).hostname.replace(/^www\./, ''),
+      title: (title || summary).slice(0, 300),
+      description: summary.slice(0, 1000),
+      ...(imageUrl ? { imageUrl } : {}),
+    } : undefined;
+    return [{ key, content, ...(linkPreview ? { linkPreview } : {}) }];
   });
 }

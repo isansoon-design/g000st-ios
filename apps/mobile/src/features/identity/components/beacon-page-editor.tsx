@@ -26,7 +26,10 @@ import { useAppTheme } from "@/theme/app-theme";
 type Field =
   | "displayName"
   | "bio"
-  | "country"
+  | "city"
+  | "postCode"
+  | "street1"
+  | "street2"
   | "hobby"
   | "whatsappNumber"
   | "landlineNumber"
@@ -56,9 +59,27 @@ const fields: readonly FieldMeta[] = [
     returnKeyType: "next",
   },
   {
-    key: "country",
-    label: "Country",
-    placeholder: "e.g. Saudi Arabia",
+    key: "city",
+    label: "City (optional)",
+    placeholder: "Your city",
+    returnKeyType: "next",
+  },
+  {
+    key: "postCode",
+    label: "Post code number (optional)",
+    placeholder: "Your postal code",
+    returnKeyType: "next",
+  },
+  {
+    key: "street1",
+    label: "Street (line 1) (optional)",
+    placeholder: "Street address",
+    returnKeyType: "next",
+  },
+  {
+    key: "street2",
+    label: "Street (line 2) (optional)",
+    placeholder: "Apartment, suite or additional address",
     returnKeyType: "next",
   },
   {
@@ -117,7 +138,10 @@ const fromProfile = (profile: SocialProfile): Draft =>
 const maxLengths: Record<Field, number> = {
   displayName: 60,
   bio: 500,
-  country: 80,
+  city: 100,
+  postCode: 32,
+  street1: 200,
+  street2: 200,
   hobby: 100,
   whatsappNumber: 32,
   landlineNumber: 32,
@@ -260,7 +284,10 @@ export function BeaconPageEditor({
         {
           displayName,
           bio: draft.bio.trim(),
-          ...(draft.country.trim() ? { country: draft.country.trim() } : {}),
+          city: draft.city.trim(),
+          postCode: draft.postCode.trim(),
+          street1: draft.street1.trim(),
+          street2: draft.street2.trim(),
           ...(draft.hobby.trim() ? { hobby: draft.hobby.trim() } : {}),
           whatsappNumber: draft.whatsappNumber.trim(),
           landlineNumber: draft.landlineNumber.trim(),
@@ -346,6 +373,7 @@ export function BeaconPageEditor({
                   avatarUrl={avatar?.uri ?? profile?.avatarUrl}
                   displayName={draft.displayName}
                   bio={draft.bio}
+                  address={draft}
                   onChangeCover={() => void chooseImage("cover")}
                   onChangeAvatar={() => void chooseImage("avatar")}
                 />

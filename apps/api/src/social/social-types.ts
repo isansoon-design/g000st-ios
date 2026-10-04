@@ -1,3 +1,11 @@
+export type SocialLinkPreviewV1 = Readonly<{
+  url: string;
+  siteName: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+}>;
+
 export type SocialVisibility = 'anonymous' | 'public';
 
 export type SocialMedia = Readonly<{
@@ -18,6 +26,10 @@ export type SocialProfile = Readonly<{
   avatarObjectKey?: string;
   coverObjectKey?: string;
   country?: string;
+  city?: string;
+  postCode?: string;
+  street1?: string;
+  street2?: string;
   age?: number;
   sex?: 'male' | 'female';
   hobby?: string;
@@ -64,6 +76,7 @@ export type SocialPost = Readonly<{
   ownerPublicId?: string;
   author: SocialAuthor;
   content: string;
+  linkPreview?: SocialLinkPreviewV1;
   sharedPostId?: string;
   media?: readonly SocialMedia[];
   visibility: SocialVisibility;
@@ -83,6 +96,7 @@ export type SharedSocialPostView = Readonly<{
   author: SocialAuthor;
   content: string;
   media?: readonly SocialMediaView[];
+  linkPreview?: SocialLinkPreviewV1;
   createdAtMs: number;
 }>;
 
@@ -132,6 +146,10 @@ export type UpdateSocialProfileInput = Readonly<{
   avatarMedia?: PendingAvatarMedia;
   coverMedia?: PendingAvatarMedia;
   country?: string;
+  city?: string;
+  postCode?: string;
+  street1?: string;
+  street2?: string;
   age?: number;
   sex?: 'male' | 'female';
   hobby?: string;

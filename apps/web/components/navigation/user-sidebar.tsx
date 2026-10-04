@@ -170,26 +170,6 @@ export function UserSidebar({
         className="user-sidebar absolute bottom-0 left-0 top-14 z-50 flex w-[min(85vw,280px)] shrink-0 flex-col overflow-hidden border-r border-black/10 bg-white/95 text-[#444b56] shadow-xl dark:border-white/10 dark:bg-night-header dark:text-night-text lg:relative lg:inset-auto lg:z-auto lg:shadow-none"
       >
         <div className="flex min-h-0 w-[min(85vw,280px)] flex-1 flex-col overflow-y-auto px-3 py-5 lg:w-56">
-          {/* <div className="flex items-center justify-between px-3 pb-3">
-            <p className="text-[10px] font-black uppercase tracking-[.22em] text-black/35 dark:text-night-muted">
-              {" "}
-            </p>
-            <button
-              type="button"
-              aria-label="Close navigation"
-              onClick={onCloseMobile}
-              className="rounded-lg p-1.5 hover:bg-black/5 dark:hover:bg-white/10 lg:hidden"
-            >
-              <X size={19} />
-            </button>
-          </div> */}
-          {/* <button
-            type="button"
-            onClick={create}
-            className=" w-full rounded-xl bg-[#C62828] px-3 py-2 text-xs font-black text-white "
-          >
-            BUILD YOUR BEACON
-          </button> */}
           {ownerId && (
             <ul aria-label="Your profiles and pages" className="my-5 space-y-2 rounded-2xl border border-black/10 bg-[#f5f6f8] p-2 dark:border-white/10 dark:bg-night-surface">
               {identities.map((identity) => {

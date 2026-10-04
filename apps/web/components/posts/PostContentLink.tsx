@@ -6,13 +6,17 @@ import toast from "react-hot-toast";
 
 import { LinkifiedText } from "@/components/text/LinkifiedText";
 
+import type { SocialLinkPreviewV1 } from "@/app/api/social";
+import { LinkPreviewCard } from "./LinkPreviewCard";
+
 type Props = {
+  linkPreview?: SocialLinkPreviewV1;
   content: string;
   href?: string;
   className?: string;
 };
 
-export function PostContentLink({ content, href, className = "" }: Props) {
+export function PostContentLink({ content, href, linkPreview, className = "" }: Props) {
   const router = useRouter();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressed = useRef(false);
@@ -44,6 +48,7 @@ export function PostContentLink({ content, href, className = "" }: Props) {
   }
 
   return (
+    <>
     <div
       role={href ? "button" : undefined}
       tabIndex={href ? 0 : undefined}
@@ -85,8 +90,10 @@ export function PostContentLink({ content, href, className = "" }: Props) {
         if (href) router.push(href);
       }}
     >
-      <LinkifiedText content={content} />
+      <LinkifiedText content={linkPreview && content.endsWith(linkPreview.url) ? content.slice(0, -linkPreview.url.length).trimEnd() : content} />
     </div>
+    {linkPreview && <LinkPreviewCard preview={linkPreview} />}
+    </>
   );
 }
 

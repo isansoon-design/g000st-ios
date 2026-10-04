@@ -241,6 +241,9 @@ export class SocialService {
     if (!isPage && (input.whatsappNumber !== undefined || input.landlineNumber !== undefined || input.contactEmail !== undefined || input.facebookUrl !== undefined || input.instagramUrl !== undefined || input.tiktokUrl !== undefined || input.linkedinUrl !== undefined)) {
       throw new ApiError(400, 'PAGE_CONTACTS_ONLY', 'These contact fields belong to pages.');
     }
+    if (!isPage && (input.city !== undefined || input.postCode !== undefined || input.street1 !== undefined || input.street2 !== undefined)) {
+      throw new ApiError(400, 'PAGE_ADDRESS_ONLY', 'These address fields belong to pages.');
+    }
     const { avatarMedia, coverMedia, ...fields } = input;
     let avatarObjectKey: string | undefined;
     let coverObjectKey: string | undefined;
@@ -306,6 +309,7 @@ export class SocialService {
         id: original.id,
         author: original.author,
         content: original.content,
+        ...(original.linkPreview ? { linkPreview: original.linkPreview } : {}),
         ...(original.media?.length ? { media: await this.mediaUrls(original.media) } : {}),
         createdAtMs: original.createdAtMs,
       } } : {}),

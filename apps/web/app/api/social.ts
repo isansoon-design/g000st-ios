@@ -1,12 +1,13 @@
+export type SocialLinkPreviewV1 = { url: string; siteName: string; title: string; description: string; imageUrl?: string };
 import axios from './axios';
 import { resolvePostAuthors } from '@/lib/post-authors';
 
 export type SocialVisibility = 'anonymous' | 'public';
 export type SocialAuthor = { publicId?: string; displayName: string; avatarUrl?: string; isPage?: boolean };
-export type SocialPost = { id: string; ownerPublicId?: string; author: SocialAuthor; content: string; sharedPostId?: string; sharedPost?: { id: string; author: SocialAuthor; content: string; media?: SocialMedia[]; createdAtMs: number }; media?: SocialMedia[]; visibility: SocialVisibility; sharedToSocial?: boolean; createdAtMs: number; updatedAtMs: number; editedAtMs?: number; likeCount: number; commentCount: number; likedByViewer: boolean; campedByViewer: boolean; ownedByViewer: boolean };
+export type SocialPost = { id: string; ownerPublicId?: string; author: SocialAuthor; content: string; linkPreview?: SocialLinkPreviewV1; sharedPostId?: string; sharedPost?: { id: string; author: SocialAuthor; content: string; linkPreview?: SocialLinkPreviewV1; media?: SocialMedia[]; createdAtMs: number }; media?: SocialMedia[]; visibility: SocialVisibility; sharedToSocial?: boolean; createdAtMs: number; updatedAtMs: number; editedAtMs?: number; likeCount: number; commentCount: number; likedByViewer: boolean; campedByViewer: boolean; ownedByViewer: boolean };
 export type SocialComment = { id: string; postId: string; ownerPublicId?: string; author: SocialAuthor; content: string; visibility: SocialVisibility; createdAtMs: number; ownedByViewer: boolean };
 export type SocialAlert = { id: string; kind: 'like' | 'comment' | 'camp'; actor: SocialAuthor; postId?: string; commentId?: string; createdAtMs: number; readAtMs?: number };
-export type SocialProfile = { publicId: string; isPage: boolean; displayName?: string; showDisplayName: boolean; avatarUrl?: string; coverUrl?: string; country?: string; age?: number; sex?: 'male' | 'female'; hobby?: string; bio?: string; whatsappNumber?: string; landlineNumber?: string; contactEmail?: string; facebookUrl?: string; instagramUrl?: string; tiktokUrl?: string; linkedinUrl?: string; updatedAtMs: number; campedByViewer: boolean };
+export type SocialProfile = { publicId: string; isPage: boolean; displayName?: string; showDisplayName: boolean; avatarUrl?: string; coverUrl?: string; country?: string; city?: string; postCode?: string; street1?: string; street2?: string; age?: number; sex?: 'male' | 'female'; hobby?: string; bio?: string; whatsappNumber?: string; landlineNumber?: string; contactEmail?: string; facebookUrl?: string; instagramUrl?: string; tiktokUrl?: string; linkedinUrl?: string; updatedAtMs: number; campedByViewer: boolean };
 export type SocialSuggestion = { publicId: string; displayName: string; avatarUrl?: string; reason: 'friends_of_friends' | 'discover'; mutualCount: number };
 export type SocialSuggestions = { day: string; items: SocialSuggestion[] };
 export type SocialPage<T> = { items: T[]; nextCursor?: string };

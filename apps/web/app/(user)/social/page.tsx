@@ -1,5 +1,6 @@
 "use client";
 
+import { PageAddress } from "@/features/profile/page-address";
 import {
   Heart,
   Loader2,
@@ -480,7 +481,7 @@ export default function SocialPage() {
                   )}
                 </div>
                 {!!post.content && (
-                  <PostContentLink content={post.content} href={`/posts/social/${post.id}`} className="px-4 pb-3 text-[15px] leading-6" />
+                  <PostContentLink linkPreview={post.linkPreview} content={post.content} href={`/posts/social/${post.id}`} className="px-4 pb-3 text-[15px] leading-6" />
                 )}
                 {post.sharedPostId && (
                   <div className="mx-4 mb-4">
@@ -794,7 +795,7 @@ function SharedPostPreview({
     <div className="overflow-hidden rounded-xl border border-black/15 dark:border-night-border bg-black/[.03] dark:bg-white/10">
       <div className="p-3">
         <p className="text-xs font-black">{post.author.displayName}</p>
-        <PostContentLink content={post.content} href={`/posts/social/${post.id}`} className={`mt-1 text-sm ${compact ? "line-clamp-3" : ""}`} />
+        <PostContentLink linkPreview={post.linkPreview} content={post.content} href={`/posts/social/${post.id}`} className={`mt-1 text-sm ${compact ? "line-clamp-3" : ""}`} />
       </div>
       {!compact && post.media?.length ? (
         <div
@@ -919,6 +920,7 @@ function ProfileEditor({
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(profile.displayName ?? "");
   const [country, setCountry] = useState(profile.country ?? "");
+  const [address, setAddress] = useState({ city: profile.city ?? "", postCode: profile.postCode ?? "", street1: profile.street1 ?? "", street2: profile.street2 ?? "" });
   const [hobby, setHobby] = useState(profile.hobby ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
   if (!editing)
@@ -931,10 +933,11 @@ function ProfileEditor({
           {profile.displayName || profile.publicId.slice(0, 8)}
         </div>
         <div className="mt-1 text-xs text-black/45 dark:text-night-muted">
-          {profile.country ||
+          {(profile.isPage ? undefined : profile.country) ||
             profile.hobby ||
             "Click to complete your optional profile"}
         </div>
+        {profile.isPage && <PageAddress profile={profile} />}
       </button>
     );
   return (
@@ -946,12 +949,16 @@ function ProfileEditor({
         placeholder="Display name"
         className="w-full rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
       />
+      {profile.isPage ? (['city', 'postCode', 'street1', 'street2'] as const).map((key, index) => (
+        <input key={key} aria-label={['City', 'Post code number', 'Street (line 1)', 'Street (line 2)'][index]} placeholder={['City (optional)', 'Post code number (optional)', 'Street (line 1, optional)', 'Street (line 2, optional)'][index]} value={address[key]} maxLength={key === 'city' ? 100 : key === 'postCode' ? 32 : 200} onChange={(event) => setAddress({ ...address, [key]: event.target.value })} className="w-full rounded-xl border border-black/15 px-3 py-2 dark:border-night-border" />
+      )) : (
       <input
         value={country}
         onChange={(event) => setCountry(event.target.value)}
         placeholder="Country"
         className="w-full rounded-xl border border-black/15 dark:border-night-border px-3 py-2"
       />
+      )}
       <input
         value={hobby}
         onChange={(event) => setHobby(event.target.value)}
@@ -975,7 +982,7 @@ function ProfileEditor({
           onClick={() =>
             void onSave({
               displayName: displayName.trim() || undefined,
-              country: country.trim() || undefined,
+              ...(profile.isPage ? { city: address.city.trim(), postCode: address.postCode.trim(), street1: address.street1.trim(), street2: address.street2.trim() } : { country: country.trim() || undefined }),
               hobby: hobby.trim() || undefined,
               bio: bio.trim() || undefined,
             }).then(() => setEditing(false))
