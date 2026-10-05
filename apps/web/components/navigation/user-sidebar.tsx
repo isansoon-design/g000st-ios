@@ -16,7 +16,7 @@ import toast from "react-hot-toast";
 
 import { listBeaconPages, subscribeToBeaconPageCreated, type BeaconPage } from "@/app/api/auth";
 import { sessionStorage } from "@/app/api/session-storage";
-import { getSocialProfile, type SocialProfile } from "@/app/api/social";
+import { getSocialProfile, subscribeToSocialProfileUpdated, type SocialProfile } from "@/app/api/social";
 
 const links = [
   { label: "Social", href: "/social", Icon: Globe2 },
@@ -57,10 +57,19 @@ export function UserSidebar({
   const router = useRouter();
   const [pages, setPages] = useState<BeaconPage[]>([]);
   const pagesRevision = useRef(0);
-  const [profile, setProfile] = useState<SocialProfile | null>(null);
-  const [activePageProfile, setActivePageProfile] = useState<SocialProfile | null>(null);
+  const [profiles, setProfiles] = useState<Record<string, SocialProfile>>({});
+  const profileRevisions = useRef<Record<string, number>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const ownerId = sessionStorage.get()?.user.publicId;
+  const pageIds = pages.map((page) => page.publicId).join(",");
+
+  useEffect(() => {
+    if (!ownerId) return;
+    return subscribeToSocialProfileUpdated((profile) => {
+      profileRevisions.current[profile.publicId] = (profileRevisions.current[profile.publicId] ?? 0) + 1;
+      setProfiles((items) => ({ ...items, [profile.publicId]: profile }));
+    });
+  }, [ownerId]);
 
   useEffect(() => {
     if (!ownerId) return;
@@ -77,11 +86,6 @@ export function UserSidebar({
   useEffect(() => {
     if ((!desktopOpen && !mobileOpen) || !ownerId) return;
     let active = true;
-    void getSocialProfile(ownerId)
-      .then((person) => {
-        if (active) setProfile(person);
-      })
-      .catch(() => undefined);
     const revision = pagesRevision.current;
     void listBeaconPages()
       .then((items) => {
@@ -102,17 +106,24 @@ export function UserSidebar({
   }, [desktopOpen, mobileOpen, ownerId]);
 
   useEffect(() => {
-    if ((!desktopOpen && !mobileOpen) || !activeId || activeId === ownerId) return;
+    if ((!desktopOpen && !mobileOpen) || !ownerId) return;
     let active = true;
-    void getSocialProfile(activeId)
-      .then((pageProfile) => {
-        if (active) setActivePageProfile(pageProfile);
-      })
-      .catch(() => undefined);
+    const ids = [ownerId, ...(pageIds ? pageIds.split(",") : [])];
+    for (const id of ids) {
+      const revision = profileRevisions.current[id] ?? 0;
+      void getSocialProfile(id)
+        .then((profile) => {
+          // A profile requested before a save must not replace the saved avatar.
+          if (active && revision === (profileRevisions.current[id] ?? 0)) {
+            setProfiles((items) => ({ ...items, [id]: profile }));
+          }
+        })
+        .catch(() => undefined);
+    }
     return () => {
       active = false;
     };
-  }, [activeId, desktopOpen, mobileOpen, ownerId]);
+  }, [pageIds, desktopOpen, mobileOpen, ownerId]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -137,18 +148,15 @@ export function UserSidebar({
   //   router.push("/beacons/new");
   // };
 
+  const profile = ownerId ? profiles[ownerId] : undefined;
   const personalName = profile?.displayName || ownerId?.slice(0, 8) || "G";
   const identities = ownerId
     ? [
       { publicId: ownerId, displayName: personalName, avatarUrl: profile?.avatarUrl },
       ...pages.map((page) => ({
         publicId: page.publicId,
-        displayName: (activePageProfile?.publicId === page.publicId
-          ? activePageProfile.displayName
-          : page.displayName) || "Untitled beacon",
-        avatarUrl: activePageProfile?.publicId === page.publicId
-          ? activePageProfile.avatarUrl
-          : undefined,
+        displayName: profiles[page.publicId]?.displayName || page.displayName || "Untitled beacon",
+        avatarUrl: profiles[page.publicId]?.avatarUrl,
       })),
     ]
     : [];

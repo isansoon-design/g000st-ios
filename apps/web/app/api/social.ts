@@ -31,7 +31,18 @@ export async function followSocialProfile(publicId: string) { await axios.post(`
 export async function getSocialProfile(publicId: string, actingPublicId?: string) { const { data } = await axios.get<{ profile: SocialProfile }>(`/social/profiles/${publicId}`, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined }); return data.profile; }
 export async function uploadAvatarMedia(file: File, actingPublicId?: string): Promise<PendingAvatarMedia> { const { data } = await axios.post<{ upload: { media: PendingAvatarMedia; headers: Record<string, string>; uploadUrl: string } }>('/social/avatar-uploads', { byteSize: file.size, contentType: file.type, fileName: file.name }, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined }); const uploaded = await fetch(data.upload.uploadUrl, { method: 'PUT', headers: data.upload.headers, body: file }); if (!uploaded.ok) throw new Error('Photo upload failed.'); return data.upload.media; }
 export async function uploadCoverMedia(file: File, actingPublicId?: string): Promise<PendingAvatarMedia> { const { data } = await axios.post<{ upload: { media: PendingAvatarMedia; headers: Record<string, string>; uploadUrl: string } }>('/social/cover-uploads', { byteSize: file.size, contentType: file.type, fileName: file.name }, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined }); const uploaded = await fetch(data.upload.uploadUrl, { method: 'PUT', headers: data.upload.headers, body: file }); if (!uploaded.ok) throw new Error('Cover upload failed.'); return data.upload.media; }
-export async function updateSocialProfile(profile: Partial<Omit<SocialProfile, 'publicId' | 'updatedAtMs' | 'campedByViewer' | 'avatarUrl' | 'coverUrl'>> & { avatarMedia?: PendingAvatarMedia; coverMedia?: PendingAvatarMedia }, actingPublicId?: string) { const { data } = await axios.put<{ profile: SocialProfile }>('/social/profile', profile, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined }); return data.profile; }
+const profileUpdatedListeners = new Set<(profile: SocialProfile) => void>();
+
+export function subscribeToSocialProfileUpdated(listener: (profile: SocialProfile) => void): () => void {
+  profileUpdatedListeners.add(listener);
+  return () => { profileUpdatedListeners.delete(listener); };
+}
+
+export async function updateSocialProfile(profile: Partial<Omit<SocialProfile, 'publicId' | 'updatedAtMs' | 'campedByViewer' | 'avatarUrl' | 'coverUrl'>> & { avatarMedia?: PendingAvatarMedia; coverMedia?: PendingAvatarMedia }, actingPublicId?: string) {
+  const { data } = await axios.put<{ profile: SocialProfile }>('/social/profile', profile, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined });
+  profileUpdatedListeners.forEach((listener) => listener(data.profile));
+  return data.profile;
+}
 export async function listSocialAlerts() { const { data } = await axios.get<SocialPage<SocialAlert>>('/social/alerts', { params: { limit: 50 } }); return data.items; }
 export async function markSocialAlertsRead() { await axios.post('/social/alerts/read'); }
 export async function reportSocialPost(postId: string, reason: string, details?: string) { await axios.post('/social/reports', { postId, reason, ...(details ? { details } : {}) }); }
