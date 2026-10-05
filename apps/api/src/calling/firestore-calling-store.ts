@@ -87,7 +87,7 @@ export class FirestoreCallingStore implements CallingStore {
       .orderBy(FieldPath.documentId(), 'desc');
     if (cursor) query = query.startAfter(cursor.createdAtMs, cursor.id);
 
-    const visibility = contentVisibility(this.db, this.prefix);
+    const visibility = contentVisibility(this.db, this.prefix, publicId);
     const visible = await visibleDocuments(query, limit, async (document) => {
       const data = document.data() as StoredCall;
       return await visibility.account(data.callerPublicId) && await visibility.account(data.calleePublicId);

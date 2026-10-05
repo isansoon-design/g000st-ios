@@ -14,7 +14,7 @@ import { getSocialProfile, toggleSocialCamp } from "@/app/api/social";
 import { UserHeaderPortal } from "@/components/navigation/header-portal";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { Mic, Send, Trash2, UserRound } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -472,6 +472,7 @@ function ConversationList({
 
 export default function PrivateChatPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const requestedConversationId =
     searchParams.get("conversationId") ?? undefined;
   const chat = usePrivateChat(requestedConversationId);
@@ -610,8 +611,15 @@ export default function PrivateChatPage() {
   async function changePeerPreferences(changes: Partial<PeerPreferences>) {
     if (!peerPublicId) return;
     try {
+      if (changes.blocked === true && !await confirm({ title: "Block this user?", message: "Their profile, content and conversations will be hidden, and messages and calls will be disabled.", confirmLabel: "Block", isDangerous: true })) return;
       setPeerPreferences(await updatePeerPreferences(peerPublicId, changes));
       setIsActionsOpen(false);
+      if (changes.blocked !== undefined) {
+        chat.closeConversation();
+        await chat.refreshConversations();
+        router.replace("/chat");
+        toast.success(changes.blocked ? "User blocked." : "User unblocked.");
+      }
     } catch (error) {
       toast.error(
         error instanceof Error

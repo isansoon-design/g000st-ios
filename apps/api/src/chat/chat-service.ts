@@ -79,7 +79,10 @@ export class ChatService {
     view: 'web' | 'mobile' = 'web',
   ): Promise<readonly ChatConversationSummary[]> {
     const nowMs = this.now();
-    const summaries = await this.store.listConversations(publicId, limit, nowMs);
+    const candidates = await this.store.listConversations(publicId, limit, nowMs);
+    const allowed = await Promise.all(candidates.map((summary) =>
+      this.permissions?.canMessage(publicId, summary.participantPublicId) ?? true));
+    const summaries = candidates.filter((_, index) => allowed[index]);
     return await Promise.all(
       summaries.map(async (summary) => {
         const visibleSummary = view === 'mobile' && summary.kind === 'private'
@@ -393,7 +396,7 @@ export class ChatService {
     if (!conversation || !conversation.participants.includes(publicId)) {
       throw new ApiError(404, 'CONVERSATION_NOT_FOUND', 'Conversation not found.');
     }
-
+    await this.requireMessagePermission(publicId, conversation.participants.find((id) => id !== publicId)!);
     return conversation;
   }
 

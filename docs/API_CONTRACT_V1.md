@@ -185,6 +185,34 @@ private `nickname`. `POST /` adds a friend from `{ publicId }`. `PATCH /:publicI
 `404 CONTACT_NOT_FOUND` if the user has not added that friend. `DELETE /:publicId` removes a
 friend. A nickname is visible only to the friend list owner.
 
+### Peer preferences and blocking (v1)
+
+- `GET /:publicId/preferences` → `{ preferences: { blocked, allowAudioCalls, allowVideoCalls } }`.
+- `PATCH /:publicId/preferences` accepts a nonempty subset of those boolean fields and returns
+  the updated preferences. Defaults are `blocked: false`, `allowAudioCalls: true`, and
+  `allowVideoCalls: true`. A user can block any other Public ID without following it first;
+  changing one's own preferences returns `400 INVALID_CONTACT`.
+
+`blocked` describes the authenticated acting identity's own decision. Set it to `true` to
+block or `false` to unblock. If either identity blocks the other, their profiles, Social and
+Market posts and comments, reposts of their content, follows, contact nicknames, conversations,
+call history and user notifications are hidden from each other. Anonymous posts and comments
+are filtered using their stored owner, without exposing that owner to clients. Admin
+notifications remain visible to administrators. Paginated lists skip hidden records and keep
+filling the requested page.
+
+Profile reads and follow actions for a blocked peer return `404 USER_NOT_FOUND`. Direct reads
+and interactions with blocked Social/Market posts return their normal not-found responses.
+Opening conversations, reading messages, uploading/downloading chat attachments and messaging
+return `403 CONTACT_BLOCKED`; in-app calls are denied by the existing call permission check.
+Call-specific audio/video preferences only affect calls, without hiding content.
+
+Web and mobile expose **Block user** on another user's profile and **Block** in the conversation
+menu. Blocking hides the current profile or closes the current conversation. Visiting a profile
+that the acting identity blocked shows an **Unblock user** action without profile content.
+Unblocking restores access unless the other identity still has a block in place. Blocks preserve
+stored content, follows and nicknames; unblocking does not recover expired or deleted content.
+
 ## Market API
 
 All Market routes require `Authorization: Bearer <accessToken>` and are rooted at

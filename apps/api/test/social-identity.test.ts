@@ -59,7 +59,8 @@ describe('Social display identity', () => {
         return true;
       },
     } as unknown as AuthStore;
-    const service = new SocialService(store, authStore, Date.now, undefined, {} as ContactsStore);
+    const contacts = { async getPeerPreferences() { return { blocked: false, allowAudioCalls: true, allowVideoCalls: true }; } } as unknown as ContactsStore;
+    const service = new SocialService(store, authStore, Date.now, undefined, contacts);
 
     assert.equal((await service.getProfile(PUBLIC_ID, PUBLIC_ID)).displayName, 'Real Name');
     assert.equal((await service.getProfile('viewer', PUBLIC_ID)).displayName, '1234AbCd');

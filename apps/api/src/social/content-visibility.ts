@@ -1,15 +1,20 @@
 import type { DocumentData, Firestore, Query, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
-/** Create per-read checks so deletion is never hidden by a process-wide cache. */
-export function contentVisibility(db: Firestore, prefix: string) {
+/** Cache only within a read so deletion and blocking take effect on the next request. */
+export function contentVisibility(db: Firestore, prefix: string, viewerId?: string) {
   const accounts = new Map<string, Promise<boolean>>();
   function account(publicId: string): Promise<boolean> {
     if (!accounts.has(publicId)) {
       accounts.set(publicId, Promise.all([
         db.collection(`${prefix}_users`).doc(publicId).get(),
         db.collection(`${prefix}_social_profiles`).doc(publicId).get(),
-      ]).then(([user, profile]) => user.data()?.status !== 'deleted'
-        && user.data()?.deletedAtMs == null && profile.data()?.deletedAtMs == null));
+        ...(viewerId && viewerId !== publicId ? [
+          db.collection(`${prefix}_contacts`).doc(viewerId).collection('items').doc(publicId).get(),
+          db.collection(`${prefix}_contacts`).doc(publicId).collection('items').doc(viewerId).get(),
+        ] : []),
+      ]).then(([user, profile, mine, theirs]) => user!.data()?.status !== 'deleted'
+        && user!.data()?.deletedAtMs == null && profile!.data()?.deletedAtMs == null
+        && mine?.data()?.blocked !== true && theirs?.data()?.blocked !== true));
     }
     return accounts.get(publicId)!;
   }

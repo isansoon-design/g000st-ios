@@ -68,7 +68,7 @@ export class FirestoreSocialStore implements SocialStore {
     if (ownerId) query = query.where('ownerPublicId', '==', ownerId);
     if (ownerId && (ownerId !== viewerId || publicOnly)) query = query.where('visibility', '==', 'public');
     if (cursor) query = query.startAfter(cursor.createdAtMs, cursor.id);
-    const visibility = contentVisibility(this.db, this.prefix);
+    const visibility = contentVisibility(this.db, this.prefix, viewerId);
     const visible = await visibleDocuments(query, limit, async (document) =>
       (ownerId !== undefined || document.data().sharedToSocial !== false) && await visibility.content(document.data()));
     const documents = visible.slice(0, limit);
@@ -84,7 +84,7 @@ export class FirestoreSocialStore implements SocialStore {
 
   async findPost(viewerId: string, postId: string): Promise<SocialPost | null> {
     const snapshot = await this.posts().doc(postId).get();
-    return snapshot.exists && await contentVisibility(this.db, this.prefix).content(snapshot.data())
+    return snapshot.exists && await contentVisibility(this.db, this.prefix, viewerId).content(snapshot.data())
       ? this.toPost(viewerId, snapshot.id, snapshot.data() as StoredPost) : null;
   }
 
@@ -164,7 +164,7 @@ export class FirestoreSocialStore implements SocialStore {
     if (!await this.findPost(viewerId, postId)) return null;
     let query = this.comments(postId).orderBy('createdAtMs', 'asc').orderBy(FieldPath.documentId(), 'asc');
     if (cursor) query = query.startAfter(cursor.createdAtMs, cursor.id);
-    const visibility = contentVisibility(this.db, this.prefix);
+    const visibility = contentVisibility(this.db, this.prefix, viewerId);
     const visible = await visibleDocuments(query, limit, (document) => visibility.content(document.data()));
     const documents = visible.slice(0, limit);
     const items = await Promise.all(documents.map((document) => this.toComment(viewerId, postId, document.id, document.data() as StoredComment)));
@@ -237,7 +237,7 @@ export class FirestoreSocialStore implements SocialStore {
 
   async listFollowing(viewerId: string, limit?: number): Promise<readonly Readonly<{ publicId: string; followedAtMs: number }>[]> {
     const query = this.camps(viewerId);
-    const visibility = contentVisibility(this.db, this.prefix);
+    const visibility = contentVisibility(this.db, this.prefix, viewerId);
     const documents = limit === undefined
       ? (await query.get()).docs
       : (await visibleDocuments(query, limit, (document) => visibility.account(document.id))).slice(0, limit);
@@ -260,7 +260,7 @@ export class FirestoreSocialStore implements SocialStore {
   }
 
   async getProfile(viewerId: string, publicId: string): Promise<(SocialProfile & { campedByViewer: boolean }) | null> {
-    if (!await contentVisibility(this.db, this.prefix).account(publicId)) return null;
+    if (!await contentVisibility(this.db, this.prefix, viewerId).account(publicId)) return null;
     const [profile, camp] = await Promise.all([this.profiles().doc(publicId).get(), this.camps(viewerId).doc(publicId).get()]);
     if (!profile.exists && viewerId !== publicId) return null;
     const data = profile.data() as Omit<SocialProfile, 'publicId'> | undefined;
@@ -277,7 +277,7 @@ export class FirestoreSocialStore implements SocialStore {
   async listAlerts(publicId: string, limit: number, cursor?: SocialCursor): Promise<SocialPage<SocialAlert>> {
     let query = this.alerts(publicId).orderBy('createdAtMs', 'desc').orderBy(FieldPath.documentId(), 'desc');
     if (cursor) query = query.startAfter(cursor.createdAtMs, cursor.id);
-    const visibility = contentVisibility(this.db, this.prefix);
+    const visibility = contentVisibility(this.db, this.prefix, publicId);
     const visible = await visibleDocuments(query, limit, async (document) => {
       const data = document.data();
       if (!await visibility.account(data.actorPublicId)) return false;

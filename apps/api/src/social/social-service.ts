@@ -195,12 +195,14 @@ export class SocialService {
   async toggleCamp(viewerId: string, targetId: string) {
     if (viewerId === targetId) throw new ApiError(400, 'INVALID_CAMP_TARGET', 'You cannot camp your own profile.');
     if (!(await this.authStore.isUserActive(targetId))) throw new ApiError(404, 'USER_NOT_FOUND', 'User not found.');
+    await this.requireVisiblePeer(viewerId, targetId);
     return this.store.toggleCamp(viewerId, targetId, this.now());
   }
 
   async follow(viewerId: string, targetId: string): Promise<void> {
     if (viewerId === targetId) throw new ApiError(400, 'INVALID_CAMP_TARGET', 'You cannot follow your own profile.');
     if (!(await this.authStore.isUserActive(targetId))) throw new ApiError(404, 'USER_NOT_FOUND', 'User not found.');
+    await this.requireVisiblePeer(viewerId, targetId);
     await this.store.follow(viewerId, targetId, this.now());
   }
 
@@ -214,6 +216,7 @@ export class SocialService {
 
   async getProfile(viewerId: string, publicId: string) {
     if (!(await this.authStore.isUserActive(publicId))) throw new ApiError(404, 'USER_NOT_FOUND', 'User not found.');
+    await this.requireVisiblePeer(viewerId, publicId);
     const [stored, isPage] = await Promise.all([this.store.getProfile(viewerId, publicId), this.authStore.getPageOwner?.(publicId).then((owner) => !!owner) ?? Promise.resolve(false)]);
     const profile = {
       publicId,
@@ -227,6 +230,15 @@ export class SocialService {
       ? profile
       : { ...profile, displayName: publicDisplayName(publicId, profile) };
     return this.withProfileAvatar(safeProfile);
+  }
+
+  private async requireVisiblePeer(viewerId: string, publicId: string): Promise<void> {
+    if (!this.contactsStore || viewerId === publicId) return;
+    const [mine, theirs] = await Promise.all([
+      this.contactsStore.getPeerPreferences(viewerId, publicId),
+      this.contactsStore.getPeerPreferences(publicId, viewerId),
+    ]);
+    if (mine.blocked || theirs.blocked) throw new ApiError(404, 'USER_NOT_FOUND', 'User not found.');
   }
 
   getPublicDisplayName(publicId: string): Promise<string> {

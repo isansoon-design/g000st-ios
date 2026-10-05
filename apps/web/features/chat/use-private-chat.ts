@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ApiError } from "@/app/api/api-error";
 import { sessionStorage } from "@/app/api/session-storage";
 import { getSocialProfile } from "@/app/api/social";
 import {
@@ -150,11 +151,21 @@ export function usePrivateChat(initialConversationId?: string) {
       setNextCursor((current) => page.nextCursor ? current ?? page.nextCursor : undefined);
       setMessagesError(null);
     } catch (error) {
+      if (activeConversationIdRef.current !== conversationId) return;
+      if (error instanceof ApiError && error.code === "CONTACT_BLOCKED") {
+        setMessages([]);
+        setNextCursor(undefined);
+        setParticipantAvatarUrl(undefined);
+        setParticipantDisplayName(undefined);
+        activeConversationIdRef.current = null;
+        setActiveConversation(null);
+        void loadConversations();
+      }
       setMessagesError(errorMessage(error));
     } finally {
       setIsLoadingMessages(false);
     }
-  }, [userPublicId]);
+  }, [userPublicId, loadConversations]);
 
   const loadOlderMessages = useCallback(async () => {
     if (!activeConversation || !nextCursor || isLoadingOlderMessages) return;

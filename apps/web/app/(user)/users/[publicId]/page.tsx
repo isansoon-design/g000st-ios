@@ -2,6 +2,7 @@
 
 import {
   ArrowLeft,
+  Ban,
   Copy,
   MessageCircle,
   Pencil,
@@ -16,6 +17,8 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import { listBeaconPages, type BeaconPage } from "@/app/api/auth";
+import { getPeerPreferences, updatePeerPreferences } from "@/app/api/contacts";
+import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { sessionStorage } from "@/app/api/session-storage";
 import {
   getSocialProfile,
@@ -81,6 +84,7 @@ function profileDraft(profile: SocialProfile): ProfileDraft {
 export default function PublicUserPage() {
   const { publicId } = useParams<{ publicId: string }>();
   const router = useRouter();
+  const { confirm } = useConfirmModal();
   const { callUser } = useCalling();
   const [ownedPages, setOwnedPages] = useState<BeaconPage[]>([]);
   const [editing, setEditing] = useState(false);
@@ -94,6 +98,9 @@ export default function PublicUserPage() {
   const [error, setError] = useState("");
   const [uploadingCover, setUploadingCover] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [blockBusy, setBlockBusy] = useState(false);
+  const [reload, setReload] = useState(0);
 
   const actingPublicId = sessionStorage.getActingPublicId();
   const ownerPublicId = sessionStorage.get()?.user.publicId;
@@ -193,12 +200,19 @@ export default function PublicUserPage() {
     setSocial([]);
     setCursor(undefined);
     setError("");
-    Promise.all([
-      getSocialProfile(publicId),
-      listSocialPosts(undefined, publicId, true),
-    ])
-      .then(([person, socialPage]) => {
-        if (!active) return;
+    setBlocked(false);
+    void (async () => {
+      if (!own) {
+        const preferences = await getPeerPreferences(publicId);
+        if (!active) return null;
+        setBlocked(preferences.blocked);
+        if (preferences.blocked) return null;
+      }
+      return Promise.all([getSocialProfile(publicId), listSocialPosts(undefined, publicId, true)]);
+    })()
+      .then((result) => {
+        if (!active || !result) return;
+        const [person, socialPage] = result;
         setProfile(person);
         setSocial(socialPage.items);
         setCursor(socialPage.nextCursor);
@@ -217,7 +231,27 @@ export default function PublicUserPage() {
     return () => {
       active = false;
     };
-  }, [publicId]);
+  }, [publicId, actingPublicId, own, reload]);
+
+  async function toggleBlock() {
+    if (own || blockBusy) return;
+    setBlockBusy(true);
+    try {
+      if (!blocked && !await confirm({ title: "Block this user?", message: "Their profile, content and conversations will be hidden, and messages and calls will be disabled.", confirmLabel: "Block", isDangerous: true })) return;
+      const preferences = await updatePeerPreferences(publicId, { blocked: !blocked });
+      setBlocked(preferences.blocked);
+      setProfile(undefined);
+      setSocial([]);
+      setCursor(undefined);
+      setError("");
+      toast.success(preferences.blocked ? "User blocked." : "User unblocked.");
+      if (!preferences.blocked) setReload((value) => value + 1);
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Could not update block.");
+    } finally {
+      setBlockBusy(false);
+    }
+  }
 
   async function loadMore() {
     if (!cursor || loadingMore) return;
@@ -352,6 +386,13 @@ export default function PublicUserPage() {
           <div className="space-y-4 p-5">
             <div className="h-28 animate-pulse rounded-3xl bg-white/70 dark:bg-night-surface" />
             <div className="h-48 animate-pulse rounded-3xl bg-white/70 dark:bg-night-surface" />
+          </div>
+        ) : blocked ? (
+          <div className="m-5 rounded-3xl bg-white p-8 text-center dark:bg-night-surface">
+            <p className="font-semibold">You blocked this user. Their profile and content are hidden.</p>
+            <button onClick={() => void toggleBlock()} disabled={blockBusy} className="mt-4 rounded-2xl bg-[#c62828] px-5 py-3 text-sm font-black text-white disabled:opacity-50">
+              {blockBusy ? "Updating…" : "Unblock user"}
+            </button>
           </div>
         ) : error ? (
           <div className="m-5 rounded-3xl bg-white dark:bg-night-surface p-8 text-center font-semibold">
@@ -539,7 +580,10 @@ export default function PublicUserPage() {
                   </div>
                 )}
                 {!own && (
-                  <div className="mt-5 grid grid-cols-2 gap-2 sm:flex">
+                  <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                    <button onClick={() => void toggleBlock()} disabled={blockBusy} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#c62828]/30 px-5 py-3 text-sm font-black text-[#c62828] disabled:opacity-50">
+                      <Ban size={18} /> {blockBusy ? "Updating…" : "Block user"}
+                    </button>
                     <button
                       onClick={() => void toggleFollow()}
                       disabled={followBusy}

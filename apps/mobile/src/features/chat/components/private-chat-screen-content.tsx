@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, BackHandler, Modal, Pressable, Text, TextInput, View } from 'react-native';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { deleteChatMessage, editChatMessage } from '@/api/chat';
 import { getPeerPreferences, listContactNicknames, updateContactNickname, updatePeerPreferences, type PeerPreferences } from '@/api/contacts';
 import { getSocialProfile, toggleSocialCamp } from '@/api/social';
@@ -43,6 +44,7 @@ function PrivateChatScreenContentComponent({
   view,
 }: PrivateChatScreenContentProps) {
   const chat = usePrivateChat(initialConversationId, openRequestId);
+  const queryClient = useQueryClient();
   const { colors, isDark } = useAppTheme();
   const { callUser } = useCalling();
   const [blurMessages, setBlurMessages] = useState(false);
@@ -107,7 +109,17 @@ function PrivateChatScreenContentComponent({
   async function changePeerPreferences(changes: Partial<PeerPreferences>) {
     if (!peerPublicId) return;
     try {
+      if (changes.blocked === true && !await confirm({ title: 'Block this user?', message: 'Their profile, content and conversations will be hidden, and messages and calls will be disabled.', confirmLabel: 'Block', isDangerous: true })) return;
       setPeerPreferences(await updatePeerPreferences(peerPublicId, changes));
+      if (changes.blocked !== undefined) {
+        chat.closeConversation();
+        await queryClient.cancelQueries({ queryKey: ['chat'] });
+        queryClient.removeQueries({ queryKey: ['chat'] });
+        queryClient.removeQueries({ queryKey: ['social-profile', peerPublicId] });
+        void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        router.dismissTo('/(app)/(tabs)/chat');
+        Toast.show({ type: 'success', text1: changes.blocked ? 'User blocked.' : 'User unblocked.' });
+      }
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Chat', text2: error instanceof Error ? error.message : 'Could not update contact settings.' });
     }
@@ -179,6 +191,15 @@ function PrivateChatScreenContentComponent({
     } finally {
       setDeletingConversationId(null);
     }
+  }
+
+  if (view === 'conversation' && chat.isConversationBlocked) {
+    return <View className="flex-1 items-center justify-center bg-[#e6e8eb] px-5 dark:bg-night-canvas">
+      <Text className="text-center font-semibold text-black dark:text-night-text">This conversation is unavailable.</Text>
+      <Pressable accessibilityRole="button" onPress={() => router.dismissTo('/(app)/(tabs)/chat')} className="mt-4 rounded-full bg-g000st-red px-5 py-3">
+        <Text className="font-black text-white">Back to chats</Text>
+      </Pressable>
+    </View>;
   }
 
   if (view === 'conversation' && chat.activeConversation && chat.activeConversation.conversationId === initialConversationId) {

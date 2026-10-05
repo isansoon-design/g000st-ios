@@ -19,6 +19,7 @@ import {
   sendChatMessage,
   startChatConversation,
 } from "@/api/chat";
+import { ApiError } from "@/api/api-error";
 import { createChatAttachmentUpload, uploadChatAttachment } from "@/api/media";
 import { getSocialProfile } from "@/api/social";
 import type {
@@ -603,6 +604,7 @@ export function usePrivateChat(
   }, [startMutation]);
 
   return {
+    isConversationBlocked: messagesQuery.error instanceof ApiError && messagesQuery.error.code === "CONTACT_BLOCKED",
     activeConversation,
     burnAfterRead,
     attachmentError: attachmentUploadError ?? chatAttachments.error,

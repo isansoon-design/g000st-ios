@@ -591,13 +591,22 @@ describe('ChatService', () => {
     await assert.rejects(service.startMarketConversation(USER_A, '33333333-3333-4333-8333-333333333333'), expectApiError('MARKET_POST_NOT_FOUND'));
     await assert.rejects(service.startMarketConversation(USER_B, firstPostId), expectApiError('INVALID_PARTICIPANT'));
   });
-  it('rejects a new chat and new messages when either user blocks the other', async () => {
+  it('hides conversations and denies reads and writes until the block is removed', async () => {
     let allowed = true;
     const { service } = createFixture(undefined, { async canMessage() { return allowed; } });
     const conversation = await service.startConversation(USER_A, USER_B);
+    const sent = await service.sendTextMessage(USER_A, conversation.id, { content: 'Before block' });
     allowed = false;
+    assert.deepEqual(await service.listConversations(USER_A, 10), []);
+    assert.deepEqual(await service.listConversations(USER_B, 10), []);
+    await assert.rejects(() => service.listMessages(USER_A, conversation.id, 50), expectApiError('CONTACT_BLOCKED'));
+    await assert.rejects(() => service.listMessages(USER_B, conversation.id, 50), expectApiError('CONTACT_BLOCKED'));
+    await assert.rejects(() => service.getAttachmentDownload(USER_B, conversation.id, sent.id, 'attachment'), expectApiError('CONTACT_BLOCKED'));
     await assert.rejects(() => service.sendTextMessage(USER_A, conversation.id, { content: 'Hello' }), expectApiError('CONTACT_BLOCKED'));
     await assert.rejects(() => service.startConversation(USER_B, USER_A), expectApiError('CONTACT_BLOCKED'));
+    allowed = true;
+    assert.equal((await service.listConversations(USER_A, 10)).length, 1);
+    assert.equal((await service.listMessages(USER_B, conversation.id, 50)).messages[0]?.content, 'Before block');
   });
 
   it('lets only the sender edit a live plain text message', async () => {

@@ -22,7 +22,7 @@ export class NotificationCenter {
       } catch { throw new ApiError(400, 'INVALID_CURSOR', 'Invalid notification cursor.'); }
       query = query.startAfter(parsed.time, parsed.id);
     }
-    const visibility = contentVisibility(this.db, this.prefix);
+    const visibility = contentVisibility(this.db, this.prefix, publicId);
     const [visible, unread] = await Promise.all([
       visibleDocuments(query, limit, (doc) => visibility.notification(doc.data())),
       this.inbox(publicId, scope).where('readAtMs', '==', null).get(),

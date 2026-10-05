@@ -121,7 +121,7 @@ export class NotificationWorker {
   }
 
   private async eligible(publicId: string, event: NotificationEvent): Promise<boolean> {
-    if (!await contentVisibility(this.db, this.prefix).notification(event)) return false;
+    if (!await contentVisibility(this.db, this.prefix, publicId).notification(event)) return false;
     const user = (await this.collection('users').doc(publicId).get()).data();
     if (!user || (user.status !== 'active' && !(user.status === 'suspended' && event.type === 'account.status_changed'))) return false;
     if (event.scope === 'admin' && (user.role !== 'admin' || user.ownerPublicId)) return false;

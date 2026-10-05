@@ -137,7 +137,7 @@ export class FirestoreChatStore implements ChatStore {
     nowMs: number,
   ): Promise<readonly ChatConversationMemberSummary[]> {
     const visible: ChatConversationMemberSummary[] = [];
-    const visibility = contentVisibility(this.db, this.collectionPrefix);
+    const visibility = contentVisibility(this.db, this.collectionPrefix, publicId);
     let cursor: FirebaseFirestore.QueryDocumentSnapshot | undefined;
     while (visible.length < limit) {
       let query = this.memberConversations(publicId).orderBy('updatedAtMs', 'desc');

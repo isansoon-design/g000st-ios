@@ -16,7 +16,7 @@ export class FirestoreContactsStore implements ContactsStore {
 
   async listContacts(ownerPublicId: string): Promise<readonly Contact[]> {
     const snapshot = await this.contacts(ownerPublicId).get();
-    const visibility = contentVisibility(this.db, this.prefix);
+    const visibility = contentVisibility(this.db, this.prefix, ownerPublicId);
     const allowed = await Promise.all(snapshot.docs.map((document) => visibility.account(document.id)));
     return snapshot.docs.filter((_, index) => allowed[index]).map((document) => ({
       addedAtMs: (document.data().addedAtMs as number | undefined) ?? 0,

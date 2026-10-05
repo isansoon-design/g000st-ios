@@ -24,7 +24,7 @@ export class FirestoreMarketStore implements MarketStore {
     let documents;
     let hasMore: boolean;
     try {
-      const visibility = contentVisibility(this.db, this.prefix);
+      const visibility = contentVisibility(this.db, this.prefix, viewerId);
       const visible = await visibleDocuments(query, limit, (document) => visibility.content(document.data()));
       documents = visible.slice(0, limit);
       hasMore = visible.length > limit;
@@ -35,7 +35,7 @@ export class FirestoreMarketStore implements MarketStore {
       // the same deterministic cursor locally. Firestore resumes the indexed path above
       // automatically as soon as the index is ready.
       const snapshot = await this.posts().where('ownerPublicId', '==', ownerId).get();
-      const visibility = contentVisibility(this.db, this.prefix);
+      const visibility = contentVisibility(this.db, this.prefix, viewerId);
       const allowed = await Promise.all(snapshot.docs.map((document) => visibility.content(document.data())));
       const ordered = snapshot.docs.filter((_, index) => allowed[index])
         .sort((left, right) => comparePostDocuments(right, left))
@@ -51,7 +51,7 @@ export class FirestoreMarketStore implements MarketStore {
 
   async findPost(viewerId: string, postId: string) {
     const snapshot = await this.posts().doc(postId).get();
-    return snapshot.exists && await contentVisibility(this.db, this.prefix).content(snapshot.data())
+    return snapshot.exists && await contentVisibility(this.db, this.prefix, viewerId).content(snapshot.data())
       ? this.toPost(viewerId, snapshot.id, snapshot.data() as StoredPost) : null;
   }
 
@@ -123,7 +123,7 @@ export class FirestoreMarketStore implements MarketStore {
     if (!await this.findPost(viewerId, postId)) return null;
     let query = this.comments(postId).orderBy('createdAtMs', 'asc').orderBy(FieldPath.documentId(), 'asc');
     if (cursor) query = query.startAfter(cursor.createdAtMs, cursor.id);
-    const visibility = contentVisibility(this.db, this.prefix);
+    const visibility = contentVisibility(this.db, this.prefix, viewerId);
     const visible = await visibleDocuments(query, limit, (document) => visibility.content(document.data()));
     const documents = visible.slice(0, limit);
     const items = await Promise.all(documents.map((document) => this.toComment(viewerId, postId, document.id, document.data() as StoredComment)));

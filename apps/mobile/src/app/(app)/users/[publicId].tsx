@@ -2,7 +2,7 @@ import { NotificationBell } from '@/features/notifications/notification-bell';
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -19,6 +19,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { listBeaconPages, type BeaconPage } from "@/api/auth";
+import { getPeerPreferences, updatePeerPreferences } from "@/api/contacts";
+import { useQueryClient } from "@tanstack/react-query";
+import { useConfirmModal } from "@/providers/confirm-modal-provider";
 import { startChatConversation } from "@/api/chat";
 import {
   getSocialProfile,
@@ -87,6 +90,8 @@ function profileDraft(profile: SocialProfile): ProfileDraft {
 export default function UserProfileScreen() {
   const { publicId } = useLocalSearchParams<{ publicId: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { confirm } = useConfirmModal();
   const openPageEditor = useOpenBeaconPageEditor();
   const insets = useSafeAreaInsets();
   const { activePublicId, setActivePublicId, user } = useAuth();
@@ -108,6 +113,9 @@ export default function UserProfileScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [blockBusy, setBlockBusy] = useState(false);
+  const [reload, setReload] = useState(0);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -217,17 +225,28 @@ export default function UserProfileScreen() {
     router.replace("/(app)/(tabs)/social");
   }
 
+  useFocusEffect(useCallback(() => {
+    setReload((value) => value + 1);
+  }, []));
+
   useEffect(() => {
-    if (!publicId) return;
+    if (!publicId || reload === 0) return;
     let active = true;
     void Promise.resolve()
-      .then(() => {
+      .then(async () => {
         if (!active) return null;
         setLoading(true);
         setProfile(undefined);
         setPosts([]);
         setCursor(undefined);
         setError("");
+        setBlocked(false);
+        if (!own) {
+          const preferences = await getPeerPreferences(publicId);
+          if (!active) return null;
+          setBlocked(preferences.blocked);
+          if (preferences.blocked) return null;
+        }
         return Promise.all([
           getSocialProfile(publicId),
           listSocialPosts(publicId, undefined, true),
@@ -254,7 +273,35 @@ export default function UserProfileScreen() {
     return () => {
       active = false;
     };
-  }, [publicId]);
+  }, [publicId, activePublicId, own, reload]);
+
+  async function toggleBlock() {
+    if (!publicId || own || blockBusy) return;
+    setBlockBusy(true);
+    try {
+      if (!blocked && !await confirm({
+        title: "Block this user?",
+        message: "Their profile, content and conversations will be hidden, and messages and calls will be disabled.",
+        confirmLabel: "Block", isDangerous: true,
+      })) return;
+      const preferences = await updatePeerPreferences(publicId, { blocked: !blocked });
+      setBlocked(preferences.blocked);
+      setProfile(undefined);
+      setPosts([]);
+      setCursor(undefined);
+      setError("");
+      await queryClient.cancelQueries({ queryKey: ["chat"] });
+      queryClient.removeQueries({ queryKey: ["chat"] });
+      queryClient.removeQueries({ queryKey: ["social-profile", publicId] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      Toast.show({ type: "success", text1: preferences.blocked ? "User blocked." : "User unblocked." });
+      if (!preferences.blocked) setReload((value) => value + 1);
+    } catch (reason) {
+      Toast.show({ type: "error", text1: "Could not update block", text2: reason instanceof Error ? reason.message : "Try again." });
+    } finally {
+      setBlockBusy(false);
+    }
+  }
 
   const loadMore = useCallback(async () => {
     if (!publicId || !cursor || loadingMore) return;
@@ -483,6 +530,13 @@ export default function UserProfileScreen() {
         </View>
         {loading ? (
           <ActivityIndicator className="mt-12" color="#c62828" />
+        ) : blocked ? (
+          <View className="m-5 rounded-3xl bg-white p-8 dark:bg-night-surface">
+            <Text className="text-center font-semibold text-[#17191d] dark:text-night-text">You blocked this user. Their profile and content are hidden.</Text>
+            <Pressable accessibilityRole="button" disabled={blockBusy} onPress={() => void toggleBlock()} className="mt-4 rounded-2xl bg-g000st-red px-5 py-3 disabled:opacity-50">
+              <Text className="text-center font-black text-white">{blockBusy ? "Updating…" : "Unblock user"}</Text>
+            </Pressable>
+          </View>
         ) : error ? (
           <Text className="m-5 rounded-3xl bg-white dark:bg-night-surface p-8 text-center text-black/60 dark:text-night-muted">
             {error}
@@ -716,6 +770,9 @@ export default function UserProfileScreen() {
                 )}
                 {!own && (
                   <View className="mt-5 gap-2">
+                    <Pressable accessibilityRole="button" disabled={blockBusy} onPress={() => void toggleBlock()} className="rounded-2xl border border-g000st-red/30 px-5 py-3 disabled:opacity-50">
+                      <Text className="text-center text-sm font-black text-g000st-red">{blockBusy ? "Updating…" : "Block user"}</Text>
+                    </Pressable>
                     <View className="flex-row gap-2">
                       <Action
                         label={

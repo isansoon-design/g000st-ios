@@ -87,6 +87,8 @@ test('expired and muted pushes keep their inbox record while blocked recipients 
   enqueue(db, 'muted', event()); await worker.sweep(); assert.equal(sent.length, 0);
   db.data.set(`test_contacts/${recipient}/items/${actor}`, { blocked: true });
   enqueue(db, 'blocked', event()); await worker.sweep();
+  assert.equal((await center.list(recipient, 'user', 20)).items.length, 0);
+  db.data.delete(`test_contacts/${recipient}/items/${actor}`);
   assert.equal((await center.list(recipient, 'user', 20)).items.length, 2);
 });
 
