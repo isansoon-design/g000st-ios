@@ -16,6 +16,7 @@ import Toast from "react-native-toast-message";
 
 import { listBeaconPages, subscribeToBeaconPageCreated, type BeaconPage } from "@/api/auth";
 import { getSocialProfile } from "@/api/social";
+import { IdentityKindIcon } from "@/components/brand/identity-kind-icon";
 import type { SocialProfile } from "@/domain/social/types";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { BeaconPageEditor } from "@/features/identity/components/beacon-page-editor";
@@ -111,6 +112,20 @@ function ActiveIdentityCheck() {
   );
 }
 
+function IdentityAvatar({ avatarUrl, name }: Readonly<{ avatarUrl?: string; name: string }>) {
+  return avatarUrl ? (
+    <Image
+      source={avatarImageSource(avatarUrl)}
+      contentFit="cover"
+      style={{ width: 36, height: 36, borderRadius: 18, flexShrink: 0 }}
+    />
+  ) : (
+    <View className="h-9 w-9 shrink-0 items-center justify-center rounded-full bg-g000st-silver">
+      <Text className="font-black text-white">{name[0]}</Text>
+    </View>
+  );
+}
+
 export function useOpenAppSidebar() {
   return use(SidebarContext);
 }
@@ -127,6 +142,8 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
   const [pages, setPages] = useState<BeaconPage[]>([]);
   const pagesRevision = useRef(0);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
+  const [pageProfiles, setPageProfiles] = useState<Record<string, SocialProfile>>({});
+  const pageIds = pages.map((page) => page.publicId).join(",");
   const [editor, setEditor] = useState<{
     publicId?: string;
     onSaved?: (profile: SocialProfile) => void;
@@ -163,6 +180,21 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
       active = false;
     };
   }, [open, user]);
+
+  useEffect(() => {
+    if (!open || !user || !pageIds) return;
+    let active = true;
+    for (const id of pageIds.split(",")) {
+      void getSocialProfile(id)
+        .then((pageProfile) => {
+          if (active) setPageProfiles((items) => ({ ...items, [id]: pageProfile }));
+        })
+        .catch(() => undefined);
+    }
+    return () => {
+      active = false;
+    };
+  }, [open, pageIds, user]);
 
   const visit = (href: Href) => {
     close();
@@ -248,22 +280,12 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
                   >
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel="View my profile"
+                      accessibilityLabel="View my main profile"
                       onPress={() => visit(`/users/${user.publicId}`)}
-                      className="min-w-0 flex-1 flex-row items-center gap-3"
+                      className="min-w-0 flex-1 flex-row items-center gap-2"
                     >
-                      {profile?.avatarUrl ? (
-                        <Image
-                          source={avatarImageSource(profile.avatarUrl)}
-                          style={{ width: 44, height: 44, borderRadius: 22 }}
-                        />
-                      ) : (
-                        <View className="h-11 w-11 items-center justify-center rounded-full bg-g000st-silver">
-                          <Text className="text-lg font-black text-white">
-                            {(profile?.displayName || "G")[0]}
-                          </Text>
-                        </View>
-                      )}
+                      <IdentityKindIcon isPage={false} />
+                      <IdentityAvatar avatarUrl={profile?.avatarUrl} name={profile?.displayName || "G"} />
                       <Text
                         numberOfLines={1}
                         className="min-w-0 flex-1 font-black"
@@ -289,47 +311,53 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
                 )}
                 {user && (
                   <View className="mb-5 gap-2">
-                    {pages.map((page) => (
-                      <View
-                        key={page.publicId}
-                        className="flex-row items-center rounded-xl"
-                        style={{
-                          backgroundColor: colors.card,
-                          borderWidth: 2,
-                          borderColor: activePublicId === page.publicId ? "#C62828" : "transparent",
-                        }}
-                      >
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={`View ${page.displayName || "page"}`}
-                          onPress={() => visit(`/users/${page.publicId}`)}
-                          className="min-w-0 flex-1 px-4 py-3"
-                        >
-                          <Text
-                            numberOfLines={1}
-                            className="font-bold"
-                            style={{ color: colors.text }}
-                          >
-                            {page.displayName || "Untitled beacon"}
-                          </Text>
-                        </Pressable>
-                        <Pressable
-                          accessibilityRole="switch"
-                          accessibilityLabel={activePublicId === page.publicId ? `Interacting as ${page.displayName || "page"}` : `Switch to ${page.displayName || "page"}`}
-                          accessibilityState={{
-                            checked: activePublicId === page.publicId,
+                    {pages.map((page) => {
+                      const pageProfile = pageProfiles[page.publicId];
+                      const name = pageProfile?.displayName || page.displayName || "Untitled beacon";
+                      return (
+                        <View
+                          key={page.publicId}
+                          className="flex-row items-center rounded-xl"
+                          style={{
+                            backgroundColor: colors.card,
+                            borderWidth: 2,
+                            borderColor: activePublicId === page.publicId ? "#C62828" : "transparent",
                           }}
-                          onPress={() => switchTo(page.publicId)}
-                          className="h-12 w-14 items-center justify-center"
                         >
-                          {activePublicId === page.publicId ? (
-                            <ActiveIdentityCheck />
-                          ) : (
-                            <Text className="text-xl font-black" style={{ color: colors.text }}>⇄</Text>
-                          )}
-                        </Pressable>
-                      </View>
-                    ))}
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`View secondary page ${name}`}
+                            onPress={() => visit(`/users/${page.publicId}`)}
+                            className="min-w-0 flex-1 flex-row items-center gap-2 px-2 py-3"
+                          >
+                            <IdentityKindIcon isPage />
+                            <IdentityAvatar avatarUrl={pageProfile?.avatarUrl} name={name} />
+                            <Text
+                              numberOfLines={1}
+                              className="min-w-0 flex-1 font-bold"
+                              style={{ color: colors.text }}
+                            >
+                              {name}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            accessibilityRole="switch"
+                            accessibilityLabel={activePublicId === page.publicId ? `Interacting as ${name}` : `Switch to ${name}`}
+                            accessibilityState={{
+                              checked: activePublicId === page.publicId,
+                            }}
+                            onPress={() => switchTo(page.publicId)}
+                            className="h-12 w-11 items-center justify-center"
+                          >
+                            {activePublicId === page.publicId ? (
+                              <ActiveIdentityCheck />
+                            ) : (
+                              <Text className="text-xl font-black" style={{ color: colors.text }}>⇄</Text>
+                            )}
+                          </Pressable>
+                        </View>
+                      );
+                    })}
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => visit("/beacons/new")}

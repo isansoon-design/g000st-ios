@@ -41,7 +41,7 @@
   }
 
   .user-sidebar[data-desktop-open="true"] {
-    width: 14rem;
+    width: 17.5rem;
     transform: none;
     visibility: visible;
     pointer-events: auto;

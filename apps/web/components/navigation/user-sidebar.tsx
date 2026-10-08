@@ -17,6 +17,7 @@ import toast from "react-hot-toast";
 import { listBeaconPages, subscribeToBeaconPageCreated, type BeaconPage } from "@/app/api/auth";
 import { sessionStorage } from "@/app/api/session-storage";
 import { getSocialProfile, subscribeToSocialProfileUpdated, type SocialProfile } from "@/app/api/social";
+import { IdentityKindIcon } from "@/components/brand/identity-kind-icon";
 
 const links = [
   { label: "Social", href: "/social", Icon: Globe2 },
@@ -181,7 +182,7 @@ export function UserSidebar({
         data-desktop-open={desktopOpen}
         className="user-sidebar absolute bottom-0 left-0 top-14 z-50 flex w-[min(85vw,280px)] shrink-0 flex-col overflow-hidden border-r border-black/10 bg-white/95 text-[#444b56] shadow-xl dark:border-white/10 dark:bg-night-header dark:text-night-text lg:relative lg:inset-auto lg:z-auto lg:shadow-none"
       >
-        <div className="flex min-h-0 w-[min(85vw,280px)] flex-1 flex-col overflow-y-auto px-3 py-5 lg:w-56">
+        <div className="flex min-h-0 w-[min(85vw,280px)] flex-1 flex-col overflow-y-auto px-3 py-5 lg:w-[280px]">
           {/* <div className="flex items-center justify-between px-3 pb-3">
             <p className="text-[10px] font-black uppercase tracking-[.22em] text-black/35 dark:text-night-muted">
               {" "}
@@ -216,6 +217,7 @@ export function UserSidebar({
                       onClick={onCloseMobile}
                       className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-xs font-bold"
                     >
+                      <IdentityKindIcon isPage={identity.publicId !== ownerId} />
                       <IdentityAvatar avatarUrl={identity.avatarUrl} name={identity.displayName} />
                       <span className="truncate">{identity.displayName}</span>
                     </Link>
