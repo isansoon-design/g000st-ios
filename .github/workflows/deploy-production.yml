@@ -1,4 +1,4 @@
-name: Deploy staging
+name: Deploy production
 
 on:
   workflow_dispatch:
@@ -26,8 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     environment:
+      # Reuse the existing SSH credential environment for this server.
+      # This name identifies the credential store, not an isolated runtime.
       name: staging
-      url: https://staging.g000st.com
+      url: https://g000st.com
 
     env:
       DEPLOY_COMPONENT: ${{ inputs.component }}
@@ -72,7 +74,7 @@ jobs:
       - name: Validate web
         if: inputs.component == 'web' || inputs.component == 'both'
         env:
-          NEXT_PUBLIC_API_URL: https://staging.g000st.com
+          NEXT_PUBLIC_API_URL: https://g000st.com
           NEXT_PUBLIC_API_BASE_PATH: /api/v1
           NEXT_PUBLIC_ENABLE_ADMIN: "true"
           NEXT_PUBLIC_ENABLE_CHAT: "true"
@@ -146,7 +148,7 @@ jobs:
           ssh -p "$DEPLOY_PORT" -i "$HOME/.ssh/g000st_deploy" \
             -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            sudo -n /usr/local/sbin/g000st-deploy-staging \
+            sudo -n /usr/local/sbin/g000st-deploy-production \
               api "$RELEASE_ID" "/home/g000st-deploy/artifacts/g000st-api-${RELEASE_ID}.tar.gz"
 
       - name: Upload web artifact
@@ -167,7 +169,7 @@ jobs:
           ssh -p "$DEPLOY_PORT" -i "$HOME/.ssh/g000st_deploy" \
             -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            sudo -n /usr/local/sbin/g000st-deploy-staging \
+            sudo -n /usr/local/sbin/g000st-deploy-production \
               web "$RELEASE_ID" "/home/g000st-deploy/artifacts/g000st-web-${RELEASE_ID}.tar.gz"
 
       - name: Remove runner credentials

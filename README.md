@@ -11,6 +11,11 @@ The g000st monorepo keeps the three product surfaces aligned:
 Infrastructure roles and the staged deployment sequence are documented in
 [`docs/INFRASTRUCTURE_PLAN_AR.md`](docs/INFRASTRUCTURE_PLAN_AR.md).
 
+The production domain cutover, deployment commands, compatibility routing, and rollback
+locations are documented in [`docs/PRODUCTION_CUTOVER_AR.md`](docs/PRODUCTION_CUTOVER_AR.md).
+The staging hostname now forwards API requests to production; it is not an isolated test
+environment.
+
 The current Arabic handoff, verified deployment state, decisions, and next steps are recorded in
 [`docs/PROJECT_STATUS_AR.md`](docs/PROJECT_STATUS_AR.md). Read it first when starting a new work
 session.

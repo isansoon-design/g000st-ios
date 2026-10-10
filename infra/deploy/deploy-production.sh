@@ -5,12 +5,7 @@ umask 027
 
 readonly DEPLOY_USER="g000st-deploy"
 readonly ARTIFACT_ROOT="/home/${DEPLOY_USER}/artifacts"
-readonly STAGING_ORIGIN="https://staging.g000st.com"
-
-if [[ -f /root/production/staging-compatibility ]]; then
-  printf 'Staging currently proxies the production API. Restore isolated staging routing and data before deploying staging.\n' >&2
-  exit 2
-fi
+readonly PRODUCTION_ORIGIN="https://g000st.com"
 
 target="${1:-}"
 release_id="${2:-}"
@@ -18,16 +13,16 @@ artifact="${3:-}"
 
 case "$target" in
   web)
-    base_dir="/root/staging/g000st-web"
-    process_name="g000st-web-staging"
-    local_health_url="http://127.0.0.1:3001/login"
-    public_health_url="${STAGING_ORIGIN}/login"
+    base_dir="/root/production/g000st-web"
+    process_name="g000st-web-production"
+    local_health_url="http://127.0.0.1:3002/login"
+    public_health_url="${PRODUCTION_ORIGIN}/login"
     ;;
   api)
-    base_dir="/root/staging/g000st-api"
-    process_name="g000st-api-staging"
-    local_health_url="http://127.0.0.1:3100/api/v1/health"
-    public_health_url="${STAGING_ORIGIN}/api/v1/health"
+    base_dir="/root/production/g000st-api"
+    process_name="g000st-api-production"
+    local_health_url="http://127.0.0.1:3101/api/v1/health"
+    public_health_url="${PRODUCTION_ORIGIN}/api/v1/health"
     ;;
   *)
     printf 'Unsupported deployment target: %s\n' "$target" >&2
@@ -85,7 +80,7 @@ start_or_restart_process() {
       pm2 start npm \
         --name "$process_name" \
         --cwd "$current_link" \
-        -- start --workspace @g000st/web -- --hostname 127.0.0.1 --port 3001
+        -- start --workspace @g000st/web -- --hostname 127.0.0.1 --port 3002
       ;;
   esac
 }
@@ -177,7 +172,7 @@ wait_for_url "$public_health_url"
 
 if [[ "$target" == api ]]; then
   cd "$release_dir"
-  SMOKE_API_BASE_URL="${STAGING_ORIGIN}/api/v1" node apps/api/scripts/staging-smoke.mjs
+  SMOKE_API_BASE_URL="${PRODUCTION_ORIGIN}/api/v1" node apps/api/scripts/staging-smoke.mjs
 fi
 
 pm2 save

@@ -3,8 +3,16 @@
 Version-controlled deployment configuration lives here. Secret values and generated TLS
 configuration must never be committed.
 
+- `nginx/g000st-production.conf` routes `g000st.com` to the production web (3002) and API
+  (3101) processes and redirects HTTP and `www` to the canonical HTTPS origin.
+- `nginx/g000st-staging-compatibility.conf` redirects staging pages to production while
+  proxying API requests and WebSockets for existing clients and provider webhooks.
+- `deploy/deploy-production.sh` builds and activates independent production releases, checks
+  health, and rolls back on failure. The `Deploy production` workflow reuses the existing
+  `staging` GitHub Environment's SSH credentials for the same server.
 - `nginx/g000st-staging.conf` routes the HTTPS staging hostname to the internal Next.js and API
-  processes. Certificate files are managed and renewed by Certbot on the server.
+  processes when isolated staging is restored. Certificate files are managed and renewed by
+  Certbot on the server.
 - `nginx/g000st-media.conf` proxies signed media traffic to MinIO on `g000st-app` and restricts
   browser CORS to the production, staging, and approved local-development origins.
 - `deploy/deploy-staging.sh` is the root-owned server entry point used by the manual GitHub
@@ -34,6 +42,11 @@ the changed database automatically. Geography is collected on authenticated pres
 heartbeats and expires from dashboard results after 30 days.
 
 ## Manual staging deployment
+
+After the production cutover, staging API requests reach production data. The server blocks
+staging deployment while `/root/production/staging-compatibility` exists. Restore isolated
+staging data and routing before removing this guard. See
+[`PRODUCTION_CUTOVER_AR.md`](../docs/PRODUCTION_CUTOVER_AR.md).
 
 The `Deploy staging` workflow can be started from the GitHub Actions page and accepts one target:
 `web`, `api`, or `both`. It runs only from `main`, uses the protected `staging` environment, and

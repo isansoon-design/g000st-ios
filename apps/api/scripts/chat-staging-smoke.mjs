@@ -122,7 +122,9 @@ try {
     headers: secondAuth,
     method: 'POST',
   });
-  assert.equal(markedRead.status, 204);
+  assert.equal(markedRead.status, 200);
+  assert.equal(markedRead.body.readState.unreadCount, 0);
+  assert.equal(markedRead.body.readState.lastReadMessageId, sent.body.message.id);
 
   const afterRead = await request('/chat/conversations', { headers: secondAuth });
   assert.equal(afterRead.status, 200);
