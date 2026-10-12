@@ -538,11 +538,7 @@ function IdentityScreenContentComponent({
                   My ID
                 </Text>
               </View>
-              <View className="rounded-full border border-[#FFB9B9]/40 bg-[#C62828]/20 dark:bg-night-softred px-3 py-1">
-                <Text className="text-[10px] font-black uppercase text-[#FFB9B9]">
-                  Recovery ID
-                </Text>
-              </View>
+
             </View>
             {recoveryId ? (
               <>
