@@ -495,7 +495,7 @@ export default function PrivateChatPage() {
       marketCallPermissions?.postId === activeMarketPostId &&
       marketCallPermissions?.allowVideoCalls === true);
   const [blurMessages, setBlurMessages] = useState(false);
-  const [isWindowBlurred, setIsWindowBlurred] = useState(false);
+  const [isPageHidden, setIsPageHidden] = useState(false);
   const [fontSize, setFontSize] = useState(14);
   const [namesByPublicId, setNamesByPublicId] = useState<
     Record<string, string>
@@ -512,13 +512,17 @@ export default function PrivateChatPage() {
   >(null);
 
   useEffect(() => {
-    const handleBlur = () => setIsWindowBlurred(true);
-    const handleFocus = () => setIsWindowBlurred(false);
-    window.addEventListener("blur", handleBlur);
-    window.addEventListener("focus", handleFocus);
+    // Focus changes while sending or using the mobile keyboard do not mean
+    // the page is in the background. Only actual visibility hides the chat.
+    const syncVisibility = () => {
+      setIsPageHidden(document.visibilityState === "hidden");
+    };
+    syncVisibility();
+    document.addEventListener("visibilitychange", syncVisibility);
+    window.addEventListener("pageshow", syncVisibility);
     return () => {
-      window.removeEventListener("blur", handleBlur);
-      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", syncVisibility);
+      window.removeEventListener("pageshow", syncVisibility);
     };
   }, []);
   const [peerPreferences, setPeerPreferences] =
@@ -790,10 +794,10 @@ export default function PrivateChatPage() {
 
   return (
     <div className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden border-x border-black/10 dark:border-night-border bg-[#D8D8D8] dark:bg-night-canvas shadow-2xl select-none">
-      {isWindowBlurred ? (
+      {isPageHidden ? (
         <div className="fixed inset-0 z-[9999] grid place-items-center bg-[#D8D8D8] dark:bg-night-canvas text-center text-black/50 dark:text-night-muted">
           <p className="font-bold">
-            Screenshots and background capture prevented.
+            Conversation hidden while the page is in the background.
           </p>
         </div>
       ) : null}
