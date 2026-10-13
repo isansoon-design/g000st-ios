@@ -495,7 +495,7 @@ export default function PrivateChatPage() {
       marketCallPermissions?.postId === activeMarketPostId &&
       marketCallPermissions?.allowVideoCalls === true);
   const [blurMessages, setBlurMessages] = useState(false);
-  const [isPageHidden, setIsPageHidden] = useState(false);
+  const [isChatObscured, setIsChatObscured] = useState(false);
   const [fontSize, setFontSize] = useState(14);
   const [namesByPublicId, setNamesByPublicId] = useState<
     Record<string, string>
@@ -512,17 +512,24 @@ export default function PrivateChatPage() {
   >(null);
 
   useEffect(() => {
-    // Focus changes while sending or using the mobile keyboard do not mean
-    // the page is in the background. Only actual visibility hides the chat.
-    const syncVisibility = () => {
-      setIsPageHidden(document.visibilityState === "hidden");
+    // Restore chat privacy when another window or a capture tool takes focus.
+    // Browsers cannot block OS screenshots; this hides the chat on focus loss.
+    const syncPrivacy = () => {
+      setIsChatObscured(
+        document.visibilityState === "hidden" || !document.hasFocus(),
+      );
     };
-    syncVisibility();
-    document.addEventListener("visibilitychange", syncVisibility);
-    window.addEventListener("pageshow", syncVisibility);
+    const handleBlur = () => setIsChatObscured(true);
+    syncPrivacy();
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", syncPrivacy);
+    document.addEventListener("visibilitychange", syncPrivacy);
+    window.addEventListener("pageshow", syncPrivacy);
     return () => {
-      document.removeEventListener("visibilitychange", syncVisibility);
-      window.removeEventListener("pageshow", syncVisibility);
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", syncPrivacy);
+      document.removeEventListener("visibilitychange", syncPrivacy);
+      window.removeEventListener("pageshow", syncPrivacy);
     };
   }, []);
   const [peerPreferences, setPeerPreferences] =
@@ -794,10 +801,10 @@ export default function PrivateChatPage() {
 
   return (
     <div className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden border-x border-black/10 dark:border-night-border bg-[#D8D8D8] dark:bg-night-canvas shadow-2xl select-none">
-      {isPageHidden ? (
+      {isChatObscured ? (
         <div className="fixed inset-0 z-[9999] grid place-items-center bg-[#D8D8D8] dark:bg-night-canvas text-center text-black/50 dark:text-night-muted">
           <p className="font-bold">
-            Conversation hidden while the page is in the background.
+            Conversation hidden for privacy. Return to this window to continue.
           </p>
         </div>
       ) : null}
@@ -1421,7 +1428,7 @@ export default function PrivateChatPage() {
               <p className="pt-0.5 text-center text-[10px] font-bold leading-3 text-black/40 dark:text-night-muted">
                 {activeIsMarket
                   ? "Market messages are removed after 30 days."
-                  : "Regular private messages remain available here. They disappear from the phone after 2 hours."}{" "}
+                  : "Once seen, all messages will disappear within 2 hours. Screenshots are not permitted."}{" "}
                 screenshot NOT available
               </p>
             </div>
