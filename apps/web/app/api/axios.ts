@@ -101,13 +101,16 @@ axiosInstance.interceptors.response.use(
       let accessToken: string;
       try {
         accessToken = await refreshOnce();
-      } catch {
-        if (original._sessionVersion === sessionStorage.getVersion() &&
+      } catch (refreshError) {
+        // Only an explicit rejection of the refresh token ends the session.
+        // Connectivity failures and temporary API errors must remain retryable.
+        if (isAxiosError(refreshError) && refreshError.response?.status === 401 &&
+            original._sessionVersion === sessionStorage.getVersion() &&
             sessionStorage.get()?.tokens.refreshToken === original._sessionRefreshToken) {
           sessionStorage.clearIfVersion(original._sessionVersion);
           if (typeof window !== "undefined") window.location.replace("/login");
         }
-        return Promise.reject(toApiError(error));
+        return Promise.reject(toApiError(refreshError));
       }
       if (original._sessionVersion !== sessionStorage.getVersion() ||
           sessionStorage.get()?.user.publicId !== original._sessionPublicId) {

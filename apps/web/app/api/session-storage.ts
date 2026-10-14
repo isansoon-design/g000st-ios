@@ -54,7 +54,17 @@ function setCookie(name: string, value: string | null): void {
       : `${name}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
 }
 
+function setRoutingHints(session: PersistedSession | null): void {
+  // Routing hints only; the API checks authorization using the access token.
+  setCookie(SESSION_HINT_COOKIE, session ? "1" : null);
+  setCookie("user_role", session?.user.role ?? null);
+}
+
 export const sessionStorage = {
+  syncRoutingHints(): void {
+    setRoutingHints(this.get());
+  },
+
   getActingPublicId(): string | null {
     const owner = this.get()?.user.publicId;
     if (!owner) return null;
@@ -96,10 +106,7 @@ export const sessionStorage = {
     if (typeof window === "undefined") return;
     sessionVersion += 1;
     window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    setCookie(SESSION_HINT_COOKIE, "1");
-    // Also only a routing hint (see middleware.ts) — the API enforces the real admin check
-    // server-side via requireAdminRole against the access token, not this cookie.
-    setCookie("user_role", session.user.role);
+    setRoutingHints(session);
   },
 
   saveRefreshed(session: PersistedSession, expectedVersion: number, expectedRefreshToken: string): boolean {
@@ -109,6 +116,7 @@ export const sessionStorage = {
     }
     if (typeof window === "undefined") return false;
     window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    setRoutingHints(session);
     return true;
   },
 
@@ -175,8 +183,7 @@ export const sessionStorage = {
       window.localStorage.removeItem(RECOVERY_ID_KEY);
       window.sessionStorage.removeItem(ACTING_ID_KEY);
     }
-    setCookie(SESSION_HINT_COOKIE, null);
-    setCookie("user_role", null);
+    setRoutingHints(null);
   },
 
   clearIfVersion(expectedVersion: number): void {
