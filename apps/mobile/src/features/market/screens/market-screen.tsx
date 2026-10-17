@@ -44,6 +44,7 @@ import type {
 } from "@/domain/market/types";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useCalling } from "@/features/calling/hooks/use-calling";
+import { PostCardFrame } from "@/components/posts/post-card-frame";
 import { useConfirmModal } from "@/providers/confirm-modal-provider";
 
 cssInterop(VideoView, { className: "style" });
@@ -557,7 +558,7 @@ function MarketCard({
   const { confirm } = useConfirmModal();
   const router = useRouter();
   return (
-    <View className="overflow-hidden rounded-2xl border-2 border-black dark:border-night-border bg-white dark:bg-night-surface shadow-sm" style={{ shadowColor: post.author.isPage ? "#c62828" : "#000000" }}>
+    <PostCardFrame isPage={post.author.isPage}>
       <View className="flex-row items-center gap-3 p-4">
         {/* Start Image */}
         <View className="h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-black">
@@ -702,7 +703,7 @@ function MarketCard({
         </Pressable>}
       </View>
 
-    </View>
+    </PostCardFrame>
   );
 }
 

@@ -12,6 +12,7 @@ type Props = Readonly<{
   publicId: string;
   isPage: boolean;
   pageNamed: boolean;
+  showIdentityDefault?: boolean;
   onPublished: (post: SocialPost) => void;
 }>;
 
@@ -26,10 +27,11 @@ export function ProfilePostComposer({
   publicId,
   isPage,
   pageNamed,
+  showIdentityDefault,
   onPublished,
 }: Props) {
   const [draft, setDraft] = useState("");
-  const [visibility, setVisibility] = useState<SocialVisibility>("public");
+  const [visibility, setVisibility] = useState<SocialVisibility>(showIdentityDefault === false ? "anonymous" : "public");
   const [selectedMedia, setSelectedMedia] = useState<
     ImagePicker.ImagePickerAsset[]
   >([]);

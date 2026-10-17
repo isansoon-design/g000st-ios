@@ -59,6 +59,7 @@ import type {
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { chatConversationHref } from "@/features/chat/navigation";
 import { useConfirmModal } from "@/providers/confirm-modal-provider";
+import { PostCardFrame } from "@/components/posts/post-card-frame";
 import { avatarImageSource } from "@/services/media/avatar-image-source";
 
 type ViewName = "home" | "mine" | "alerts";
@@ -611,7 +612,10 @@ export function SocialScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Create a Social post"
-                  onPress={() => setIsComposerOpen(true)}
+                  onPress={() => {
+                    setVisibility(profile?.showDisplayName ? "public" : "anonymous");
+                    setIsComposerOpen(true);
+                  }}
                   className="mb-1 flex-row items-center gap-3 rounded-2xl border border-black/10 dark:border-night-border bg-white dark:bg-night-surface p-4 shadow-sm"
                 >
                   <View className="h-12 w-12 items-center justify-center rounded-2xl bg-[#C62828]">
@@ -658,7 +662,7 @@ export function SocialScreen() {
                 onChat={openChat}
                 onShare={() => {
                   setShareDraft("");
-                  setShareVisibility("anonymous");
+                  setShareVisibility(profile?.showDisplayName ? "public" : "anonymous");
                   setSharingPost(post);
                 }}
                 onEdit={() => setEditingPost(post)}
@@ -930,7 +934,7 @@ function PostCard({
   const router = useRouter();
   const { confirm } = useConfirmModal();
   return (
-    <View className="overflow-hidden rounded-2xl border-2 border-black dark:border-night-border bg-white dark:bg-night-surface shadow-sm" style={{ shadowColor: post.author.isPage ? "#c62828" : "#000000" }}>
+    <PostCardFrame isPage={post.author.isPage}>
       <View className="flex-row items-center gap-3 p-4">
         <View className="h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-black">
           {post.author.avatarUrl ? (
@@ -1074,7 +1078,7 @@ function PostCard({
           <Action label="Chat" onPress={() => onChat(post.ownerPublicId)} />
         )}
       </View>
-    </View>
+    </PostCardFrame>
   );
 }
 

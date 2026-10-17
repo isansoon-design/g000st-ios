@@ -836,6 +836,7 @@ export default function UserProfileScreen() {
                     publicId={publicId}
                     isPage={profile.isPage}
                     pageNamed={!!profile.displayName?.trim()}
+                    showIdentityDefault={profile.showDisplayName}
                     onPublished={(post) =>
                       setPosts((items) => [post, ...items])
                     }

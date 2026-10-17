@@ -312,7 +312,7 @@ export class FirestoreSocialStore implements SocialStore {
   }
 
   private async toPost(viewerId: string, id: string, post: StoredPost): Promise<SocialPost> {
-    const [liked, camped, author] = await Promise.all([this.reactions(id).doc(viewerId).get(), this.camps(viewerId).doc(post.ownerPublicId).get(), this.author(post.ownerPublicId, post.visibility === 'public' || post.ownerPublicId === viewerId)]);
+    const [liked, camped, author] = await Promise.all([this.reactions(id).doc(viewerId).get(), this.camps(viewerId).doc(post.ownerPublicId).get(), this.author(post.ownerPublicId, post.visibility === 'public', true)]);
     const ownedByViewer = post.ownerPublicId === viewerId;
     return { id, ...(ownedByViewer || post.visibility === 'public' ? { ownerPublicId: post.ownerPublicId } : {}), author, content: post.content, ...(post.linkPreview ? { linkPreview: post.linkPreview } : {}), ...(post.sharedPostId ? { sharedPostId: post.sharedPostId } : {}), ...(post.media?.length ? { media: post.media } : {}), visibility: post.visibility, sharedToSocial: post.sharedToSocial !== false, createdAtMs: post.createdAtMs, updatedAtMs: post.updatedAtMs, ...(post.editedAtMs ? { editedAtMs: post.editedAtMs } : {}), likeCount: post.likeCount, commentCount: post.commentCount, likedByViewer: liked.exists, campedByViewer: camped.exists, ownedByViewer };
   }
@@ -322,7 +322,7 @@ export class FirestoreSocialStore implements SocialStore {
     return { id, postId, ...(ownedByViewer || comment.visibility === 'public' ? { ownerPublicId: comment.ownerPublicId } : {}), author: await this.author(comment.ownerPublicId, comment.visibility === 'public' || ownedByViewer), content: comment.content, visibility: comment.visibility, createdAtMs: comment.createdAtMs, ownedByViewer };
   }
 
-  private async author(publicId: string, visible: boolean): Promise<SocialAuthor> {
+  private async author(publicId: string, visible: boolean, postChoice = false): Promise<SocialAuthor> {
     if (!visible) return { displayName: 'Anonymous' };
     const [profile, account] = await Promise.all([
       this.profiles().doc(publicId).get(),
@@ -340,7 +340,8 @@ export class FirestoreSocialStore implements SocialStore {
       displayName: publicDisplayName(publicId, {
         deletedAtMs,
         displayName: data?.displayName as string | undefined,
-        showDisplayName: data?.showDisplayName === true,
+        // A post's own switch overrides the profile default: "show identity" reveals the name.
+        showDisplayName: postChoice || data?.showDisplayName === true,
       }),
       ...(avatarUrl ? { avatarUrl } : {}),
     };
