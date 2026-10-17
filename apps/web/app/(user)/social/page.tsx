@@ -851,7 +851,12 @@ function EditSocialPostModal({
   }, [post]);
   if (!post) return null;
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-5">
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-5"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !saving) onClose();
+      }}
+    >
       <div className="max-h-full w-full max-w-lg space-y-3 overflow-y-auto rounded-[24px] bg-white dark:bg-night-surface p-5">
         <div className="flex justify-between">
           <h2 className="text-lg font-black">Edit post</h2>

@@ -45,9 +45,9 @@ import {
 } from "@/api/social";
 import { FeatureScreen } from "@/components/layout/feature-screen";
 import { KeyboardAvoidingView } from "@/components/layout/keyboard-avoiding-view";
-import { EditSocialPostModal } from "@/features/social/components/edit-social-post-modal";
 import { PostImage } from "@/components/media/post-image";
 import { useTabBarScroll } from "@/components/navigation/tab-bar-scroll";
+import { PostCardFrame } from "@/components/posts/post-card-frame";
 import { PostContentText } from "@/components/posts/post-content-text";
 import type {
   SocialAlert,
@@ -58,8 +58,8 @@ import type {
 } from "@/domain/social/types";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { chatConversationHref } from "@/features/chat/navigation";
+import { EditSocialPostModal } from "@/features/social/components/edit-social-post-modal";
 import { useConfirmModal } from "@/providers/confirm-modal-provider";
-import { PostCardFrame } from "@/components/posts/post-card-frame";
 import { avatarImageSource } from "@/services/media/avatar-image-source";
 
 type ViewName = "home" | "mine" | "alerts";

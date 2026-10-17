@@ -19,17 +19,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { listBeaconPages, type BeaconPage } from "@/api/auth";
-import { getPeerPreferences, updatePeerPreferences } from "@/api/contacts";
-import { useQueryClient } from "@tanstack/react-query";
-import { useConfirmModal } from "@/providers/confirm-modal-provider";
 import { startChatConversation } from "@/api/chat";
+import { getPeerPreferences, updatePeerPreferences } from "@/api/contacts";
 import {
-  getSocialProfile,
   deleteSocialPost,
+  getSocialProfile,
   listSocialPosts,
-  updateSocialPost,
   shareSocialPostToSocial,
   toggleSocialCamp,
+  updateSocialPost,
   updateSocialProfile,
   uploadAvatarMedia,
   uploadCoverMedia,
@@ -45,6 +43,8 @@ import { PageAddress } from "@/features/identity/components/page-address";
 import { PageContactLinks } from "@/features/identity/components/page-contact-links";
 import { EditSocialPostModal } from "@/features/social/components/edit-social-post-modal";
 import { ProfilePostComposer } from "@/features/social/components/profile-post-composer";
+import { useConfirmModal } from "@/providers/confirm-modal-provider";
+import { useQueryClient } from "@tanstack/react-query";
 
 type ProfileDraft = {
   displayName: string;

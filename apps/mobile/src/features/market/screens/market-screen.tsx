@@ -18,6 +18,7 @@ import {
   Switch,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -724,6 +725,7 @@ function EditMarketModal({
 }) {
   const [mediaDraft, setMediaDraft] = useState(() => initialMediaDraft(post.media));
   const [saving, setSaving] = useState(false);
+  const { height: windowHeight } = useWindowDimensions();
   const [fields, setFields] = useState<MarketPostFields>({
     content: post.content,
     price: post.price,
@@ -736,8 +738,17 @@ function EditMarketModal({
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 justify-center bg-black/50 p-5">
-        <View className="max-h-full rounded-[24px] bg-white dark:bg-night-surface">
-          <ScrollView contentContainerClassName="gap-3 p-5" keyboardShouldPersistTaps="handled">
+        <Pressable
+          accessibilityLabel="Close editor"
+          className="absolute inset-0"
+          onPress={() => !saving && onClose()}
+        />
+        <View className="rounded-[24px] bg-white dark:bg-night-surface">
+          <ScrollView
+            style={{ flexGrow: 0, maxHeight: windowHeight * 0.8 }}
+            contentContainerClassName="gap-3 p-5"
+            keyboardShouldPersistTaps="handled"
+          >
           <Text className="text-lg font-black text-g000st-black dark:text-night-text">Edit listing</Text>
           <TextInput
             value={fields.content}
