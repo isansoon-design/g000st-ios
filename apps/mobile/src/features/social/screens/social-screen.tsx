@@ -45,6 +45,7 @@ import {
 } from "@/api/social";
 import { FeatureScreen } from "@/components/layout/feature-screen";
 import { KeyboardAvoidingView } from "@/components/layout/keyboard-avoiding-view";
+import { EditSocialPostModal } from "@/features/social/components/edit-social-post-modal";
 import { PostImage } from "@/components/media/post-image";
 import { useTabBarScroll } from "@/components/navigation/tab-bar-scroll";
 import { PostContentText } from "@/components/posts/post-content-text";
@@ -1122,55 +1123,6 @@ function SharedPostPreview({
   );
 }
 
-function EditSocialPostModal({
-  post,
-  onClose,
-  onSave,
-}: {
-  post: SocialPost;
-  onClose: () => void;
-  onSave: (postId: string, content: string) => Promise<void>;
-}) {
-  const [content, setContent] = useState(post.content);
-  return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <View className="flex-1 justify-center bg-black/50 p-5">
-        <View className="gap-3 rounded-[24px] bg-white dark:bg-night-surface p-5">
-          <Text className="text-lg font-black text-g000st-black dark:text-night-text">
-            Edit post
-          </Text>
-          <TextInput
-            value={content}
-            onChangeText={setContent}
-            multiline
-            maxLength={4000}
-            className="min-h-28 rounded-xl border border-black/15 dark:border-night-border p-3 text-g000st-black dark:text-night-text"
-            textAlignVertical="top"
-          />
-          <View className="flex-row gap-2">
-            <Pressable
-              onPress={onClose}
-              className="flex-1 rounded-xl bg-[#DDD] dark:bg-night-raised p-3"
-            >
-              <Text className="text-center font-black text-g000st-black dark:text-night-text">
-                Cancel
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                const next = content.trim();
-                if (next) void onSave(post.id, next);
-              }}
-              className="flex-1 rounded-xl bg-black p-3"
-            >
-              <Text className="text-center font-black text-white">Save</Text>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
 function SocialVideo({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri);
   return (

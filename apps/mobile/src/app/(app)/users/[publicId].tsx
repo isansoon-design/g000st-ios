@@ -25,7 +25,9 @@ import { useConfirmModal } from "@/providers/confirm-modal-provider";
 import { startChatConversation } from "@/api/chat";
 import {
   getSocialProfile,
+  deleteSocialPost,
   listSocialPosts,
+  updateSocialPost,
   shareSocialPostToSocial,
   toggleSocialCamp,
   updateSocialProfile,
@@ -41,6 +43,7 @@ import { useCalling } from "@/features/calling/hooks/use-calling";
 import { chatConversationHref } from "@/features/chat/navigation";
 import { PageAddress } from "@/features/identity/components/page-address";
 import { PageContactLinks } from "@/features/identity/components/page-contact-links";
+import { EditSocialPostModal } from "@/features/social/components/edit-social-post-modal";
 import { ProfilePostComposer } from "@/features/social/components/profile-post-composer";
 
 type ProfileDraft = {
@@ -109,6 +112,7 @@ export default function UserProfileScreen() {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [cursor, setCursor] = useState<string>();
   const [sharingId, setSharingId] = useState<string>();
+  const [editingPost, setEditingPost] = useState<SocialPost>();
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -857,6 +861,32 @@ export default function UserProfileScreen() {
                           : undefined
                       }
                       sharing={sharingId === post.id}
+                      onEdit={own ? () => setEditingPost(post) : undefined}
+                      onDelete={
+                        own
+                          ? async () => {
+                              if (
+                                !(await confirm({
+                                  title: "Delete post?",
+                                  message: "Are you sure you want to delete this post?",
+                                  confirmLabel: "Delete",
+                                  isDangerous: true,
+                                }))
+                              )
+                                return;
+                              try {
+                                await deleteSocialPost(post.id, publicId);
+                                setPosts((items) => items.filter((item) => item.id !== post.id));
+                              } catch (reason) {
+                                Toast.show({
+                                  type: "error",
+                                  text1: "Could not delete post",
+                                  text2: reason instanceof Error ? reason.message : "Try again.",
+                                });
+                              }
+                            }
+                          : undefined
+                      }
                     />
                   </Animated.View>
                 ))}
@@ -876,6 +906,17 @@ export default function UserProfileScreen() {
           )
         )}
       </ScrollView>
+      {editingPost && (
+        <EditSocialPostModal
+          post={editingPost}
+          onClose={() => setEditingPost(undefined)}
+          onSave={async (postId, content) => {
+            const updated = await updateSocialPost(postId, content, publicId);
+            setPosts((items) => items.map((item) => (item.id === postId ? updated : item)));
+            setEditingPost(undefined);
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -907,10 +948,14 @@ function CardHeader({
   name,
   avatarUrl,
   createdAtMs,
+  onEdit,
+  onDelete,
 }: {
   name: string;
   avatarUrl?: string;
   createdAtMs: number;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
   return (
     <View className="flex-row items-center gap-3 p-4">
@@ -921,12 +966,36 @@ function CardHeader({
           contentFit="cover"
         />
       </View>
-      <View>
+      <View className="min-w-0 flex-1">
         <Text className="text-sm font-black">{name}</Text>
         <Text className="text-xs text-black/40 dark:text-night-muted">
           {new Date(createdAtMs).toLocaleString()}
         </Text>
       </View>
+      {(onEdit || onDelete) && (
+        <View className="flex-row gap-2">
+          {onEdit && (
+            <Pressable
+              accessibilityLabel="Edit post"
+              accessibilityRole="button"
+              className="rounded-full border border-black/20 dark:border-night-border px-3 py-2"
+              onPress={onEdit}
+            >
+              <Text className="text-xs font-black text-g000st-black dark:text-night-text">Edit</Text>
+            </Pressable>
+          )}
+          {onDelete && (
+            <Pressable
+              accessibilityLabel="Delete post"
+              accessibilityRole="button"
+              className="rounded-full border border-[#C62828] px-3 py-2"
+              onPress={onDelete}
+            >
+              <Text className="text-xs font-black text-[#C62828]">Delete</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -935,10 +1004,14 @@ function SocialCard({
   post,
   onShare,
   sharing,
+  onEdit,
+  onDelete,
 }: {
   post: SocialPost;
   onShare?: () => void;
   sharing?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
   const router = useRouter();
   return (
@@ -947,6 +1020,8 @@ function SocialCard({
         name={post.author.displayName}
         avatarUrl={post.author.avatarUrl}
         createdAtMs={post.createdAtMs}
+        onEdit={onEdit}
+        onDelete={onDelete}
       />
       {!!post.content && <PostContentText linkPreview={post.linkPreview} content={post.content} onOpen={() => router.push(`/posts/social/${post.id}` as Href)} className="px-4 pb-4 text-sm leading-6 text-g000st-black dark:text-night-text" />}
       {post.sharedPost && (

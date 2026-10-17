@@ -95,13 +95,13 @@ export async function uploadSocialMedia(
     throw new Error(`Media upload failed (${result.status}).`);
   return upload.media;
 }
-export async function deleteSocialPost(postId: string) {
-  await axiosInstance.delete(`/social/posts/${postId}`);
+export async function deleteSocialPost(postId: string, actingPublicId?: string) {
+  await axiosInstance.delete(`/social/posts/${postId}`, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined });
 }
-export async function updateSocialPost(postId: string, content: string) {
+export async function updateSocialPost(postId: string, content: string, actingPublicId?: string) {
   const response = await axiosInstance.patch(`/social/posts/${postId}`, {
     content,
-  });
+  }, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined });
   return (await resolvePostAuthors([parseApiPayload(socialPostResultSchema, response.data).post], getSocialProfile))[0];
 }
 export async function toggleSocialLike(postId: string) {
