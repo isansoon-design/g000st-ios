@@ -361,12 +361,12 @@ export function PostDetailScreen({
         </View>
       ) : (
         <KeyboardAvoidingView
-          className="flex-1"
+          style={{ flex: 1 }}
           behavior="padding"
           automaticOffset
         >
           <FlatList
-            className="flex-1"
+            style={{ flex: 1 }}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
             data={comments}
