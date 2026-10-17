@@ -35,6 +35,7 @@ import {
 } from "@/api/market";
 import { toggleSocialCamp } from "@/api/social";
 import { FeatureScreen } from "@/components/layout/feature-screen";
+import { EditPostMedia } from "@/components/media/edit-post-media";
 import { PostImage } from "@/components/media/post-image";
 import { useTabBarScroll } from "@/components/navigation/tab-bar-scroll";
 import { PostContentText } from "@/components/posts/post-content-text";
@@ -42,6 +43,11 @@ import type {
   MarketPost,
   MarketPostFields,
 } from "@/domain/market/types";
+import {
+  initialMediaDraft,
+  mediaDraftEdit,
+  type PostMediaEdit,
+} from "@/domain/media/post-media-edit";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useCalling } from "@/features/calling/hooks/use-calling";
 import { PostCardFrame } from "@/components/posts/post-card-frame";
@@ -396,8 +402,8 @@ export function MarketScreen() {
         <EditMarketModal
           post={editingPost}
           onClose={() => setEditingPost(undefined)}
-          onSave={async (postId, next) => {
-            const updated = await updateMarketPost(postId, next);
+          onSave={async (postId, next, media) => {
+            const updated = await updateMarketPost(postId, next, media);
             setPosts((current) =>
               current.map((post) => (post.id === postId ? updated : post)),
             );
@@ -714,8 +720,10 @@ function EditMarketModal({
 }: {
   post: MarketPost;
   onClose: () => void;
-  onSave: (id: string, fields: MarketPostFields) => Promise<void>;
+  onSave: (id: string, fields: MarketPostFields, media?: PostMediaEdit) => Promise<void>;
 }) {
+  const [mediaDraft, setMediaDraft] = useState(() => initialMediaDraft(post.media));
+  const [saving, setSaving] = useState(false);
   const [fields, setFields] = useState<MarketPostFields>({
     content: post.content,
     price: post.price,
@@ -728,7 +736,8 @@ function EditMarketModal({
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 justify-center bg-black/50 p-5">
-        <View className="gap-3 rounded-[24px] bg-white dark:bg-night-surface p-5">
+        <View className="max-h-full rounded-[24px] bg-white dark:bg-night-surface">
+          <ScrollView contentContainerClassName="gap-3 p-5" keyboardShouldPersistTaps="handled">
           <Text className="text-lg font-black text-g000st-black dark:text-night-text">Edit listing</Text>
           <TextInput
             value={fields.content}
@@ -767,23 +776,35 @@ function EditMarketModal({
               This listing is {post.currency}. Enter a new price to switch to £.
             </Text>
           )}
+          <EditPostMedia draft={mediaDraft} disabled={saving} onChange={setMediaDraft} />
           <MarketCallOptions fields={fields} onChange={setFields} />
           <View className="flex-row gap-2">
             <Pressable
               onPress={onClose}
-              className="flex-1 rounded-xl bg-[#DDD] dark:bg-night-raised p-3"
+              disabled={saving}
+              className="flex-1 rounded-xl bg-[#DDD] dark:bg-night-raised p-3 disabled:opacity-50"
             >
               <Text className="text-center font-black text-g000st-black dark:text-night-text">Cancel</Text>
             </Pressable>
             <Pressable
-              onPress={() => {
-                if (validFields(fields)) void onSave(post.id, fields);
+              disabled={saving}
+              onPress={async () => {
+                if (!validFields(fields)) return;
+                setSaving(true);
+                try {
+                  await onSave(post.id, fields, mediaDraftEdit(mediaDraft, post.media));
+                } catch (error) {
+                  showError(error, "Could not save listing.");
+                } finally {
+                  setSaving(false);
+                }
               }}
-              className="flex-1 rounded-xl bg-black p-3"
+              className="flex-1 rounded-xl bg-black p-3 disabled:opacity-50"
             >
-              <Text className="text-center font-black text-white">Save</Text>
+              <Text className="text-center font-black text-white">{saving ? "Saving…" : "Save"}</Text>
             </Pressable>
           </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>

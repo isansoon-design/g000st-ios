@@ -9,6 +9,7 @@ import type { MediaService } from '../media/media-service.js';
 import type { SocialStore } from './social-store.js';
 import { publicDisplayName, socialAlias } from './social-identity.js';
 import { validateSocialMediaBatch } from './social-policy.js';
+import { discardMedia, resolveMediaEdit } from './social-media-edit.js';
 import type {
   CreateSocialCommentInput,
   CreateSocialPostInput,
@@ -19,6 +20,7 @@ import type {
   SocialProfile,
   SocialSuggestion,
   SocialSuggestions,
+  UpdateSocialPostInput,
   UpdateSocialProfileInput,
 } from './social-types.js';
 
@@ -147,9 +149,35 @@ export class SocialService {
     return this.withMediaUrls(post, viewerId);
   }
 
-  async updatePost(viewerId: string, postId: string, content: string) {
-    const post = await this.store.updatePost(viewerId, postId, content.trim(), this.now());
-    if (!post) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found.');
+  async updatePost(viewerId: string, postId: string, input: UpdateSocialPostInput) {
+    const content = input.content.trim();
+    const mediaEdit = input.media;
+    if (!mediaEdit && content) {
+      const post = await this.store.updatePost(viewerId, postId, { content }, this.now());
+      if (!post) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found.');
+      return this.withMediaUrls(post, viewerId);
+    }
+    const existing = await this.store.findPost(viewerId, postId);
+    if (!existing || !existing.ownedByViewer) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found.');
+    if (mediaEdit?.add.length && existing.sharedPostId) throw new ApiError(400, 'INVALID_SHARED_POST', 'A shared post cannot include new media.');
+    const edit = mediaEdit ? await resolveMediaEdit({ existing: existing.media ?? [], edit: mediaEdit, media: this.requireMedia(), ownerId: viewerId, postId }) : undefined;
+    const finalMedia = edit ? edit.media : existing.media ?? [];
+    if (!content && !finalMedia.length && !existing.sharedPostId) {
+      await discardMedia(this.mediaService, edit?.added ?? []);
+      throw new ApiError(400, 'INVALID_POST', 'A post must contain text, media, or share another post.');
+    }
+    let post: SocialPost | null;
+    try {
+      post = await this.store.updatePost(viewerId, postId, { content, ...(edit ? { media: edit.media } : {}) }, this.now());
+    } catch (error) {
+      await discardMedia(this.mediaService, edit?.added ?? []);
+      throw error;
+    }
+    if (!post) {
+      await discardMedia(this.mediaService, edit?.added ?? []);
+      throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found.');
+    }
+    await discardMedia(this.mediaService, edit?.removed ?? []);
     return this.withMediaUrls(post, viewerId);
   }
 

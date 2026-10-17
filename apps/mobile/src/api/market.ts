@@ -5,6 +5,7 @@ import axiosInstance from '@/api/axios';
 import { resolvePostAuthors } from '@/api/post-authors';
 import { getSocialProfile } from '@/api/social';
 import { parseApiPayload } from '@/api/parse-api-payload';
+import type { PostMediaEdit } from '@/domain/media/post-media-edit';
 import { marketCommentPageSchema, marketCommentResultSchema, marketLikeResultSchema, marketPostPageSchema, marketPostResultSchema, type MarketPostFields } from '@/domain/market/types';
 
 const pendingMediaSchema = z.object({ byteSize: z.number().int().positive(), contentType: z.string(), fileName: z.string(), id: z.uuid(), objectKey: z.string() });
@@ -14,7 +15,7 @@ export type PendingMarketMedia = z.infer<typeof pendingMediaSchema>;
 export async function listMarketPosts(ownerId?: string, cursor?: string) { const response = await axiosInstance.get('/market/posts', { params: { ownerId, cursor, limit: 10 } }); const page = parseApiPayload(marketPostPageSchema, response.data); return { ...page, items: await resolvePostAuthors(page.items, getSocialProfile) }; }
 export async function getMarketPost(postId: string) { const response = await axiosInstance.get(`/market/posts/${postId}`); return (await resolvePostAuthors([parseApiPayload(marketPostResultSchema, response.data).post], getSocialProfile))[0]; }
 export async function createMarketPost(clientPostId: string, fields: MarketPostFields, media?: PendingMarketMedia[]) { const response = await axiosInstance.post('/market/posts', { clientPostId, ...fields, ...(media?.length ? { media } : {}) }); return (await resolvePostAuthors([parseApiPayload(marketPostResultSchema, response.data).post], getSocialProfile))[0]; }
-export async function updateMarketPost(postId: string, fields: MarketPostFields) { const response = await axiosInstance.patch(`/market/posts/${postId}`, fields); return (await resolvePostAuthors([parseApiPayload(marketPostResultSchema, response.data).post], getSocialProfile))[0]; }
+export async function updateMarketPost(postId: string, fields: MarketPostFields, mediaEdit?: PostMediaEdit) { const add = mediaEdit ? await Promise.all(mediaEdit.add.map((item) => uploadMarketMedia({ ...item, clientPostId: postId }))) : []; const response = await axiosInstance.patch(`/market/posts/${postId}`, { ...fields, ...(mediaEdit ? { media: { keep: mediaEdit.keep, add } } : {}) }); return (await resolvePostAuthors([parseApiPayload(marketPostResultSchema, response.data).post], getSocialProfile))[0]; }
 export async function deleteMarketPost(postId: string) { await axiosInstance.delete(`/market/posts/${postId}`); }
 export async function reportMarketPost(postId: string) { await axiosInstance.post('/market/reports', { postId, reason: 'other' }); }
 export async function toggleMarketLike(postId: string) { const response = await axiosInstance.post(`/market/posts/${postId}/like`); return parseApiPayload(marketLikeResultSchema, response.data); }

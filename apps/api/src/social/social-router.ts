@@ -22,7 +22,8 @@ const createPostBody = z.object({ clientPostId: uuid, content: z.string().trim()
   if (value.sharedPostId && value.media?.length) context.addIssue({ code: 'custom', message: 'A shared post cannot include new media.', path: ['media'] });
 });
 const uploadBody = z.object({ byteSize: z.number().int().positive().max(MAX_SOCIAL_MEDIA_BYTES), clientPostId: uuid, contentType: socialContentType, fileName: z.string().min(1).max(255) }).strict();
-const updatePostBody = z.object({ content: z.string().trim().min(1).max(4_000) }).strict();
+const mediaEdit = z.object({ keep: z.array(uuid).max(MAX_SOCIAL_IMAGES), add: z.array(pendingMedia).max(MAX_SOCIAL_IMAGES) }).strict();
+const updatePostBody = z.object({ content: z.string().trim().max(4_000), media: mediaEdit.optional() }).strict();
 const createCommentBody = z.object({ content: z.string().trim().min(1).max(1_000), visibility: visibility.default('anonymous') }).strict();
 const avatarContentType = z.enum(['image/gif', 'image/jpeg', 'image/png', 'image/webp']);
 const avatarUploadBody = z.object({ byteSize: z.number().int().positive().max(MAX_AVATAR_BYTES), contentType: avatarContentType, fileName: z.string().min(1).max(255) }).strict();
@@ -66,7 +67,7 @@ export function createSocialRouter(authService: AuthService, service: SocialServ
   }));
   router.post('/uploads', limiter(20), asyncRoute(async (request, response) => { response.status(201).json({ upload: await service.createUpload(request.authenticatedPublicId, uploadBody.parse(request.body)) }); }));
   router.get('/posts/:postId', asyncRoute(async (request, response) => { response.json({ post: await service.getPost(request.authenticatedPublicId, uuid.parse(request.params.postId)) }); }));
-  router.patch('/posts/:postId', limiter(30), asyncRoute(async (request, response) => { response.json({ post: await service.updatePost(request.authenticatedPublicId, uuid.parse(request.params.postId), updatePostBody.parse(request.body).content) }); }));
+  router.patch('/posts/:postId', limiter(30), asyncRoute(async (request, response) => { response.json({ post: await service.updatePost(request.authenticatedPublicId, uuid.parse(request.params.postId), updatePostBody.parse(request.body)) }); }));
   router.post('/posts/:postId/share-to-social', limiter(30), asyncRoute(async (request, response) => { response.json({ post: await service.shareToSocial(request.authenticatedPublicId, uuid.parse(request.params.postId)) }); }));
   router.delete('/posts/:postId', limiter(30), asyncRoute(async (request, response) => { await service.deletePost(request.authenticatedPublicId, uuid.parse(request.params.postId)); response.status(204).send(); }));
   router.post('/posts/:postId/like', limiter(120), asyncRoute(async (request, response) => { response.json(await service.toggleLike(request.authenticatedPublicId, uuid.parse(request.params.postId))); }));

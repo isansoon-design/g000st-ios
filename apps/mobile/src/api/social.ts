@@ -4,6 +4,7 @@ import { z } from "zod";
 import axiosInstance from "@/api/axios";
 import { resolvePostAuthors } from "@/api/post-authors";
 import { parseApiPayload } from "@/api/parse-api-payload";
+import type { PostMediaEdit } from "@/domain/media/post-media-edit";
 import {
     socialAlertPageSchema,
     socialCampResultSchema,
@@ -98,9 +99,11 @@ export async function uploadSocialMedia(
 export async function deleteSocialPost(postId: string, actingPublicId?: string) {
   await axiosInstance.delete(`/social/posts/${postId}`, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined });
 }
-export async function updateSocialPost(postId: string, content: string, actingPublicId?: string) {
+export async function updateSocialPost(postId: string, content: string, actingPublicId?: string, mediaEdit?: PostMediaEdit) {
+  const add = mediaEdit ? await Promise.all(mediaEdit.add.map((item) => uploadSocialMedia({ ...item, clientPostId: postId }, actingPublicId))) : [];
   const response = await axiosInstance.patch(`/social/posts/${postId}`, {
     content,
+    ...(mediaEdit ? { media: { keep: mediaEdit.keep, add } } : {}),
   }, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined });
   return (await resolvePostAuthors([parseApiPayload(socialPostResultSchema, response.data).post], getSocialProfile))[0];
 }

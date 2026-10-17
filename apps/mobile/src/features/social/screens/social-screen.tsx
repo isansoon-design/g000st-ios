@@ -805,8 +805,8 @@ export function SocialScreen() {
         <EditSocialPostModal
           post={editingPost}
           onClose={() => setEditingPost(undefined)}
-          onSave={async (postId, content) => {
-            const updated = await updateSocialPost(postId, content);
+          onSave={async (postId, content, media) => {
+            const updated = await updateSocialPost(postId, content, undefined, media);
             setPosts((items) =>
               items.map((item) => (item.id === postId ? updated : item)),
             );

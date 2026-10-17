@@ -55,6 +55,8 @@ export type UpdateMarketPostInput = Readonly<{
   city: string;
   allowCalls?: boolean;
   allowVideoCalls?: boolean;
+  /** Final media list. Omitted = leave media unchanged; empty = remove all media. */
+  media?: readonly SocialMedia[];
 }>;
 
 export type CreateMarketReportInput = Readonly<{

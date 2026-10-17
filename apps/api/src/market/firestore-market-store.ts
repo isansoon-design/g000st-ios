@@ -82,7 +82,10 @@ export class FirestoreMarketStore implements MarketStore {
       if (!snapshot.exists) return null;
       const post = snapshot.data() as StoredPost;
       if (post.ownerPublicId !== viewerId) return null;
-      const next = { ...post, ...input, editedAtMs: nowMs, updatedAtMs: nowMs };
+      const { media, ...fields } = input;
+      const { media: currentMedia, ...base } = post;
+      const nextMedia = media ?? currentMedia;
+      const next: StoredPost = { ...base, ...fields, ...(nextMedia?.length ? { media: nextMedia } : {}), editedAtMs: nowMs, updatedAtMs: nowMs };
       transaction.set(reference, next);
       return next;
     });

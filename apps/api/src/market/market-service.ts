@@ -2,7 +2,8 @@ import type { MediaService } from '../media/media-service.js';
 import { ApiError } from '../http/api-error.js';
 import { decodeSocialCursor } from '../social/social-cursor.js';
 import { validateSocialMediaBatch } from '../social/social-policy.js';
-import type { SocialMediaView } from '../social/social-types.js';
+import { discardMedia, resolveMediaEdit } from '../social/social-media-edit.js';
+import type { SocialMediaEdit, SocialMediaView } from '../social/social-types.js';
 import type { MarketStore } from './market-store.js';
 import { assertMarketContentAllowed } from './market-content-policy.js';
 import type { CreateMarketPostInput, CreateMarketReportInput, MarketPost, UpdateMarketPostInput } from './market-types.js';
@@ -27,10 +28,30 @@ export class MarketService {
     const media = incoming.length ? await Promise.all(incoming.map((item) => this.requireMedia().promoteSocialMedia({ media: item, postId: clientPostId, publicId: ownerId }))) : undefined;
     return this.withMediaUrls(await this.store.createPost(ownerId, clientPostId, { ...fields, ...(media ? { media } : {}), content: fields.content.trim(), city: fields.city.trim(), currency: fields.currency.toUpperCase() }, this.now()));
   }
-  async updatePost(viewerId: string, postId: string, input: UpdateMarketPostInput) {
+  async updatePost(viewerId: string, postId: string, input: Omit<UpdateMarketPostInput, 'media'> & { media?: SocialMediaEdit }) {
     assertMarketContentAllowed(input.content, input.city);
-    const post = await this.store.updatePost(viewerId, postId, { ...input, content: input.content.trim(), city: input.city.trim(), currency: input.currency.toUpperCase() }, this.now());
-    if (!post) throw new ApiError(404, 'MARKET_POST_NOT_FOUND', 'Market post not found.');
+    const { media: mediaEdit, ...fields } = input;
+    const normalized = { ...fields, content: fields.content.trim(), city: fields.city.trim(), currency: fields.currency.toUpperCase() };
+    if (!mediaEdit) {
+      const post = await this.store.updatePost(viewerId, postId, normalized, this.now());
+      if (!post) throw new ApiError(404, 'MARKET_POST_NOT_FOUND', 'Market post not found.');
+      return this.withMediaUrls(post);
+    }
+    const existing = await this.store.findPost(viewerId, postId);
+    if (!existing || !existing.ownedByViewer) throw new ApiError(404, 'MARKET_POST_NOT_FOUND', 'Market post not found.');
+    const edit = await resolveMediaEdit({ existing: existing.media ?? [], edit: mediaEdit, media: this.requireMedia(), ownerId: viewerId, postId });
+    let post: MarketPost | null;
+    try {
+      post = await this.store.updatePost(viewerId, postId, { ...normalized, media: edit.media }, this.now());
+    } catch (error) {
+      await discardMedia(this.mediaService, edit.added);
+      throw error;
+    }
+    if (!post) {
+      await discardMedia(this.mediaService, edit.added);
+      throw new ApiError(404, 'MARKET_POST_NOT_FOUND', 'Market post not found.');
+    }
+    await discardMedia(this.mediaService, edit.removed);
     return this.withMediaUrls(post);
   }
   async deletePost(viewerId: string, postId: string) {

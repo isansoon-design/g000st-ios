@@ -29,7 +29,9 @@ import {
 } from "@/app/api/market";
 import { sessionStorage } from "@/app/api/session-storage";
 import { toggleSocialCamp } from "@/app/api/social";
+import { EditPostMedia } from "@/components/media/EditPostMedia";
 import { PostImage } from "@/components/media/PostImage";
+import { initialMediaDraft, mediaDraftEdit, type PostMediaEdit } from "@/lib/post-media-edit";
 import { UserHeaderPortal } from "@/components/navigation/header-portal";
 import { PostContentLink } from "@/components/posts/PostContentLink";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
@@ -493,8 +495,8 @@ export default function MarketPage() {
       <EditModal
         post={editingPost}
         onClose={() => setEditingPost(undefined)}
-        onSave={async (postId, next) => {
-          const updated = await updateMarketPost(postId, next);
+        onSave={async (postId, next, media) => {
+          const updated = await updateMarketPost(postId, next, media);
           setPosts((current) =>
             current.map((item) => (item.id === postId ? updated : item)),
           );
@@ -610,10 +612,13 @@ function EditModal({
 }: {
   post?: MarketPost;
   onClose: () => void;
-  onSave: (postId: string, fields: MarketPostFields) => Promise<void>;
+  onSave: (postId: string, fields: MarketPostFields, media?: PostMediaEdit) => Promise<void>;
 }) {
   const [fields, setFields] = useState(EMPTY_FIELDS);
+  const [mediaDraft, setMediaDraft] = useState(() => initialMediaDraft());
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
+    if (post) setMediaDraft(initialMediaDraft(post.media));
     if (post)
       setFields({
         content: post.content,
@@ -628,7 +633,7 @@ function EditModal({
   if (!post) return null;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-5">
-      <div className="w-full max-w-lg space-y-3 rounded-[24px] bg-white dark:bg-night-surface p-5">
+      <div className="max-h-full w-full max-w-lg space-y-3 overflow-y-auto rounded-[24px] bg-white dark:bg-night-surface p-5">
         <div className="flex justify-between">
           <h2 className="text-lg font-black">Edit listing</h2>
           <button onClick={onClose}>
@@ -672,14 +677,24 @@ function EditModal({
             This listing is {post.currency}. Enter a new price to switch to £.
           </p>
         )}
+        <EditPostMedia draft={mediaDraft} disabled={saving} onChange={setMediaDraft} />
         <CallOptions fields={fields} onChange={setFields} />
         <button
-          onClick={() => {
-            if (validFields(fields)) void onSave(post.id, fields);
+          disabled={saving}
+          onClick={async () => {
+            if (!validFields(fields)) return;
+            setSaving(true);
+            try {
+              await onSave(post.id, fields, mediaDraftEdit(mediaDraft, post.media));
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : "Could not save listing.");
+            } finally {
+              setSaving(false);
+            }
           }}
-          className="w-full rounded-xl bg-black p-3 font-black text-white"
+          className="w-full rounded-xl bg-black p-3 font-black text-white disabled:opacity-40"
         >
-          Save
+          {saving ? "Saving…" : "Save"}
         </button>
       </div>
     </div>

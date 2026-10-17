@@ -37,7 +37,9 @@ import {
   type SocialSuggestion,
   type SocialVisibility,
 } from "@/app/api/social";
+import { EditPostMedia } from "@/components/media/EditPostMedia";
 import { PostImage } from "@/components/media/PostImage";
+import { initialMediaDraft, mediaDraftEdit, type PostMediaEdit } from "@/lib/post-media-edit";
 import { UserHeaderPortal } from "@/components/navigation/header-portal";
 import { PostContentLink } from "@/components/posts/PostContentLink";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
@@ -713,8 +715,8 @@ export default function SocialPage() {
       <EditSocialPostModal
         post={editingPost}
         onClose={() => setEditingPost(undefined)}
-        onSave={async (postId, content) => {
-          const updated = await updateSocialPost(postId, content);
+        onSave={async (postId, content, media) => {
+          const updated = await updateSocialPost(postId, content, media);
           setPosts((items) =>
             items.map((item) => (item.id === postId ? updated : item)),
           );
@@ -837,16 +839,20 @@ function EditSocialPostModal({
 }: {
   post?: SocialPost;
   onClose: () => void;
-  onSave: (postId: string, content: string) => Promise<void>;
+  onSave: (postId: string, content: string, media?: PostMediaEdit) => Promise<void>;
 }) {
   const [content, setContent] = useState("");
+  const [mediaDraft, setMediaDraft] = useState(() => initialMediaDraft());
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
-    if (post) setContent(post.content);
+    if (!post) return;
+    setContent(post.content);
+    setMediaDraft(initialMediaDraft(post.media));
   }, [post]);
   if (!post) return null;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-5">
-      <div className="w-full max-w-lg space-y-3 rounded-[24px] bg-white dark:bg-night-surface p-5">
+      <div className="max-h-full w-full max-w-lg space-y-3 overflow-y-auto rounded-[24px] bg-white dark:bg-night-surface p-5">
         <div className="flex justify-between">
           <h2 className="text-lg font-black">Edit post</h2>
           <button onClick={onClose}>
@@ -859,14 +865,27 @@ function EditSocialPostModal({
           maxLength={4000}
           className="min-h-32 w-full rounded-xl border border-black/15 dark:border-night-border p-3"
         />
+        {!post.sharedPostId && (
+          <EditPostMedia draft={mediaDraft} disabled={saving} onChange={setMediaDraft} />
+        )}
         <button
-          onClick={() => {
+          disabled={saving}
+          onClick={async () => {
             const next = content.trim();
-            if (next) void onSave(post.id, next);
+            const hasMedia = mediaDraft.kept.length + mediaDraft.added.length > 0;
+            if (!next && !hasMedia && !post.sharedPostId) return;
+            setSaving(true);
+            try {
+              await onSave(post.id, next, post.sharedPostId ? undefined : mediaDraftEdit(mediaDraft, post.media));
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : "Could not save post.");
+            } finally {
+              setSaving(false);
+            }
           }}
-          className="w-full rounded-xl bg-black p-3 font-black text-white"
+          className="w-full rounded-xl bg-black p-3 font-black text-white disabled:opacity-40"
         >
-          Save
+          {saving ? "Saving…" : "Save"}
         </button>
       </div>
     </div>

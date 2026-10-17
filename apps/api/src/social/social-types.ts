@@ -133,7 +133,10 @@ export type CreateSocialPostInput = Readonly<{
   sharedToSocial?: boolean;
 }>;
 
-export type UpdateSocialPostInput = Readonly<{ content: string }>;
+/** Declarative media edit: keep these existing media ids, add these freshly uploaded ones. */
+export type SocialMediaEdit = Readonly<{ keep: readonly string[]; add: readonly Omit<SocialMedia, 'kind'>[] }>;
+
+export type UpdateSocialPostInput = Readonly<{ content: string; media?: SocialMediaEdit }>;
 
 export type CreateSocialCommentInput = Readonly<{
   content: string;

@@ -1,6 +1,7 @@
 export type SocialLinkPreviewV1 = { url: string; siteName: string; title: string; description: string; imageUrl?: string };
 import axios from './axios';
 import { resolvePostAuthors } from '@/lib/post-authors';
+import type { PostMediaEdit } from '@/lib/post-media-edit';
 
 export type SocialVisibility = 'anonymous' | 'public';
 export type SocialAuthor = { publicId?: string; displayName: string; avatarUrl?: string; isPage?: boolean };
@@ -19,7 +20,7 @@ export async function listSocialPosts(cursor?: string, ownerId?: string, publicO
 export async function getSocialPost(postId: string) { const { data } = await axios.get<{ post: SocialPost }>(`/social/posts/${postId}`); return (await resolvePostAuthors([data.post], getSocialProfile))[0]; }
 export async function createSocialPost(clientPostId: string, content: string, visibility: SocialVisibility, media?: PendingSocialMedia[], sharedPostId?: string, actingPublicId?: string, shareToSocial = true) { const { data } = await axios.post<{ post: SocialPost }>('/social/posts', { clientPostId, content, visibility, shareToSocial, ...(media?.length ? { media } : {}), ...(sharedPostId ? { sharedPostId } : {}) }, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined }); return (await resolvePostAuthors([data.post], getSocialProfile))[0]; }
 export async function uploadSocialMedia(clientPostId: string, file: File, actingPublicId?: string): Promise<PendingSocialMedia> { const { data } = await axios.post<{ upload: { media: PendingSocialMedia; headers: Record<string, string>; uploadUrl: string } }>('/social/uploads', { byteSize: file.size, clientPostId, contentType: file.type, fileName: file.name }, { headers: actingPublicId ? { 'X-Acting-Public-Id': actingPublicId } : undefined }); const uploaded = await fetch(data.upload.uploadUrl, { method: 'PUT', headers: data.upload.headers, body: file }); if (!uploaded.ok) throw new Error('Media upload failed.'); return data.upload.media; }
-export async function updateSocialPost(postId: string, content: string) { const { data } = await axios.patch<{ post: SocialPost }>(`/social/posts/${postId}`, { content }); return (await resolvePostAuthors([data.post], getSocialProfile))[0]; }
+export async function updateSocialPost(postId: string, content: string, mediaEdit?: PostMediaEdit) { const add = mediaEdit ? await Promise.all(mediaEdit.add.map((file) => uploadSocialMedia(postId, file))) : []; const { data } = await axios.patch<{ post: SocialPost }>(`/social/posts/${postId}`, { content, ...(mediaEdit ? { media: { keep: mediaEdit.keep, add } } : {}) }); return (await resolvePostAuthors([data.post], getSocialProfile))[0]; }
 export async function deleteSocialPost(postId: string) { await axios.delete(`/social/posts/${postId}`); }
 export async function toggleSocialLike(postId: string) { const { data } = await axios.post<{ liked: boolean; likeCount: number }>(`/social/posts/${postId}/like`); return data; }
 export async function listSocialComments(postId: string, cursor?: string) { const { data } = await axios.get<SocialPage<SocialComment>>(`/social/posts/${postId}/comments`, { params: { cursor, limit: 20 } }); return data; }

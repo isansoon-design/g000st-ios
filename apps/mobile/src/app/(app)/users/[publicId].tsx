@@ -911,8 +911,8 @@ export default function UserProfileScreen() {
         <EditSocialPostModal
           post={editingPost}
           onClose={() => setEditingPost(undefined)}
-          onSave={async (postId, content) => {
-            const updated = await updateSocialPost(postId, content, publicId);
+          onSave={async (postId, content, media) => {
+            const updated = await updateSocialPost(postId, content, publicId, media);
             setPosts((items) => items.map((item) => (item.id === postId ? updated : item)));
             setEditingPost(undefined);
           }}

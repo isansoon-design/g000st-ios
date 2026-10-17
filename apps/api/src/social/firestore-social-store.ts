@@ -115,14 +115,16 @@ export class FirestoreSocialStore implements SocialStore {
     return updated ? this.toPost(viewerId, postId, updated) : null;
   }
 
-  async updatePost(viewerId: string, postId: string, content: string, nowMs: number): Promise<SocialPost | null> {
+  async updatePost(viewerId: string, postId: string, input: Readonly<{ content: string; media?: readonly SocialMedia[] }>, nowMs: number): Promise<SocialPost | null> {
     const reference = this.posts().doc(postId);
     const updated = await this.db.runTransaction(async (transaction) => {
       const snapshot = await transaction.get(reference);
       if (!snapshot.exists) return null;
       const post = snapshot.data() as StoredPost;
       if (post.ownerPublicId !== viewerId) return null;
-      const next = { ...post, content, editedAtMs: nowMs, updatedAtMs: nowMs };
+      const { media: currentMedia, ...base } = post;
+      const nextMedia = input.media ?? currentMedia;
+      const next: StoredPost = { ...base, content: input.content, ...(nextMedia?.length ? { media: nextMedia } : {}), editedAtMs: nowMs, updatedAtMs: nowMs };
       transaction.set(reference, next);
       return next;
     });

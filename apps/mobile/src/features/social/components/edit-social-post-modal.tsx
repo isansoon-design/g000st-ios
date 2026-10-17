@@ -1,7 +1,15 @@
 import { useState } from "react";
-import { Modal, Pressable, Text, TextInput, View } from "react-native";
+import { Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import Toast from "react-native-toast-message";
 
 import { KeyboardAvoidingView } from "@/components/layout/keyboard-avoiding-view";
+import { EditPostMedia } from "@/components/media/edit-post-media";
+import {
+  initialMediaDraft,
+  mediaDraftEdit,
+  type ExistingPostMedia,
+  type PostMediaEdit,
+} from "@/domain/media/post-media-edit";
 import type { SocialPost } from "@/domain/social/types";
 
 export function EditSocialPostModal({
@@ -11,9 +19,12 @@ export function EditSocialPostModal({
 }: {
   post: SocialPost;
   onClose: () => void;
-  onSave: (postId: string, content: string) => Promise<void>;
+  onSave: (postId: string, content: string, media?: PostMediaEdit) => Promise<void>;
 }) {
+  const original: readonly ExistingPostMedia[] | undefined = post.media;
+  const editableMedia = !post.sharedPostId;
   const [content, setContent] = useState(post.content);
+  const [mediaDraft, setMediaDraft] = useState(() => initialMediaDraft(original));
   const [saving, setSaving] = useState(false);
   return (
     <Modal
@@ -30,7 +41,8 @@ export function EditSocialPostModal({
           className="absolute inset-0"
           onPress={() => !saving && onClose()}
         />
-        <View className="gap-3 rounded-[24px] bg-white dark:bg-night-surface p-5">
+        <View className="max-h-full rounded-[24px] bg-white dark:bg-night-surface">
+          <ScrollView contentContainerClassName="gap-3 p-5" keyboardShouldPersistTaps="handled">
           <Text className="text-lg font-black text-g000st-black dark:text-night-text">
             Edit post
           </Text>
@@ -42,6 +54,9 @@ export function EditSocialPostModal({
             className="min-h-28 max-h-64 rounded-xl border border-black/15 dark:border-night-border p-3 text-g000st-black dark:text-night-text"
             textAlignVertical="top"
           />
+          {editableMedia && (
+            <EditPostMedia draft={mediaDraft} disabled={saving} onChange={setMediaDraft} />
+          )}
           <View className="flex-row gap-2">
             <Pressable
               onPress={onClose}
@@ -56,10 +71,18 @@ export function EditSocialPostModal({
               disabled={saving}
               onPress={async () => {
                 const next = content.trim();
-                if (!next) return;
+                const media = editableMedia ? mediaDraftEdit(mediaDraft, original) : undefined;
+                const hasMedia = mediaDraft.kept.length + mediaDraft.added.length > 0;
+                if (!next && !hasMedia && !post.sharedPostId) return;
                 setSaving(true);
                 try {
-                  await onSave(post.id, next);
+                  await onSave(post.id, next, media);
+                } catch (error) {
+                  Toast.show({
+                    type: "error",
+                    text1: "Post",
+                    text2: error instanceof Error ? error.message : "Could not save post.",
+                  });
                 } finally {
                   setSaving(false);
                 }
@@ -71,6 +94,7 @@ export function EditSocialPostModal({
               </Text>
             </Pressable>
           </View>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
