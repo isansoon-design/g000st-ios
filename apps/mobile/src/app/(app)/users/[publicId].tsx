@@ -3,7 +3,6 @@ import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useVideoPlayer, VideoView } from "expo-video";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,6 +24,8 @@ import {
   deleteSocialPost,
   getSocialProfile,
   listSocialPosts,
+  reportSocialPost,
+  toggleSocialLike,
   shareSocialPostToSocial,
   toggleSocialCamp,
   updateSocialPost,
@@ -34,7 +35,7 @@ import {
 } from "@/api/social";
 import { useOpenBeaconPageEditor } from "@/components/navigation/app-sidebar";
 import { AppThemeSwitch } from "@/components/navigation/app-theme-switch";
-import { PostContentText } from "@/components/posts/post-content-text";
+import { PostCard } from "@/components/posts/post-card";
 import type { SocialPost, SocialProfile } from "@/domain/social/types";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useCalling } from "@/features/calling/hooks/use-calling";
@@ -854,27 +855,13 @@ export default function UserProfileScreen() {
                     ).duration(350)}
                     key={post.id}
                   >
-                    <SocialCard
+                    <PostCard
                       post={post}
-                      onShare={
-                        own && !post.sharedToSocial && post.visibility === "public"
-                          ? () => void shareToSocial(post.id)
-                          : undefined
-                      }
-                      sharing={sharingId === post.id}
+                      onChat={!own ? () => openChat() : undefined}
                       onEdit={own ? () => setEditingPost(post) : undefined}
                       onDelete={
                         own
                           ? async () => {
-                              if (
-                                !(await confirm({
-                                  title: "Delete post?",
-                                  message: "Are you sure you want to delete this post?",
-                                  confirmLabel: "Delete",
-                                  isDangerous: true,
-                                }))
-                              )
-                                return;
                               try {
                                 await deleteSocialPost(post.id, publicId);
                                 setPosts((items) => items.filter((item) => item.id !== post.id));
@@ -887,6 +874,32 @@ export default function UserProfileScreen() {
                               }
                             }
                           : undefined
+                      }
+                      onReport={!own ? () => reportSocialPost(post.id) : undefined}
+                      onLike={async () => {
+                        const result = await toggleSocialLike(post.id);
+                        setPosts((items) =>
+                          items.map((item) =>
+                            item.id === post.id
+                              ? { ...item, ...result, likedByViewer: result.liked }
+                              : item,
+                          ),
+                        );
+                      }}
+                      onComments={() => router.push(`/posts/social/${post.id}` as Href)}
+                      footer={
+                        own && !post.sharedToSocial && post.visibility === "public" ? (
+                          <Pressable
+                            accessibilityRole="button"
+                            disabled={sharingId === post.id}
+                            onPress={() => void shareToSocial(post.id)}
+                            className="mx-4 mb-4 self-start rounded-xl bg-[#c62828] px-4 py-2 disabled:opacity-50"
+                          >
+                            <Text className="text-xs font-black text-white">
+                              {sharingId === post.id ? "Sharing…" : "Share on g000st Social"}
+                            </Text>
+                          </Pressable>
+                        ) : undefined
                       }
                     />
                   </Animated.View>
@@ -942,147 +955,5 @@ function Action({
     >
       <Text className="text-center text-xs font-black text-white">{label}</Text>
     </Pressable>
-  );
-}
-
-function CardHeader({
-  name,
-  avatarUrl,
-  createdAtMs,
-  onEdit,
-  onDelete,
-}: {
-  name: string;
-  avatarUrl?: string;
-  createdAtMs: number;
-  onEdit?: () => void;
-  onDelete?: () => void;
-}) {
-  return (
-    <View className="flex-row items-center gap-3 p-4">
-      <View className="h-10 w-10 overflow-hidden rounded-full bg-[#222]">
-        <Image
-          source={avatarUrl ? { uri: avatarUrl } : require("../../../../assets/g000st-icon.jpeg")}
-          style={{ width: 40, height: 40 }}
-          contentFit="cover"
-        />
-      </View>
-      <View className="min-w-0 flex-1">
-        <Text className="text-sm font-black">{name}</Text>
-        <Text className="text-xs text-black/40 dark:text-night-muted">
-          {new Date(createdAtMs).toLocaleString()}
-        </Text>
-      </View>
-      {(onEdit || onDelete) && (
-        <View className="flex-row gap-2">
-          {onEdit && (
-            <Pressable
-              accessibilityLabel="Edit post"
-              accessibilityRole="button"
-              className="rounded-full border border-black/20 dark:border-night-border px-3 py-2"
-              onPress={onEdit}
-            >
-              <Text className="text-xs font-black text-g000st-black dark:text-night-text">Edit</Text>
-            </Pressable>
-          )}
-          {onDelete && (
-            <Pressable
-              accessibilityLabel="Delete post"
-              accessibilityRole="button"
-              className="rounded-full border border-[#C62828] px-3 py-2"
-              onPress={onDelete}
-            >
-              <Text className="text-xs font-black text-[#C62828]">Delete</Text>
-            </Pressable>
-          )}
-        </View>
-      )}
-    </View>
-  );
-}
-
-function SocialCard({
-  post,
-  onShare,
-  sharing,
-  onEdit,
-  onDelete,
-}: {
-  post: SocialPost;
-  onShare?: () => void;
-  sharing?: boolean;
-  onEdit?: () => void;
-  onDelete?: () => void;
-}) {
-  const router = useRouter();
-  return (
-    <View className="overflow-hidden rounded-3xl bg-white dark:bg-night-surface">
-      <CardHeader
-        name={post.author.displayName}
-        avatarUrl={post.author.avatarUrl}
-        createdAtMs={post.createdAtMs}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />
-      {!!post.content && <PostContentText linkPreview={post.linkPreview} content={post.content} onOpen={() => router.push(`/posts/social/${post.id}` as Href)} className="px-4 pb-4 text-sm leading-6 text-g000st-black dark:text-night-text" />}
-      {post.sharedPost && (
-        <View className="mx-4 mb-4 overflow-hidden rounded-2xl bg-[#f1f2f4] dark:bg-night-raised">
-          <View className="p-4">
-            <Text className="text-xs font-black">
-              {post.sharedPost.author.displayName}
-            </Text>
-            <PostContentText linkPreview={post.sharedPost.linkPreview} content={post.sharedPost.content} onOpen={() => router.push(`/posts/social/${post.sharedPost!.id}` as Href)} className="mt-1 text-sm text-g000st-black dark:text-night-text" />
-          </View>
-          {post.sharedPost.media?.map((item) => (
-            <CardMedia key={item.id} item={item} />
-          ))}
-        </View>
-      )}
-      {post.media?.map((item) => (
-        <CardMedia key={item.id} item={item} />
-      ))}
-      <Text className="p-4 text-xs text-black/40 dark:text-night-muted">
-        ♡ {post.likeCount} ◌ {post.commentCount}
-      </Text>
-      {onShare && (
-        <Pressable
-          accessibilityRole="button"
-          disabled={sharing}
-          onPress={onShare}
-          className="mx-4 mb-4 self-start rounded-xl bg-[#c62828] px-4 py-2 disabled:opacity-50"
-        >
-          <Text className="text-xs font-black text-white">
-            {sharing ? "Sharing…" : "Share on g000st Social"}
-          </Text>
-        </Pressable>
-      )}
-    </View>
-  );
-}
-
-function CardMedia({
-  item,
-}: {
-  item: { kind: "image" | "video"; url: string };
-}) {
-  return item.kind === "video" ? (
-    <ProfileVideo url={item.url} />
-  ) : (
-    <Image
-      source={{ uri: item.url }}
-      contentFit="cover"
-      style={{ width: "100%", height: 220 }}
-    />
-  );
-}
-
-function ProfileVideo({ url }: { url: string }) {
-  const player = useVideoPlayer(url);
-  return (
-    <VideoView
-      player={player}
-      nativeControls
-      style={{ width: "100%", height: 220 }}
-    />
   );
 }
