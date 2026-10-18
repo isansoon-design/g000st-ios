@@ -25,9 +25,9 @@ import {
   getSocialProfile,
   listSocialPosts,
   reportSocialPost,
-  toggleSocialLike,
   shareSocialPostToSocial,
   toggleSocialCamp,
+  toggleSocialLike,
   updateSocialPost,
   updateSocialProfile,
   uploadAvatarMedia,
@@ -630,22 +630,7 @@ export default function UserProfileScreen() {
                     </Text>
                   </Pressable>
                 )}
-                {own && !editing && (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={switchToThisProfile}
-                    className="mt-4 flex-row items-center justify-center rounded-2xl bg-[#17191d] px-4 py-3"
-                  >
-                    <Text className="mr-2 text-xl font-black text-white">
-                      ⇄
-                    </Text>
-                    {/* <Text className="text-sm font-black text-white">
-                      {profile.isPage
-                        ? "Switch interaction as this page"
-                        : "Switch interaction as your profile"}
-                    </Text> */}
-                  </Pressable>
-                )}
+
                 {own && editing && draft && (
                   <View className="mt-5 gap-3 border-t border-black/10 pt-5 dark:border-night-border">
                     <Text className="text-xs font-black text-[#17191d] dark:text-night-text">
@@ -862,17 +847,17 @@ export default function UserProfileScreen() {
                       onDelete={
                         own
                           ? async () => {
-                              try {
-                                await deleteSocialPost(post.id, publicId);
-                                setPosts((items) => items.filter((item) => item.id !== post.id));
-                              } catch (reason) {
-                                Toast.show({
-                                  type: "error",
-                                  text1: "Could not delete post",
-                                  text2: reason instanceof Error ? reason.message : "Try again.",
-                                });
-                              }
+                            try {
+                              await deleteSocialPost(post.id, publicId);
+                              setPosts((items) => items.filter((item) => item.id !== post.id));
+                            } catch (reason) {
+                              Toast.show({
+                                type: "error",
+                                text1: "Could not delete post",
+                                text2: reason instanceof Error ? reason.message : "Try again.",
+                              });
                             }
+                          }
                           : undefined
                       }
                       onReport={!own ? () => reportSocialPost(post.id) : undefined}

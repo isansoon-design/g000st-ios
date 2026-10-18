@@ -26,7 +26,7 @@ import {
   listSocialSuggestions,
   markSocialAlertsRead,
   reportSocialPost,
-  toggleSocialCamp,
+  toggleSocialPostCamp,
   toggleSocialLike,
   updateSocialPost,
   updateSocialProfile,
@@ -551,16 +551,15 @@ export default function SocialPage() {
                     <MessageCircle size={18} />
                     {post.commentCount}
                   </button>
-                  {post.ownerPublicId && !post.ownedByViewer && (
+                  {!post.ownedByViewer && (
                     <button
                       aria-label={post.campedByViewer ? "Following author. Unfollow" : "Follow author"}
                       onClick={async () => {
-                        const result = await toggleSocialCamp(
-                          post.ownerPublicId!,
-                        );
+                        const result = await toggleSocialPostCamp(post.id);
                         setPosts((items) =>
                           items.map((item) =>
-                            item.ownerPublicId === post.ownerPublicId
+                            item.id === post.id ||
+                            (post.ownerPublicId && item.ownerPublicId === post.ownerPublicId)
                               ? { ...item, campedByViewer: result.camped }
                               : item,
                           ),

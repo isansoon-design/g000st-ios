@@ -174,7 +174,7 @@ export function PostCard({
           label={`💬 ${post.commentCount}`}
           onPress={onComments ? async () => onComments() : undefined}
         />
-        {onCamp && post.ownerPublicId && !post.ownedByViewer && (
+        {onCamp && !post.ownedByViewer && (
           <Action
             label={post.campedByViewer ? "✓" : "➕"}
             active={post.campedByViewer}

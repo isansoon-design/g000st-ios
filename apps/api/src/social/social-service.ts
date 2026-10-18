@@ -220,6 +220,12 @@ export class SocialService {
     }
   }
 
+  async togglePostCamp(viewerId: string, postId: string): Promise<{ camped: boolean }> {
+    const ownerId = await this.store.findPostOwner(viewerId, postId);
+    if (!ownerId) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found.');
+    return this.toggleCamp(viewerId, ownerId);
+  }
+
   async toggleCamp(viewerId: string, targetId: string) {
     if (viewerId === targetId) throw new ApiError(400, 'INVALID_CAMP_TARGET', 'You cannot camp your own profile.');
     if (!(await this.authStore.isUserActive(targetId))) throw new ApiError(404, 'USER_NOT_FOUND', 'User not found.');

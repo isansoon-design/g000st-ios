@@ -70,6 +70,7 @@ export function createSocialRouter(authService: AuthService, service: SocialServ
   router.patch('/posts/:postId', limiter(30), asyncRoute(async (request, response) => { response.json({ post: await service.updatePost(request.authenticatedPublicId, uuid.parse(request.params.postId), updatePostBody.parse(request.body)) }); }));
   router.post('/posts/:postId/share-to-social', limiter(30), asyncRoute(async (request, response) => { response.json({ post: await service.shareToSocial(request.authenticatedPublicId, uuid.parse(request.params.postId)) }); }));
   router.delete('/posts/:postId', limiter(30), asyncRoute(async (request, response) => { await service.deletePost(request.authenticatedPublicId, uuid.parse(request.params.postId)); response.status(204).send(); }));
+  router.post('/posts/:postId/camp', limiter(60), asyncRoute(async (request, response) => { response.json(await service.togglePostCamp(request.authenticatedPublicId, uuid.parse(request.params.postId))); }));
   router.post('/posts/:postId/like', limiter(120), asyncRoute(async (request, response) => { response.json(await service.toggleLike(request.authenticatedPublicId, uuid.parse(request.params.postId))); }));
   router.get('/posts/:postId/comments', asyncRoute(async (request, response) => { const query = cursorQuery.parse(request.query); response.json(await service.listComments(request.authenticatedPublicId, uuid.parse(request.params.postId), query.limit, query.cursor)); }));
   router.post('/posts/:postId/comments', limiter(60), asyncRoute(async (request, response) => {

@@ -126,12 +126,14 @@ export const sessionStorage = {
 
   updateSavedProfile(profile: { publicId: string; displayName?: string; showDisplayName: boolean; avatarUrl?: string }): void {
     if (typeof window === "undefined") return;
+    // Saved accounts identify the owner on this device, regardless of public name visibility.
+    const displayName = profile.displayName?.trim();
     const accounts = readSavedAccounts();
     if (!accounts.some((account) => account.publicId === profile.publicId)) return;
     window.localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(accounts.map((account) =>
       account.publicId === profile.publicId
         ? { publicId: account.publicId, recoveryId: account.recoveryId,
-            ...(profile.showDisplayName && profile.displayName ? { displayName: profile.displayName } : {}),
+            ...(displayName ? { displayName } : {}),
             ...(profile.avatarUrl ? { avatarUrl: profile.avatarUrl } : {}) }
         : account)));
   },

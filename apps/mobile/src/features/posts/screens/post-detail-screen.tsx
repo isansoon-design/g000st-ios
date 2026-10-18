@@ -29,6 +29,7 @@ import {
   getSocialPost,
   listSocialComments,
   toggleSocialCamp,
+  toggleSocialPostCamp,
   toggleSocialLike,
 } from "@/api/social";
 import { FeatureScreen } from "@/components/layout/feature-screen";
@@ -264,10 +265,12 @@ export function PostDetailScreen({
   }
 
   async function toggleFollow() {
-    if (!post?.ownerPublicId || following) return;
+    if (!post || post.ownedByViewer || following) return;
     setFollowing(true);
     try {
-      const result = await toggleSocialCamp(post.ownerPublicId);
+      const result = kind === "social"
+        ? await toggleSocialPostCamp(post.id)
+        : await toggleSocialCamp(post.ownerPublicId!);
       setPost((current) =>
         current ? { ...current, campedByViewer: result.camped } : current,
       );
@@ -478,7 +481,7 @@ export function PostDetailScreen({
                     <Text className="font-black text-g000st-black dark:text-night-text">
                       💬 {post.commentCount}
                     </Text>
-                    {!post.ownedByViewer && post.ownerPublicId && (
+                    {!post.ownedByViewer && (
                       <Pressable
                         accessibilityRole="button"
                         accessibilityLabel={post.campedByViewer ? "Following author. Unfollow" : "Follow author"}

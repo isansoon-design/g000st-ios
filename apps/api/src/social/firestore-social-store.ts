@@ -88,6 +88,13 @@ export class FirestoreSocialStore implements SocialStore {
       ? this.toPost(viewerId, snapshot.id, snapshot.data() as StoredPost) : null;
   }
 
+  // Resolve follow targets on the server without exposing anonymous owner IDs.
+  async findPostOwner(viewerId: string, postId: string): Promise<string | null> {
+    const snapshot = await this.posts().doc(postId).get();
+    return snapshot.exists && await contentVisibility(this.db, this.prefix, viewerId).content(snapshot.data())
+      ? (snapshot.data() as StoredPost).ownerPublicId : null;
+  }
+
   async createPost(ownerId: string, id: string, input: Omit<CreateSocialPostInput, 'media'> & { media?: readonly SocialMedia[] }, nowMs: number): Promise<SocialPost> {
     const post: StoredPost = { ...input, ownerPublicId: ownerId, createdAtMs: nowMs, updatedAtMs: nowMs, likeCount: 0, commentCount: 0 };
     const reference = this.posts().doc(id);

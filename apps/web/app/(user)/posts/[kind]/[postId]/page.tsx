@@ -28,6 +28,7 @@ import {
   getSocialPost,
   listSocialComments,
   toggleSocialCamp,
+  toggleSocialPostCamp,
   toggleSocialLike,
   type SocialComment,
   type SocialMedia,
@@ -239,10 +240,12 @@ function PostDetailContent({ kind, postId }: { kind: string; postId: string }) {
   }
 
   async function follow() {
-    if (!post?.ownerPublicId || following) return;
+    if (!post || post.ownedByViewer || following) return;
     setFollowing(true);
     try {
-      const result = await toggleSocialCamp(post.ownerPublicId);
+      const result = kind === "social"
+        ? await toggleSocialPostCamp(post.id)
+        : await toggleSocialCamp(post.ownerPublicId!);
       setPost((current) =>
         current ? { ...current, campedByViewer: result.camped } : current,
       );
@@ -414,7 +417,7 @@ function PostDetailContent({ kind, postId }: { kind: string; postId: string }) {
                   <span className="flex items-center gap-1 font-black">
                     <MessageCircle size={18} /> {post.commentCount}
                   </span>
-                  {!post.ownedByViewer && post.ownerPublicId && (
+                  {!post.ownedByViewer && (
                     <button
                       type="button"
                       disabled={following}

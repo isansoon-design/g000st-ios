@@ -57,7 +57,7 @@ export function BeaconSwitcher() {
           <button
             type="button"
             onClick={() => router.push(`/users/${ownerId}`)}
-            className="min-w-0 flex-1 rounded-l-xl px-4 py-3 text-left hover:opacity-75"
+            className="min-w-0 flex-1 rounded-xl px-4 py-3 text-left hover:opacity-75"
           >
             <span className="block font-black">My personal profile</span>
             <span className="block text-xs opacity-60">
@@ -76,7 +76,7 @@ export function BeaconSwitcher() {
             <button
               type="button"
               onClick={() => router.push(`/users/${page.publicId}`)}
-              className="min-w-0 flex-1 rounded-l-xl px-4 py-3 text-left hover:opacity-75"
+              className="min-w-0 flex-1 rounded-xl px-4 py-3 text-left hover:opacity-75"
             >
               <span className="block break-words font-black">
                 {page.displayName || "Untitled beacon"}

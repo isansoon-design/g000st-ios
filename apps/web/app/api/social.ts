@@ -26,6 +26,7 @@ export async function toggleSocialLike(postId: string) { const { data } = await 
 export async function listSocialComments(postId: string, cursor?: string) { const { data } = await axios.get<SocialPage<SocialComment>>(`/social/posts/${postId}/comments`, { params: { cursor, limit: 20 } }); return data; }
 export async function createSocialComment(postId: string, content: string, visibility: SocialVisibility) { const { data } = await axios.post<{ comment: SocialComment }>(`/social/posts/${postId}/comments`, { content, visibility }); return data.comment; }
 export async function deleteSocialComment(postId: string, commentId: string) { await axios.delete(`/social/posts/${postId}/comments/${commentId}`); }
+export async function toggleSocialPostCamp(postId: string) { const { data } = await axios.post<{ camped: boolean }>(`/social/posts/${postId}/camp`); return data; }
 export async function toggleSocialCamp(publicId: string) { const { data } = await axios.post<{ camped: boolean }>(`/social/profiles/${publicId}/camp`); return data; }
 export async function listSocialSuggestions() { const { data } = await axios.get<SocialSuggestions>('/social/suggestions'); return data; }
 export async function followSocialProfile(publicId: string) { await axios.post(`/social/profiles/${publicId}/follow`); }

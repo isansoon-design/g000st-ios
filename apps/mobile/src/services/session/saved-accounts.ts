@@ -55,12 +55,14 @@ export const savedAccounts = {
     });
   },
   async updateProfile(profile: SocialProfile): Promise<void> {
+    // Saved accounts identify the owner on this device, regardless of public name visibility.
+    const displayName = profile.displayName?.trim();
     await enqueue(async () => {
       const accounts = await readAccounts();
       if (!accounts.some((account) => account.publicId === profile.publicId)) return;
       await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts.map((account) =>
         account.publicId === profile.publicId
-          ? { publicId: account.publicId, ...(profile.showDisplayName && profile.displayName ? { displayName: profile.displayName } : {}), ...(profile.avatarUrl ? { avatarUrl: profile.avatarUrl } : {}) }
+          ? { publicId: account.publicId, ...(displayName ? { displayName } : {}), ...(profile.avatarUrl ? { avatarUrl: profile.avatarUrl } : {}) }
           : account)));
     });
   },

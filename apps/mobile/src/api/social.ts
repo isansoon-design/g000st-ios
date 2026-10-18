@@ -131,6 +131,10 @@ export async function createSocialComment(
   );
   return parseApiPayload(socialCommentResultSchema, response.data).comment;
 }
+export async function toggleSocialPostCamp(postId: string) {
+  const response = await axiosInstance.post(`/social/posts/${postId}/camp`);
+  return parseApiPayload(socialCampResultSchema, response.data);
+}
 export async function toggleSocialCamp(publicId: string) {
   const response = await axiosInstance.post(
     `/social/profiles/${publicId}/camp`,

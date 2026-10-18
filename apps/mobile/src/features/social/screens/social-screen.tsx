@@ -37,7 +37,7 @@ import {
   listSocialSuggestions,
   markSocialAlertsRead,
   reportSocialPost,
-  toggleSocialCamp,
+  toggleSocialPostCamp,
   toggleSocialLike,
   updateSocialPost,
   updateSocialProfile,
@@ -681,11 +681,11 @@ export function SocialScreen() {
                   );
                 }}
                 onCamp={async () => {
-                  if (!post.ownerPublicId) return;
-                  const result = await toggleSocialCamp(post.ownerPublicId);
+                  const result = await toggleSocialPostCamp(post.id);
                   setPosts((items) =>
                     items.map((item) =>
-                      item.ownerPublicId === post.ownerPublicId
+                      item.id === post.id ||
+                      (post.ownerPublicId && item.ownerPublicId === post.ownerPublicId)
                         ? { ...item, campedByViewer: result.camped }
                         : item,
                     ),

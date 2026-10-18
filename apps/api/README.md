@@ -23,3 +23,12 @@ Staging binds to `127.0.0.1:3100` and uses an isolated Firestore collection pref
 publicly routed until its auth flows pass real integration tests.
 
 Never commit `.env`, a Firebase service account, Recovery IDs, or session tokens.
+
+## Follow a Social post publisher
+
+`POST /api/v1/social/posts/:postId/camp` requires an authenticated session and a UUID
+post ID. It toggles the existing follow relationship with the post's actual publisher,
+including anonymous posts, and returns `{ "camped": true }` or `{ "camped": false }`.
+It does not return the publisher's ID or change the post's visible author identity.
+Missing or invisible posts return `POST_NOT_FOUND`; following yourself returns
+`INVALID_CAMP_TARGET`. Existing account activity and blocking checks still apply.

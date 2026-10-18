@@ -104,14 +104,6 @@ function SidebarLinkIcon({
   );
 }
 
-function ActiveIdentityCheck() {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Path d="M5 12l4 4L19 6" stroke="#C62828" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
 function IdentityAvatar({ avatarUrl, name }: Readonly<{ avatarUrl?: string; name: string }>) {
   return avatarUrl ? (
     <Image
@@ -135,7 +127,7 @@ export function useOpenBeaconPageEditor() {
 
 export function AppSidebarProvider({ children }: PropsWithChildren) {
   const router = useRouter();
-  const { user, activePublicId, setActivePublicId } = useAuth();
+  const { user, activePublicId } = useAuth();
   const { colors, isDark } = useAppTheme();
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
@@ -199,11 +191,6 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
   const visit = (href: Href) => {
     close();
     router.push(href);
-  };
-  const switchTo = (id: string) => {
-    close();
-    if (activePublicId !== id) setActivePublicId(id);
-    router.replace("/(app)/(tabs)/social");
   };
   const openEditor = useCallback(
     (publicId?: string, onSaved?: (value: SocialProfile) => void) => {
@@ -294,19 +281,6 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
                         {profile?.displayName || user.publicId.slice(0, 8)}
                       </Text>
                     </Pressable>
-                    <Pressable
-                      accessibilityRole="switch"
-                      accessibilityLabel={(activePublicId ?? user.publicId) === user.publicId ? "Interacting as my profile" : "Switch to my profile"}
-                      accessibilityState={{ checked: (activePublicId ?? user.publicId) === user.publicId }}
-                      onPress={() => switchTo(user.publicId)}
-                      className="h-11 w-11 items-center justify-center"
-                    >
-                      {(activePublicId ?? user.publicId) === user.publicId ? (
-                        <ActiveIdentityCheck />
-                      ) : (
-                        <Text className="text-xl" style={{ color: colors.text }}>⇄</Text>
-                      )}
-                    </Pressable>
                   </View>
                 )}
                 {user && (
@@ -339,21 +313,6 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
                             >
                               {name}
                             </Text>
-                          </Pressable>
-                          <Pressable
-                            accessibilityRole="switch"
-                            accessibilityLabel={activePublicId === page.publicId ? `Interacting as ${name}` : `Switch to ${name}`}
-                            accessibilityState={{
-                              checked: activePublicId === page.publicId,
-                            }}
-                            onPress={() => switchTo(page.publicId)}
-                            className="h-12 w-11 items-center justify-center"
-                          >
-                            {activePublicId === page.publicId ? (
-                              <ActiveIdentityCheck />
-                            ) : (
-                              <Text className="text-xl font-black" style={{ color: colors.text }}>⇄</Text>
-                            )}
                           </Pressable>
                         </View>
                       );

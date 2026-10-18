@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Check,
   Globe2,
   IdCard,
   MessageCircle,
@@ -135,15 +134,6 @@ export function UserSidebar({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [mobileOpen, onCloseMobile]);
 
-  const switchTo = (id: string, name: string) => {
-    if (activeId !== id) sessionStorage.setActingPublicId(id);
-    setActiveId(id);
-    onCloseMobile();
-    toast.success(`You are now interacting as ${name}`);
-    router.push("/social");
-    router.refresh();
-  };
-
   // const create = () => {
   //   onCloseMobile();
   //   router.push("/beacons/new");
@@ -221,16 +211,6 @@ export function UserSidebar({
                       <IdentityAvatar avatarUrl={identity.avatarUrl} name={identity.displayName} />
                       <span className="truncate">{identity.displayName}</span>
                     </Link>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={selected}
-                      aria-label={selected ? `Interacting as ${identity.displayName}` : `Switch to ${identity.displayName}`}
-                      onClick={() => switchTo(identity.publicId, identity.displayName)}
-                      className="flex h-10 w-10 shrink-0 items-center justify-center border-l border-black/10 text-lg hover:text-[#C62828] dark:border-white/15"
-                    >
-                      {selected ? <Check size={20} className="text-[#C62828]" aria-hidden="true" /> : "⇄"}
-                    </button>
                   </li>
                 );
               })}

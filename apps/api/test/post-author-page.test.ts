@@ -5,9 +5,9 @@ import type { Firestore } from 'firebase-admin/firestore';
 import { FirestoreSocialStore } from '../src/social/firestore-social-store.js';
 import { FirestoreMarketStore } from '../src/market/firestore-market-store.js';
 
-function database(isPage: boolean, anonymous = false): Firestore {
+function database(isPage: boolean, anonymous = false, hidden = false): Firestore {
   const post = {
-    ownerPublicId: 'publisher', content: 'Hello', visibility: anonymous ? 'anonymous' : 'public',
+    hidden, ownerPublicId: 'publisher', content: 'Hello', visibility: anonymous ? 'anonymous' : 'public',
     createdAtMs: 1, updatedAtMs: 1, likeCount: 0, commentCount: 0,
   };
   function collection(name: string) {
@@ -42,5 +42,17 @@ describe('Post publisher identity', () => {
   it('keeps anonymous publisher details hidden', async () => {
     const post = await new FirestoreSocialStore(database(true, true), 'test').findPost('viewer', 'post');
     assert.deepEqual(post?.author, { displayName: 'Anonymous' });
+    assert.equal(post?.ownerPublicId, undefined);
   });
+
+  it('resolves an anonymous publisher internally for following', async () => {
+    const store = new FirestoreSocialStore(database(false, true), 'test');
+    assert.equal(await store.findPostOwner('viewer', 'post'), 'publisher');
+  });
+
+  it('does not resolve a hidden post for following', async () => {
+    const store = new FirestoreSocialStore(database(false, true, true), 'test');
+    assert.equal(await store.findPostOwner('viewer', 'post'), null);
+  });
+
 });
