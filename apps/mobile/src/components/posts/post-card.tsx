@@ -56,7 +56,7 @@ export function PostCard({
             />
           ) : (
             <Image
-              source={require("../../../../assets/g000st-icon.jpeg")}
+              source={require("../../../assets/g000st-icon.jpeg")}
               contentFit="cover"
               style={{ height: "100%", width: "100%" }}
             />
