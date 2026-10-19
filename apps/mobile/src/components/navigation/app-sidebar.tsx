@@ -339,15 +339,21 @@ export function AppSidebarProvider({ children }: PropsWithChildren) {
                       className="h-[68px] flex-row items-center gap-4 rounded-[14px] px-4 active:opacity-70"
                       style={{
                         backgroundColor: isDark ? "#3A3B3C" : "#FFFFFF",
+                        ...(icon === "support" && {
+                          borderWidth: 1.5,
+                          borderColor: "#C62828",
+                        }),
                       }}
                     >
                       <SidebarLinkIcon
                         name={icon}
-                        color={isDark ? "#FFFFFF" : "#242526"}
+                        color={icon === "support" ? "#C62828" : isDark ? "#FFFFFF" : "#242526"}
                       />
                       <Text
                         className="text-[18px] font-extrabold"
-                        style={{ color: isDark ? "#FFFFFF" : "#242526" }}
+                        style={{
+                          color: icon === "support" ? "#C62828" : isDark ? "#FFFFFF" : "#242526",
+                        }}
                       >
                         {label}
                       </Text>

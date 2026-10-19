@@ -372,7 +372,15 @@ function ConversationList({
             role="tab"
             aria-selected={kind === value}
             onClick={() => setKind(value)}
-            className={`rounded-full px-4 py-2 text-xs font-black ${kind === value ? "bg-black text-white" : "bg-white dark:bg-night-surface text-black dark:text-night-text"}`}
+            className={`rounded-full px-4 py-2 text-xs font-black ${
+              value === "market"
+                ? kind === value
+                  ? "bg-[#C62828] text-white"
+                  : "border border-[#C62828] bg-white dark:bg-night-surface text-[#C62828]"
+                : kind === value
+                  ? "bg-black text-white"
+                  : "bg-white dark:bg-night-surface text-black dark:text-night-text"
+            }`}
           >
             {value === "market" ? "Trading chats" : "Private chats"}
           </button>

@@ -70,8 +70,8 @@ function ChatConversationListComponent({
     <View className="flex-1" style={{ backgroundColor: colors.canvas }}>
       <View className="flex-row gap-2 p-3">
         {(['private', 'market'] as const).map((value) => (
-          <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: kind === value }} onPress={() => setKind(value)} className="rounded-full px-4 py-2" style={{ backgroundColor: kind === value ? '#111111' : isDark ? colors.card : '#FFFFFF' }}>
-            <Text className="text-xs font-black" style={{ color: kind === value || isDark ? '#FFFFFF' : '#111111' }}>{value === 'market' ? 'Traiding chats' : 'Private chats'}</Text>
+          <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: kind === value }} onPress={() => setKind(value)} className="rounded-full px-4 py-2" style={value === 'market' ? { backgroundColor: kind === value ? '#C62828' : isDark ? colors.card : '#FFFFFF', borderWidth: 1, borderColor: '#C62828' } : { backgroundColor: kind === value ? '#111111' : isDark ? colors.card : '#FFFFFF' }}>
+            <Text className="text-xs font-black" style={{ color: value === 'market' ? (kind === value ? '#FFFFFF' : '#C62828') : kind === value || isDark ? '#FFFFFF' : '#111111' }}>{value === 'market' ? 'Traiding chats' : 'Private chats'}</Text>
           </Pressable>
         ))}
       </View>

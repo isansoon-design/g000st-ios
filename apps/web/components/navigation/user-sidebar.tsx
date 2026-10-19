@@ -240,7 +240,7 @@ export function UserSidebar({
                   href={href}
                   aria-current={active ? "page" : undefined}
                   onClick={onCloseMobile}
-                  className={`flex h-12 items-center gap-3 rounded-2xl px-3 text-sm font-extrabold transition-colors ${active ? "bg-[#C62828] text-white shadow-[0_8px_20px_rgba(198,40,40,.2)]" : "hover:bg-black/5 dark:hover:bg-white/10"}`}
+                  className={`flex h-12 items-center gap-3 rounded-2xl px-3 text-sm font-extrabold transition-colors ${active ? "bg-[#C62828] text-white shadow-[0_8px_20px_rgba(198,40,40,.2)]" : href === "/contact-us" ? "border-[1.5px] border-[#C62828] text-[#C62828] hover:bg-[#C62828]/10" : "hover:bg-black/5 dark:hover:bg-white/10"}`}
                 >
                   <Icon size={20} strokeWidth={2} aria-hidden="true" />
                   <span>{label}</span>
