@@ -205,6 +205,20 @@ export class AdminDeskService {
     });
   }
 
+  async getSupportContact(): Promise<{ version: 1; publicId: string | null }> {
+    const config = (await this.collection('admin_config').doc('support').get()).data();
+    const publicId = typeof config?.publicId === 'string' ? config.publicId : null;
+    if (!publicId) return { version: 1, publicId: null };
+    const user = await this.collection('users').doc(publicId).get();
+    return { version: 1, publicId: user.exists && user.data()?.status === 'active' && !user.data()?.ownerPublicId ? publicId : null };
+  }
+
+  async setSupportContact(publicId: string | null, actor: string): Promise<void> {
+    await this.commit(actor, 'support.configure', publicId ?? 'disabled', (batch) => {
+      batch.set(this.collection('admin_config').doc('support'), { publicId, updatedAtMs: this.now() });
+    });
+  }
+
   async getExperienceConfig() {
     const config = (await this.collection('admin_config').doc('desk').get()).data();
     return {

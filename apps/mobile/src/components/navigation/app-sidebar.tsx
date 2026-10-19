@@ -35,6 +35,7 @@ const links = [
   ["Profile", "/(app)/(tabs)/identity", "profile"],
   ["Trading", "/(app)/(tabs)/trading", "trading"],
   ["Mobile", "/(app)/(tabs)/mobile", "mobile"],
+  ["Contact us", "/(app)/contact-us", "support"],
 ] as const;
 
 type SidebarIconName = (typeof links)[number][2];
@@ -63,6 +64,7 @@ function SidebarLinkIcon({
           />
         </>
       )}
+      {name === "support" && <Path d="M5 16v-3a9 9 0 0 1 18 0v7a4 4 0 0 1-4 4h-5M5 14h3v7H5a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2ZM23 14h-3v7h3a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2Z" {...common} />}
       {name === "chat" && (
         <Path
           d="M5 5.5h18a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2H11l-7 4v-5a2 2 0 0 1-1-1.7V7.5a2 2 0 0 1 2-2Z"

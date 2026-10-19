@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SupportAccountSettings } from "@/features/admin/support-account-settings";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -479,6 +480,7 @@ export default function ClientDeskPage() {
     ),
     inbox: (
       <section className={card} aria-label="Inbox">
+        <SupportAccountSettings />
         <h2 className="font-black">INBOX · SUPPORT</h2>
         <p className="mt-1 font-mono text-[10px] uppercase text-gray-500">
           Messages from Contact us · reply privately to the same user

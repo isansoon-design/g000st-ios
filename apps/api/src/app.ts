@@ -127,7 +127,7 @@ export function createApp({
   });
   app.use('/api/v1/auth', createAuthRouter(authService));
   if (adminAnalytics && adminDesk) app.use('/api/v1/admin', createAdminRouter(authService, adminAnalytics, adminDesk, rssService));
-  if (adminDesk) app.use('/api/v1/communication', createCommunicationRouter(authService, adminDesk));
+  if (adminDesk) app.use('/api/v1/communication', createCommunicationRouter(authService, adminDesk, chatService));
   app.use('/api/v1/chat', createChatRouter(authService, chatService));
   app.use('/api/v1/media', createMediaRouter(authService, chatService));
   app.use(

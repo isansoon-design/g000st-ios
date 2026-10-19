@@ -76,6 +76,22 @@ export class AuthService {
     throw new ApiError(503, 'IDENTITY_GENERATION_FAILED', 'Could not create an ID. Try again.');
   }
 
+  // Admin configuration resolves credentials without issuing or changing a session.
+  async resolveSupportAccount(identifier: string, kind: 'public' | 'recovery'): Promise<string> {
+    let publicId = identifier;
+    if (!isValidG000stId(identifier)) throw new ApiError(400, 'VALIDATION_ERROR', 'Enter a valid account ID.');
+    if (kind === 'recovery') {
+      const credential = await this.store.findRecoveryCredential(recoveryLookupHash(identifier, this.recoveryPepper));
+      if (!credential || !(await verifyRecoveryId(identifier, credential))) {
+        throw new ApiError(404, 'USER_NOT_FOUND', 'Support account not found.');
+      }
+      publicId = credential.publicId;
+    }
+    if (!(await this.store.isUserActive(publicId))) throw new ApiError(404, 'USER_NOT_FOUND', 'Support account must be active.');
+    if (await this.store.getPageOwner?.(publicId)) throw new ApiError(400, 'INVALID_SUPPORT_ACCOUNT', 'Select a personal account for support.');
+    return publicId;
+  }
+
   async restore(recoveryId: string): Promise<AuthenticationResult> {
     if (!isValidG000stId(recoveryId)) {
       throw this.invalidRecoveryId();

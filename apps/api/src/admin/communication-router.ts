@@ -1,3 +1,6 @@
+import { ChatService } from '../chat/chat-service.js';
+import { ApiError } from '../http/api-error.js';
+
 import { Router, type Request } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
@@ -11,7 +14,7 @@ function bearerToken(request: Request): string {
   return scheme?.toLowerCase() === 'bearer' ? token ?? '' : '';
 }
 
-export function createCommunicationRouter(auth: AuthService, desk: AdminDeskService): Router {
+export function createCommunicationRouter(auth: AuthService, desk: AdminDeskService, chat: ChatService): Router {
   const router = Router();
   router.get('/experience', asyncRoute(async (_request, response) => {
     response.json(await desk.getExperienceConfig());
@@ -19,6 +22,13 @@ export function createCommunicationRouter(auth: AuthService, desk: AdminDeskServ
   router.use(asyncRoute(async (request, _response, next) => {
     request.authenticatedPublicId = (await auth.getUser(bearerToken(request))).publicId;
     next();
+  }));
+  router.post('/support/conversation', rateLimit({ legacyHeaders: false, limit: 30, standardHeaders: 'draft-8', windowMs: 60_000 }), asyncRoute(async (request, response) => {
+    const actor = await auth.getActor(bearerToken(request), request.header('x-acting-public-id') ?? undefined);
+    const { publicId } = await desk.getSupportContact();
+    if (!publicId) throw new ApiError(503, 'SUPPORT_UNAVAILABLE', 'Support is temporarily unavailable. Please try again later.');
+    const conversation = await chat.startConversation(actor.publicId, publicId);
+    response.json({ version: 1, conversationId: conversation.id });
   }));
   router.get('/notices', asyncRoute(async (request, response) => {
     const actor = await auth.getActor(bearerToken(request), request.header('x-acting-public-id') ?? undefined);

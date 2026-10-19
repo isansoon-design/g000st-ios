@@ -2,6 +2,7 @@
 
 import {
   Globe2,
+  Headphones,
   IdCard,
   MessageCircle,
   ShoppingBag,
@@ -25,6 +26,7 @@ const links = [
   { label: "Profile", href: "/profile", Icon: IdCard },
   { label: "Trading", href: "/market", Icon: ShoppingBag },
   { label: "Mobile", href: "/mobile", Icon: Smartphone },
+  { label: "Contact us", href: "/contact-us", Icon: Headphones },
 ] as const;
 
 type Props = {

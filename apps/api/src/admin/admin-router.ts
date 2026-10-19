@@ -61,6 +61,15 @@ export function createAdminRouter(auth: AuthService, analytics: AdminAnalyticsSe
     await desk.resolveReport(section.parse(request.params.section), uuid.parse(request.params.reportId), resolution, request.authenticatedPublicId);
     response.status(204).end();
   }));
+  router.get('/support', asyncRoute(async (_request, response) => {
+    response.json(await desk.getSupportContact());
+  }));
+  router.put('/support', writeLimiter, asyncRoute(async (request, response) => {
+    const body = z.object({ identifier: exactId.nullable(), kind: z.enum(['public', 'recovery']) }).strict().parse(request.body);
+    const publicId = body.identifier === null ? null : await auth.resolveSupportAccount(body.identifier, body.kind);
+    await desk.setSupportContact(publicId, request.authenticatedPublicId);
+    response.json({ version: 1, publicId });
+  }));
   router.get('/analytics', asyncRoute(async (_request, response) => { response.json(await analytics.get()); }));
   router.get('/desk', asyncRoute(async (_request, response) => { response.json(await desk.get()); }));
   router.get('/users', asyncRoute(async (request, response) => {

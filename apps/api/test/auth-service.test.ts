@@ -338,3 +338,20 @@ describe('AuthService', () => {
     assert.deepEqual(await service.listPages(owner.session.accessToken), [page]);
   });
 });
+
+it('resolves support IDs without creating a session and rejects unavailable accounts', async () => {
+  const store = new MemoryAuthStore();
+  const service = new AuthService(store, PEPPER, () => NOW);
+  const account = await service.register();
+  let sessionsCreated = 0;
+  store.createSession = async () => { sessionsCreated += 1; };
+  assert.equal(await service.resolveSupportAccount(account.user.publicId, 'public'), account.user.publicId);
+  assert.equal(await service.resolveSupportAccount(account.recoveryId, 'recovery'), account.user.publicId);
+  assert.equal(sessionsCreated, 0);
+  await assert.rejects(() => service.resolveSupportAccount('A'.repeat(50), 'recovery'), { code: 'USER_NOT_FOUND' });
+  await assert.rejects(() => service.resolveSupportAccount('invalid', 'public'), { code: 'VALIDATION_ERROR' });
+  const page = await service.createPage(account.session.accessToken, { displayName: 'Support page', bio: '' });
+  await assert.rejects(() => service.resolveSupportAccount(page.publicId, 'public'), { code: 'INVALID_SUPPORT_ACCOUNT' });
+  await store.deleteAccount(account.user.publicId);
+  await assert.rejects(() => service.resolveSupportAccount(account.user.publicId, 'public'), { code: 'USER_NOT_FOUND' });
+});
