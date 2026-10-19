@@ -40,6 +40,7 @@ import { EditPostMedia } from "@/components/media/edit-post-media";
 import { PostImage } from "@/components/media/post-image";
 import { useTabBarScroll } from "@/components/navigation/tab-bar-scroll";
 import { PostContentText } from "@/components/posts/post-content-text";
+import { MARKET_POST_DISCUSSION_ENABLED } from "@/domain/market/features";
 import type {
   MarketPost,
   MarketPostFields,
@@ -656,7 +657,7 @@ function MarketCard({
       </View>
       <PostContentText
         content={post.content}
-        onOpen={() => router.push(`/posts/market/${post.id}` as Href)}
+        onOpen={MARKET_POST_DISCUSSION_ENABLED ? onComments : undefined}
         className="px-4 pb-3 text-[15px] leading-6 text-g000st-black dark:text-night-text"
       />
       <View className="mx-4 mb-3 flex-row flex-wrap gap-2">
@@ -688,10 +689,12 @@ function MarketCard({
           active={post.likedByViewer}
           onPress={onLike}
         />
-        <Action
-          label={`💬 ${post.commentCount}`}
-          onPress={async () => onComments()}
-        />
+        {MARKET_POST_DISCUSSION_ENABLED && (
+          <Action
+            label={`💬 ${post.commentCount}`}
+            onPress={async () => onComments()}
+          />
+        )}
         {!post.ownedByViewer && (
           <Action
             label={post.campedByViewer ? "✓" : "➕"}

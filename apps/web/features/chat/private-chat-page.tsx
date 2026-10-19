@@ -29,6 +29,7 @@ import type {
   ChatMessage,
 } from "@/features/chat/types";
 import { usePrivateChat } from "@/features/chat/use-private-chat";
+import { useChatPrivacy } from "@/features/chat/use-chat-privacy";
 import { useVoiceRecorder } from "@/features/chat/use-voice-recorder";
 import Image from "next/image";
 
@@ -495,7 +496,7 @@ export default function PrivateChatPage() {
       marketCallPermissions?.postId === activeMarketPostId &&
       marketCallPermissions?.allowVideoCalls === true);
   const [blurMessages, setBlurMessages] = useState(false);
-  const [isChatObscured, setIsChatObscured] = useState(false);
+  const isChatObscured = useChatPrivacy();
   const [fontSize, setFontSize] = useState(14);
   const [namesByPublicId, setNamesByPublicId] = useState<
     Record<string, string>
@@ -511,27 +512,6 @@ export default function PrivateChatPage() {
     string | null
   >(null);
 
-  useEffect(() => {
-    // Restore chat privacy when another window or a capture tool takes focus.
-    // Browsers cannot block OS screenshots; this hides the chat on focus loss.
-    const syncPrivacy = () => {
-      setIsChatObscured(
-        document.visibilityState === "hidden" || !document.hasFocus(),
-      );
-    };
-    const handleBlur = () => setIsChatObscured(true);
-    syncPrivacy();
-    window.addEventListener("blur", handleBlur);
-    window.addEventListener("focus", syncPrivacy);
-    document.addEventListener("visibilitychange", syncPrivacy);
-    window.addEventListener("pageshow", syncPrivacy);
-    return () => {
-      window.removeEventListener("blur", handleBlur);
-      window.removeEventListener("focus", syncPrivacy);
-      document.removeEventListener("visibilitychange", syncPrivacy);
-      window.removeEventListener("pageshow", syncPrivacy);
-    };
-  }, []);
   const [peerPreferences, setPeerPreferences] =
     useState<PeerPreferences | null>(null);
   const [followingPeer, setFollowingPeer] = useState<boolean | null>(null);

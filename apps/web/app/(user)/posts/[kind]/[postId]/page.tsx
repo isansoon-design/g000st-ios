@@ -8,7 +8,7 @@ import {
   UserCheck,
   UserPlus,
 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { redirect, useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -39,6 +39,7 @@ import { PostImage } from "@/components/media/PostImage";
 import { UserHeaderPortal } from "@/components/navigation/header-portal";
 import { LinkifiedText } from "@/components/text/LinkifiedText";
 import { PostContentLink } from "@/components/posts/PostContentLink";
+import { MARKET_POST_DISCUSSION_ENABLED } from "@/lib/market-features";
 
 type Kind = "social" | "market";
 type Post = SocialPost | MarketPost;
@@ -82,6 +83,9 @@ function PostMedia({ media }: { media?: SocialMedia[] }) {
 
 export default function PostDetailPage() {
   const { kind, postId } = useParams<{ kind: string; postId: string }>();
+  if (kind === "market" && !MARKET_POST_DISCUSSION_ENABLED) {
+    redirect("/market");
+  }
   return (
     <PostDetailContent key={`${kind}:${postId}`} kind={kind} postId={postId} />
   );

@@ -34,6 +34,7 @@ import { PostImage } from "@/components/media/PostImage";
 import { initialMediaDraft, mediaDraftEdit, type PostMediaEdit } from "@/lib/post-media-edit";
 import { UserHeaderPortal } from "@/components/navigation/header-portal";
 import { PostContentLink } from "@/components/posts/PostContentLink";
+import { MARKET_POST_DISCUSSION_ENABLED } from "@/lib/market-features";
 import { useConfirmModal } from "@/context/ConfirmModalContext";
 import { useCalling } from "@/features/calling/use-calling";
 import { startMarketChatConversation } from "@/features/chat/api";
@@ -310,7 +311,7 @@ export default function MarketPage() {
               </div>
               <PostContentLink
                 content={post.content}
-                href={`/posts/market/${post.id}`}
+                href={MARKET_POST_DISCUSSION_ENABLED ? `/posts/market/${post.id}` : undefined}
                 className="px-4 pb-3 text-[15px] leading-6"
               />
               <div className="mx-4 mb-3 flex flex-wrap gap-2">
@@ -375,13 +376,15 @@ export default function MarketPage() {
                   />
                   {post.likeCount}
                 </button>
-                <button
-                  onClick={() => router.push(`/posts/market/${post.id}`)}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3 font-black"
-                >
-                  <MessageCircle size={18} />
-                  {post.commentCount}
-                </button>
+                {MARKET_POST_DISCUSSION_ENABLED && (
+                  <button
+                    onClick={() => router.push(`/posts/market/${post.id}`)}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3 font-black"
+                  >
+                    <MessageCircle size={18} />
+                    {post.commentCount}
+                  </button>
+                )}
                 {!post.ownedByViewer && (
                   <button
                     aria-label={
