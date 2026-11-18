@@ -5,7 +5,6 @@ import { G000stWordmark } from '@/components/brand/g000st-wordmark';
 import { FeatureScreen } from '@/components/layout/feature-screen';
 import type { Balance, BillingSku, OutboundSms } from '@/domain/mobile/types';
 import { ExternalCallOverlay } from '@/features/mobile/components/external-call-overlay';
-import { PlansModal } from '@/features/mobile/components/plans-modal';
 import { SmsComposerModal } from '@/features/mobile/components/sms-composer-modal';
 import type { ExternalCallStatus } from '@/features/mobile/hooks/use-mobile-external-call';
 
@@ -48,32 +47,23 @@ type MobileScreenContentProps = Readonly<{
 
 function MobileScreenContentComponent({
   balance,
-  buying,
   callDurationSec,
   callStatus,
   dialValue,
   isCallActionDisabled,
   isMuted,
-  isPlansOpen,
   isSmsOpen,
   onBackspace,
-  onBuy,
   onCall,
   onCallClose,
   onChangeSmsBody,
   onChangeSmsTo,
-  onClosePlans,
   onCloseSms,
   onHangUp,
-  onOpenPlans,
   onOpenSms,
   onPressDigit,
-  onSelectSku,
   onSend,
   onToggleMute,
-  selectedSkuId,
-  skus,
-  skusLoading,
   smsBody,
   smsHistory,
   smsHistoryLoading,
@@ -82,19 +72,7 @@ function MobileScreenContentComponent({
 }: MobileScreenContentProps) {
   const dialDisplay = dialValue || 'g000st';
   return (
-    <FeatureScreen
-      rightAction={
-        <Pressable
-          accessibilityLabel="Buy credit"
-          accessibilityRole="button"
-          className="h-9 w-9 items-center justify-center rounded-full border border-black/15 dark:border-night-border bg-white dark:bg-night-surface"
-          onPress={onOpenPlans}
-        >
-          <Text className="text-base font-black text-g000st-black dark:text-night-text">£</Text>
-        </Pressable>
-      }
-      title="g000st Mobile"
-    >
+    <FeatureScreen title="g000st Mobile">
       <View className="flex-1 px-5 py-4">
         {dialValue ? <Text className="text-center text-[34px] font-black tracking-[2px] text-g000st-black dark:text-night-text">{dialValue}</Text> : <G000stWordmark className="text-center text-[34px] tracking-[2px]" />}
         <Text className="mt-1 text-center text-[10px] font-black tracking-[1px] text-black/45 dark:text-night-muted">
@@ -118,16 +96,7 @@ function MobileScreenContentComponent({
           ))}
         </View>
 
-        <Pressable
-          accessibilityLabel="Buy credit"
-          accessibilityRole="button"
-          className="mx-auto mt-4 h-11 w-full max-w-[300px] items-center justify-center rounded-full bg-g000st-black active:opacity-80"
-          onPress={onOpenPlans}
-        >
-          <Text className="text-sm font-black text-white">Buy</Text>
-        </Pressable>
-
-        <View className="mx-auto mt-4 w-full max-w-[300px] flex-row items-center justify-between">
+        <View className="mx-auto mt-6 w-full max-w-[300px] flex-row items-center justify-between">
           <Pressable
             accessibilityLabel="Send SMS"
             accessibilityRole="button"
@@ -173,17 +142,6 @@ function MobileScreenContentComponent({
         sending={smsSending}
         smsBody={smsBody}
         smsTo={smsTo}
-      />
-
-      <PlansModal
-        buying={buying}
-        isOpen={isPlansOpen}
-        onBuy={onBuy}
-        onClose={onClosePlans}
-        onSelect={onSelectSku}
-        selectedSkuId={selectedSkuId}
-        skus={skus}
-        skusLoading={skusLoading}
       />
 
       <ExternalCallOverlay
