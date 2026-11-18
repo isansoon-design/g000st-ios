@@ -1,103 +1,105 @@
 {
-  "expo": {
-    "name": "g000st",
-    "slug": "g000st",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/brand/icon-1024.png",
-    "scheme": "g000st",
-    "userInterfaceStyle": "automatic",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/2cfd1331-dd33-43a8-9b21-c2cc2eddf965"
-    },
-    "ios": {
-      "bundleIdentifier": "com.g000st.app",
-      "icon": "./assets/brand/icon-1024.png",
-      "supportsTablet": false,
-      "googleServicesFile": "./GoogleService-Info.plist",
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
-    },
-    "android": {
-      "package": "com.g000st.app",
-      "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA",
-        "android.permission.MANAGE_OWN_CALLS"
-      ],
-      "blockedPermissions": [
-        "android.permission.READ_MEDIA_IMAGES"
-      ]
-    },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/brand/icon-1024.png"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#E8E8E8",
-          "image": "./assets/brand/logo.png",
-          "imageWidth": 240
-        }
-      ],
-      "expo-secure-store",
-      [
-        "expo-notifications",
-        {
-          "defaultChannel": "messages"
-        }
-      ],
-      "expo-image",
-      [
-        "expo-audio",
-        {
-          "microphonePermission": "Allow g000st to record private voice messages.",
-          "enableBackgroundPlayback": false,
-          "enableBackgroundRecording": false
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "cameraPermission": "Allow g000st to capture photos and videos for private chat.",
-          "microphonePermission": "Allow g000st to record audio with chat videos.",
-          "photosPermission": "Allow g000st to select photos and videos for private chat."
-        }
-      ],
-      [
-        "expo-media-library",
-        {
-          "savePhotosPermission": "Allow g000st to save post images to your photo library.",
-          "granularPermissions": []
-        }
-      ],
-      "expo-video",
-      [
-        "expo-callkit-telecom",
-        {
-          "microphonePermission": "Allow g000st to use the microphone for calls.",
-          "cameraPermission": "Allow g000st to use the camera for video calls."
-        }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "2cfd1331-dd33-43a8-9b21-c2cc2eddf965"
-      }
-    },
-    "owner": "friendvan"
-  }
+"expo": {
+"name": "g000st",
+"slug": "g000st",
+"version": "1.0.0",
+"orientation": "portrait",
+"icon": "./assets/brand/icon-1024.png",
+"scheme": "g000st",
+"userInterfaceStyle": "automatic",
+"runtimeVersion": {
+"policy": "appVersion"
+},
+"updates": {
+"url": "https://u.expo.dev/2cfd1331-dd33-43a8-9b21-c2cc2eddf965"
+},
+"ios": {
+"bundleIdentifier": "com.g000st.app",
+"buildNumber": "2",
+"icon": "./assets/brand/icon-1024.png",
+"supportsTablet": false,
+"googleServicesFile": "./GoogleService-Info.plist",
+"infoPlist": {
+"ITSAppUsesNonExemptEncryption": false
+}
+},
+"android": {
+"package": "com.g000st.app",
+"versionCode": 2,
+"predictiveBackGestureEnabled": false,
+"permissions": [
+"android.permission.RECORD_AUDIO",
+"android.permission.CAMERA",
+"android.permission.MANAGE_OWN_CALLS"
+],
+"blockedPermissions": [
+"android.permission.READ_MEDIA_IMAGES"
+]
+},
+"web": {
+"output": "static",
+"favicon": "./assets/brand/icon-1024.png"
+},
+"plugins": [
+"expo-router",
+[
+"expo-splash-screen",
+{
+"backgroundColor": "#E8E8E8",
+"image": "./assets/brand/logo.png",
+"imageWidth": 240
+}
+],
+"expo-secure-store",
+[
+"expo-notifications",
+{
+"defaultChannel": "messages"
+}
+],
+"expo-image",
+[
+"expo-audio",
+{
+"microphonePermission": "Allow g000st to record private voice messages.",
+"enableBackgroundPlayback": false,
+"enableBackgroundRecording": false
+}
+],
+[
+"expo-image-picker",
+{
+"cameraPermission": "Allow g000st to capture photos and videos for private chat.",
+"microphonePermission": "Allow g000st to record audio with chat videos.",
+"photosPermission": "Allow g000st to select photos and videos for private chat."
+}
+],
+[
+"expo-media-library",
+{
+"savePhotosPermission": "Allow g000st to save post images to your photo library.",
+"granularPermissions": []
+}
+],
+"expo-video",
+[
+"expo-callkit-telecom",
+{
+"microphonePermission": "Allow g000st to use the microphone for calls.",
+"cameraPermission": "Allow g000st to use the camera for video calls."
+}
+]
+],
+"experiments": {
+"typedRoutes": true,
+"reactCompiler": true
+},
+"extra": {
+"router": {},
+"eas": {
+"projectId": "2cfd1331-dd33-43a8-9b21-c2cc2eddf965"
+}
+},
+"owner": "friendvan"
+}
 }
