@@ -18,11 +18,13 @@
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://staging.g000st.com/api/v1"
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "EXPO_NO_TELEMETRY": "1"
       },
       "android": {
         "buildType": "app-bundle"
-      }
+      },
+      "node": "20.11.0"
     },
     "production-apk": {
       "distribution": "store",
