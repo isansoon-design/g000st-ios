@@ -72,7 +72,7 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
     },
   }), [mode]);
 
-  return <AppThemeContext.Provider value={value}>{ready ? children : null}</AppThemeContext.Provider>;
+  return <AppThemeContext.Provider value={value}>{children}</AppThemeContext.Provider>;
 }
 
 export function useAppTheme() {
