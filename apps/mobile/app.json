@@ -31,7 +31,8 @@
           }
         },
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "package": "com.g000st.app",
@@ -51,6 +52,7 @@
       "favicon": "./assets/brand/icon-1024.png"
     },
     "plugins": [
+      "@react-native-firebase/app",
       "expo-router",
       [
         "expo-splash-screen",
