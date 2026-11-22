@@ -52,7 +52,6 @@
       "favicon": "./assets/brand/icon-1024.png"
     },
     "plugins": [
-      "@react-native-firebase/app",
       "expo-router",
       [
         "expo-splash-screen",
