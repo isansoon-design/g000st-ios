@@ -20,7 +20,7 @@ import { PresenceHeartbeat } from '@/services/presence/presence-heartbeat';
 import { AppThemeProvider, useAppTheme } from '@/theme/app-theme';
 import Toast from 'react-native-toast-message';
 
-void SplashScreen.preventAutoHideAsync();
+// Splash OFF for test - void SplashScreen.preventAutoHideAsync();
 
 function AppBottomSafeArea({ children }: PropsWithChildren) {
   const { colors } = useAppTheme();
@@ -37,7 +37,7 @@ function RootNavigator() {
   const { isDark } = useAppTheme();
 
   useEffect(() => {
-    if (status !== 'loading') void SplashScreen.hideAsync();
+    void SplashScreen.hideAsync().catch(()=>{});
   }, [status]);
 
   if (status === 'loading') return <View style={{flex:1,backgroundColor:'#fff',alignItems:'center',justifyContent:'center'}}><Text>Loading g000st...</Text></View>;
