@@ -11,7 +11,7 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/f05685f0-b5b1-404b-bc41-61fda65e98ca"
+      "enabled": false
     },
     "ios": {
       "bundleIdentifier": "com.g000st.app",
