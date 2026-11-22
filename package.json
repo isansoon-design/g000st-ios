@@ -35,5 +35,8 @@
     "typecheck:api": "npm --prefix apps/api run typecheck",
     "typecheck:mobile": "npm --prefix apps/mobile run typecheck",
     "typecheck:web": "npm --prefix apps/web run typecheck"
+  },
+  "dependencies": {
+    "inline-style-prefixer": "^7.0.1"
   }
 }

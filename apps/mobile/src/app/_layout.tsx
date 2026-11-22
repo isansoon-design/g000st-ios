@@ -4,7 +4,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, type PropsWithChildren } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { initialWindowMetrics, SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +20,7 @@ import { PresenceHeartbeat } from '@/services/presence/presence-heartbeat';
 import { AppThemeProvider, useAppTheme } from '@/theme/app-theme';
 import Toast from 'react-native-toast-message';
 
-// Splash OFF for test - void SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync();
 
 function AppBottomSafeArea({ children }: PropsWithChildren) {
   const { colors } = useAppTheme();
@@ -37,10 +37,10 @@ function RootNavigator() {
   const { isDark } = useAppTheme();
 
   useEffect(() => {
-    void SplashScreen.hideAsync().catch(()=>{});
+    if (status !== 'loading') void SplashScreen.hideAsync();
   }, [status]);
 
-  if (status === 'loading') return <View style={{flex:1,backgroundColor:'#fff',alignItems:'center',justifyContent:'center'}}><Text>Loading g000st...</Text></View>;
+  if (status === 'loading') return <View className="flex-1 bg-g000st-metal dark:bg-night-canvas" />;
 
   return <><StatusBar style={isDark ? 'light' : 'dark'} /><Stack key={activePublicId ?? 'anonymous'} screenOptions={{ headerShown: false }} /></>;
 }

@@ -37,6 +37,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6815637042",
+        "appleId": "bakrisabagh@hotmail.com",
+        "appleTeamId": "FARTZT93HT"
+      }
+    }
   }
 }
