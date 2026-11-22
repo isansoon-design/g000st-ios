@@ -18,7 +18,6 @@
       "buildNumber": "1",
       "icon": "./assets/brand/icon-1024.png",
       "supportsTablet": false,
-      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIApplicationSceneManifest": {
           "UIApplicationSupportsMultipleScenes": false,
