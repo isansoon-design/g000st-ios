@@ -26,10 +26,6 @@
               {
                 "UISceneConfigurationName": "Default Configuration",
                 "UISceneDelegateClassName": "EXSceneDelegate"
-              },
-              {
-                "UISceneConfigurationName": "Default Configuration",
-                "UISceneDelegateClassName": "EXSceneDelegate"
               }
             ]
           }
