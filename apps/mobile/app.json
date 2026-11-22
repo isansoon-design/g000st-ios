@@ -15,7 +15,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.g000st.app",
-      "buildNumber": "1",
+      "buildNumber": "16",
       "icon": "./assets/brand/icon-1024.png",
       "supportsTablet": false,
       "infoPlist": {
