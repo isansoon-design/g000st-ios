@@ -51,7 +51,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
     };
 
-    void restorePersistedSession();
+    const timeout = setTimeout(() => { if (active) setStatus((s) => s === 'loading' ? 'anonymous' : s); }, 3000); void restorePersistedSession();
 
     const unsubscribe = subscribeToSessionCleared(() => {
       if (!active) return;
@@ -62,6 +62,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     });
 
     return () => {
+      clearTimeout(timeout);
       active = false;
       unsubscribe();
     };

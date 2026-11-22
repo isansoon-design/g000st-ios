@@ -40,7 +40,7 @@ function RootNavigator() {
     if (status !== 'loading') void SplashScreen.hideAsync();
   }, [status]);
 
-  if (status === 'loading') return <View className="flex-1 bg-g000st-metal dark:bg-night-canvas" />;
+  if (status === 'loading') return <View style={{flex:1,backgroundColor:'#fff',alignItems:'center',justifyContent:'center'}}><Text>Loading g000st...</Text></View>;
 
   return <><StatusBar style={isDark ? 'light' : 'dark'} /><Stack key={activePublicId ?? 'anonymous'} screenOptions={{ headerShown: false }} /></>;
 }
