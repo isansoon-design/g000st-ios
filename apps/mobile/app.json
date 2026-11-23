@@ -2,7 +2,7 @@
   "expo": {
     "name": "g000st",
     "slug": "g000st",
-    "version": "3.0.2",
+    "version": "4.0.0",
     "orientation": "portrait",
     "icon": "./assets/brand/icon-1024.png",
     "scheme": "g000st",
@@ -11,28 +11,26 @@
       "policy": "appVersion"
     },
     "updates": {
-      "enabled": false
+      "enabled": true
     },
     "ios": {
       "bundleIdentifier": "com.g000st.app",
-      "buildNumber": "21",
+      "buildNumber": "100000",
       "icon": "./assets/brand/icon-1024.png",
       "supportsTablet": false,
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIApplicationSceneManifest": {
           "UIApplicationSupportsMultipleScenes": false,
           "UISceneConfigurations": {
             "UIWindowSceneSessionRoleApplication": [
               {
-                "UISceneConfigurationName": "Default Configuration",
-                "UISceneDelegateClassName": "EXSceneDelegate"
+                "UISceneConfigurationName": "Default Configuration"
               }
             ]
           }
-        },
-        "ITSAppUsesNonExemptEncryption": false
-      },
-      "googleServicesFile": "./GoogleService-Info.plist"
+        }
+      }
     },
     "android": {
       "package": "com.g000st.app",
@@ -92,17 +90,10 @@
           "granularPermissions": []
         }
       ],
-      "expo-video",
-      [
-        "expo-callkit-telecom",
-        {
-          "microphonePermission": "Allow g000st to use the microphone for calls.",
-          "cameraPermission": "Allow g000st to use the camera for video calls."
-        }
-      ]
+      "expo-video"
     ],
     "experiments": {
-      "typedRoutes": true,
+      "typedRoutes": false,
       "reactCompiler": true
     },
     "extra": {

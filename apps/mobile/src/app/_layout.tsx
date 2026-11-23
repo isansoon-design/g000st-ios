@@ -11,10 +11,8 @@ import { initialWindowMetrics, SafeAreaProvider, SafeAreaView } from 'react-nati
 
 import { AuthProvider } from '@/features/auth/context/auth-provider';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { CallOverlayHost } from '@/features/calling/components/call-overlay-host';
 import { ConfirmModalProvider } from '@/providers/confirm-modal-provider';
 import { QueryProvider } from '@/providers/query-provider';
-import { CallingBootstrap } from '@/services/calling/calling-bootstrap';
 import { NotificationsBootstrap } from '@/services/notifications/notifications-bootstrap';
 import { PresenceHeartbeat } from '@/services/presence/presence-heartbeat';
 import { AppThemeProvider, useAppTheme } from '@/theme/app-theme';
@@ -58,9 +56,7 @@ export default function RootLayout() {
                     <ConfirmModalProvider>
                       <NotificationsBootstrap />
                       <PresenceHeartbeat />
-                      <CallingBootstrap />
                       <RootNavigator />
-                      <CallOverlayHost />
                     </ConfirmModalProvider>
                   </AppBottomSafeArea>
                 </AppThemeProvider>

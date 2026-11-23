@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { addCallSessionAddedListener, addVoIPPushTokenUpdatedListener, getActiveCallSession, getVoIPPushToken, type CallSession } from 'expo-callkit-telecom';
+import { addCallSessionAddedListener, addVoIPPushTokenUpdatedListener, getActiveCallSession, getVoIPPushToken, type CallSession } from '@/features/calling/callkit-stub';
 
 import { listBeaconPages } from '@/api/auth';
 import { registerVoipToken } from '@/api/calling';

@@ -17,7 +17,7 @@ import {
   setMuted,
   startOutgoingCall,
   type CallSession,
-} from 'expo-callkit-telecom';
+} from './callkit-stub';
 import { randomUUID } from 'expo-crypto';
 
 import type { MediaStream } from '@livekit/react-native-webrtc';
