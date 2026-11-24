@@ -34,7 +34,7 @@ const links = [
   ["Friends", "/(app)/(tabs)/contacts", "friends"],
   ["Profile", "/(app)/(tabs)/identity", "profile"],
   ["Trading", "/(app)/(tabs)/trading", "trading"],
-  ["Mobile", "/(app)/(tabs)/mobile", "mobile"],
+  // ["Mobile", "/(app)/(tabs)/mobile", "mobile"], // APPLE-HIDDEN
   ["Contact us", "/(app)/contact-us", "support"],
 ] as const;
 
